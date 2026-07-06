@@ -53,7 +53,14 @@ const EventSchema = CollectionSchema(
       ],
     )
   },
-  links: {},
+  links: {
+    r'categories': LinkSchema(
+      id: 3713932660727321832,
+      name: r'categories',
+      target: r'Category',
+      single: false,
+    )
+  },
   embeddedSchemas: {},
   getId: _eventGetId,
   getLinks: _eventGetLinks,
@@ -120,11 +127,13 @@ Id _eventGetId(Event object) {
 }
 
 List<IsarLinkBase<dynamic>> _eventGetLinks(Event object) {
-  return [];
+  return [object.categories];
 }
 
 void _eventAttach(IsarCollection<dynamic> col, Id id, Event object) {
   object.id = id;
+  object.categories
+      .attach(col, col.isar.collection<Category>(), r'categories', id);
 }
 
 extension EventQueryWhereSort on QueryBuilder<Event, Event, QWhere> {
@@ -711,7 +720,63 @@ extension EventQueryFilter on QueryBuilder<Event, Event, QFilterCondition> {
 
 extension EventQueryObject on QueryBuilder<Event, Event, QFilterCondition> {}
 
-extension EventQueryLinks on QueryBuilder<Event, Event, QFilterCondition> {}
+extension EventQueryLinks on QueryBuilder<Event, Event, QFilterCondition> {
+  QueryBuilder<Event, Event, QAfterFilterCondition> categories(
+      FilterQuery<Category> q) {
+    return QueryBuilder.apply(this, (query) {
+      return query.link(q, r'categories');
+    });
+  }
+
+  QueryBuilder<Event, Event, QAfterFilterCondition> categoriesLengthEqualTo(
+      int length) {
+    return QueryBuilder.apply(this, (query) {
+      return query.linkLength(r'categories', length, true, length, true);
+    });
+  }
+
+  QueryBuilder<Event, Event, QAfterFilterCondition> categoriesIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.linkLength(r'categories', 0, true, 0, true);
+    });
+  }
+
+  QueryBuilder<Event, Event, QAfterFilterCondition> categoriesIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.linkLength(r'categories', 0, false, 999999, true);
+    });
+  }
+
+  QueryBuilder<Event, Event, QAfterFilterCondition> categoriesLengthLessThan(
+    int length, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.linkLength(r'categories', 0, true, length, include);
+    });
+  }
+
+  QueryBuilder<Event, Event, QAfterFilterCondition> categoriesLengthGreaterThan(
+    int length, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.linkLength(r'categories', length, include, 999999, true);
+    });
+  }
+
+  QueryBuilder<Event, Event, QAfterFilterCondition> categoriesLengthBetween(
+    int lower,
+    int upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.linkLength(
+          r'categories', lower, includeLower, upper, includeUpper);
+    });
+  }
+}
 
 extension EventQuerySortBy on QueryBuilder<Event, Event, QSortBy> {
   QueryBuilder<Event, Event, QAfterSortBy> sortByDateTime() {

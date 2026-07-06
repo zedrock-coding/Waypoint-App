@@ -2,13 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:isar/isar.dart';
 import 'package:path_provider/path_provider.dart';
 import 'models/event.dart';
+import 'models/category.dart';
 import 'settings_page.dart';
 import 'add_event_page.dart';
+import 'category_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final dir = await getApplicationDocumentsDirectory();
-  final isar = await Isar.open([EventSchema], directory: dir.path);
+  final isar = await Isar.open([EventSchema, CategorySchema], directory: dir.path);
   runApp(MyApp(isar: isar));
 }
 
@@ -30,6 +32,7 @@ class MyApp extends StatelessWidget {
         '/': (context) => MyHomePage(title: 'Events Manager', isar: isar),
         '/settings': (context) => const SettingPage(),
         '/add-event': (context) => AddEventPage(isar: isar),
+        '/categories': (context) => CategoryPage(isar: isar),
       },
     );
   }
@@ -90,6 +93,14 @@ class _MyHomePageState extends State<MyHomePage> {
                 Navigator.pushNamed(context, '/settings');
               },
             ),
+            ListTile(
+              leading: const Icon(Icons.category),
+              title: const Text('Categories'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.pushNamed(context, '/categories');
+              },
+            ),
           ],
         ),
       ),
@@ -112,7 +123,36 @@ class _MyHomePageState extends State<MyHomePage> {
                 margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 child: ListTile(
                   title: Text(event.title),
-                  subtitle: Text(event.description),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(event.description),
+                      const SizedBox(height: 4),
+                      FutureBuilder(
+                        future: event.categories.load(),
+                        builder: (context, snapshot) {
+                          if (event.categories.isEmpty) return const SizedBox.shrink();
+                          return Wrap(
+                            spacing: 4,
+                            children: event.categories.map((cat) => Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Theme.of(context).colorScheme.secondaryContainer,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                cat.name,
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: Theme.of(context).colorScheme.onSecondaryContainer,
+                                ),
+                              ),
+                            )).toList(),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
                   trailing: Text(event.dateTime.toLocal().toString().split(' ')[0]),
                   onLongPress: () async {
                     // Quick delete on long press

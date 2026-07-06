@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:isar/isar.dart';
 import 'models/event.dart';
+import 'models/category.dart';
 
 class AddEventPage extends StatefulWidget {
   final Isar isar;
@@ -15,6 +16,23 @@ class _AddEventPageState extends State<AddEventPage> {
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
   DateTime _selectedDate = DateTime.now();
+  
+  List<Category> _availableCategories = [];
+  final List<Category> _selectedCategories = [];
+  bool _allowMultiple = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCategories();
+  }
+
+  Future<void> _loadCategories() async {
+    final categories = await widget.isar.categorys.where().findAll();
+    setState(() {
+      _availableCategories = categories;
+    });
+  }
 
   Future<void> _saveEvent() async {
     if (_formKey.currentState!.validate()) {
@@ -25,6 +43,9 @@ class _AddEventPageState extends State<AddEventPage> {
 
       await widget.isar.writeTxn(() async {
         await widget.isar.events.put(newEvent);
+        // Link categories
+        newEvent.categories.addAll(_selectedCategories);
+        await newEvent.categories.save();
       });
 
       if (mounted) {
@@ -78,6 +99,50 @@ class _AddEventPageState extends State<AddEventPage> {
                   }
                 },
               ),
+              const Divider(),
+              SwitchListTile(
+                title: const Text('Allow Multiple Categories'),
+                subtitle: const Text('Up to 5 categories'),
+                value: _allowMultiple,
+                onChanged: (val) {
+                  setState(() {
+                    _allowMultiple = val;
+                    if (!_allowMultiple && _selectedCategories.length > 1) {
+                      final first = _selectedCategories.first;
+                      _selectedCategories.clear();
+                      _selectedCategories.add(first);
+                    }
+                  });
+                },
+              ),
+              const Text('Select Categories:', style: TextStyle(fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              _availableCategories.isEmpty 
+                ? const Text('No categories created yet. Go to Categories menu to add some.')
+                : Wrap(
+                    spacing: 8.0,
+                    children: _availableCategories.map((cat) {
+                      final isSelected = _selectedCategories.any((element) => element.id == cat.id);
+                      return FilterChip(
+                        label: Text(cat.name),
+                        selected: isSelected,
+                        onSelected: (selected) {
+                          setState(() {
+                            if (selected) {
+                              if (!_allowMultiple) {
+                                _selectedCategories.clear();
+                                _selectedCategories.add(cat);
+                              } else if (_selectedCategories.length < 5) {
+                                _selectedCategories.add(cat);
+                              }
+                            } else {
+                              _selectedCategories.removeWhere((element) => element.id == cat.id);
+                            }
+                          });
+                        },
+                      );
+                    }).toList(),
+                  ),
               const SizedBox(height: 32),
               ElevatedButton(
                 onPressed: _saveEvent,

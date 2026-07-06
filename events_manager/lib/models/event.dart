@@ -1,4 +1,5 @@
 import 'package:isar/isar.dart';
+import 'category.dart';
 
 part 'event.g.dart';
 
@@ -11,4 +12,6 @@ class Event {
   late String description;
 
   late DateTime dateTime;
+
+  final categories = IsarLinks<Category>();
 }
