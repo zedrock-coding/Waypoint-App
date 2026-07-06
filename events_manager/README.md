@@ -1,4 +1,4 @@
-# events_manager
+# Events Manager
 
 An Event's task managing application
 
