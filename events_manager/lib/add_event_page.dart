@@ -19,7 +19,7 @@ class _AddEventPageState extends State<AddEventPage> {
   
   List<Category> _availableCategories = [];
   final List<Category> _selectedCategories = [];
-  bool _allowMultiple = false;
+  bool _allowMultiple = true; // Default to true now as we want unlimited support
 
   @override
   void initState() {
@@ -102,7 +102,7 @@ class _AddEventPageState extends State<AddEventPage> {
               const Divider(),
               SwitchListTile(
                 title: const Text('Allow Multiple Categories'),
-                subtitle: const Text('Up to 5 categories'),
+                subtitle: const Text('No longer limited to 5'),
                 value: _allowMultiple,
                 onChanged: (val) {
                   setState(() {
@@ -132,7 +132,8 @@ class _AddEventPageState extends State<AddEventPage> {
                               if (!_allowMultiple) {
                                 _selectedCategories.clear();
                                 _selectedCategories.add(cat);
-                              } else if (_selectedCategories.length < 5) {
+                              } else {
+                                // REMOVED LIMIT OF 5
                                 _selectedCategories.add(cat);
                               }
                             } else {
