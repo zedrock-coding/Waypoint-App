@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:isar/isar.dart';
 import 'models/category.dart';
+import 'app_shell.dart';
 
 class CategoryPage extends StatefulWidget {
   final Isar isar;
@@ -17,7 +18,10 @@ class _CategoryPageState extends State<CategoryPage> {
   @override
   void initState() {
     super.initState();
-    _categoryStream = widget.isar.categorys.where().watch(fireImmediately: true);
+    _categoryStream = widget.isar.categorys
+        .where()
+        .watch(fireImmediately: true)
+        .asBroadcastStream();
   }
 
   Future<void> _addCategory() async {
@@ -38,12 +42,9 @@ class _CategoryPageState extends State<CategoryPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Manage Categories'),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-      ),
-      body: Column(
+    return AppShell(
+      title: 'Manage Categories',
+      child: Column(
         children: [
           Padding(
             padding: const EdgeInsets.all(16.0),
@@ -70,7 +71,8 @@ class _CategoryPageState extends State<CategoryPage> {
             child: StreamBuilder<List<Category>>(
               stream: _categoryStream,
               builder: (context, snapshot) {
-                if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+                if (!snapshot.hasData)
+                  return const Center(child: CircularProgressIndicator());
                 final categories = snapshot.data!;
                 if (categories.isEmpty) {
                   return const Center(child: Text('No categories found.'));

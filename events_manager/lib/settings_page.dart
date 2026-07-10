@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:isar/isar.dart';
 import 'package:file_picker/file_picker.dart';
 import 'models/settings.dart';
+import 'app_shell.dart';
 
 class SettingPage extends StatefulWidget {
   final Isar isar;
@@ -123,6 +124,11 @@ class _SettingPageState extends State<SettingPage> {
                 style: TextStyle(fontFamily: 'monospace', fontSize: 12, color: Colors.black),
               ),
             ),
+            const SizedBox(height: 16),
+            const Text(
+              'NOTE: "seedColor" is the primary base color. The app will automatically generate a matching color scheme (primary, secondary, accents) based on this single value.',
+              style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, fontStyle: FontStyle.italic),
+            ),
           ],
         ),
         actions: [
@@ -150,25 +156,31 @@ class _SettingPageState extends State<SettingPage> {
 
     final fontSizeLabels = ['Very Small', 'Small', 'Normal', 'Medium', 'Large'];
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Settings'),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-      ),
-      body: ListView(
+    return AppShell(
+      title: 'Settings',
+      child: ListView(
         padding: const EdgeInsets.all(16.0),
         children: [
           Text(
-            'Font Size: ${fontSizeLabels[_settings!.fontSizeIndex]}',
+            'Font Size',
             style: Theme.of(context).textTheme.titleMedium,
           ),
-          Slider(
-            value: _settings!.fontSizeIndex.toDouble(),
-            min: 0,
-            max: 4,
-            divisions: 4,
-            label: fontSizeLabels[_settings!.fontSizeIndex],
-            onChanged: _updateFontSize,
+          const SizedBox(height: 8),
+          DropdownButtonFormField<int>(
+            value: _settings!.fontSizeIndex,
+            decoration: const InputDecoration(
+              border: OutlineInputBorder(),
+              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            ),
+            items: List.generate(fontSizeLabels.length, (index) {
+              return DropdownMenuItem(
+                value: index,
+                child: Text(fontSizeLabels[index]),
+              );
+            }),
+            onChanged: (value) {
+              if (value != null) _updateFontSize(value.toDouble());
+            },
           ),
           const Divider(),
           const Text('Theme Mode', style: TextStyle(fontWeight: FontWeight.bold)),
