@@ -468,7 +468,7 @@ class _MyHomePageState extends State<MyHomePage> {
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           child: DropdownButtonFormField<Id?>(
-            value: _selectedCategoryId,
+            initialValue: _selectedCategoryId,
             decoration: const InputDecoration(
               labelText: 'Filter by Category',
               border: OutlineInputBorder(),

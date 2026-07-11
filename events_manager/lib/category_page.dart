@@ -71,8 +71,9 @@ class _CategoryPageState extends State<CategoryPage> {
             child: StreamBuilder<List<Category>>(
               stream: _categoryStream,
               builder: (context, snapshot) {
-                if (!snapshot.hasData)
+                if (!snapshot.hasData) {
                   return const Center(child: CircularProgressIndicator());
+                }
                 final categories = snapshot.data!;
                 if (categories.isEmpty) {
                   return const Center(child: Text('No categories found.'));

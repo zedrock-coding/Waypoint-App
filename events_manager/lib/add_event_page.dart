@@ -136,7 +136,7 @@ class _AddEventPageState extends State<AddEventPage> {
                 children: [
                   Expanded(
                     child: DropdownButtonFormField<Status>(
-                      value: _selectedStatus,
+                      initialValue: _selectedStatus,
                       decoration: const InputDecoration(labelText: 'Status', border: OutlineInputBorder()),
                       items: Status.values.map((s) => DropdownMenuItem(
                         value: s, 
@@ -148,7 +148,7 @@ class _AddEventPageState extends State<AddEventPage> {
                   const SizedBox(width: 16),
                   Expanded(
                     child: DropdownButtonFormField<Priority>(
-                      value: _selectedPriority,
+                      initialValue: _selectedPriority,
                       decoration: const InputDecoration(labelText: 'Priority', border: OutlineInputBorder()),
                       items: Priority.values.map((p) => DropdownMenuItem(
                         value: p, 

@@ -167,7 +167,7 @@ class _SettingPageState extends State<SettingPage> {
           ),
           const SizedBox(height: 8),
           DropdownButtonFormField<int>(
-            value: _settings!.fontSizeIndex,
+            initialValue: _settings!.fontSizeIndex,
             decoration: const InputDecoration(
               border: OutlineInputBorder(),
               contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
