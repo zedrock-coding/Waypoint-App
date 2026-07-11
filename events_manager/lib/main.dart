@@ -59,7 +59,7 @@ class MyApp extends StatelessWidget {
         final double scale = fontScales[settings.fontSizeIndex.clamp(0, 4)];
 
         return MaterialApp(
-          title: 'Events Manager',
+          title: 'Helm',
           theme: theme,
           builder: (context, child) {
             return MediaQuery(
@@ -71,7 +71,7 @@ class MyApp extends StatelessWidget {
           },
           initialRoute: '/',
           routes: {
-            '/': (context) => MyHomePage(title: 'Events Manager', isar: isar),
+            '/': (context) => MyHomePage(title: 'Helm', isar: isar),
             '/settings': (context) => SettingPage(isar: isar),
             '/add-event': (context) => AddEventPage(isar: isar),
             '/categories': (context) => CategoryPage(isar: isar),
@@ -226,47 +226,234 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   Widget _buildEventCard(Event event) {
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      child: ListTile(
-        title: Text(event.title),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(event.description),
-            const SizedBox(height: 4),
-            FutureBuilder(
-              future: event.categories.load(),
-              builder: (context, snapshot) {
-                if (event.categories.isEmpty) return const SizedBox.shrink();
-                return Wrap(
-                  spacing: 4,
-                  runSpacing: 4,
-                  children: event.categories.map((cat) => Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.secondaryContainer,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      cat.name,
-                      style: TextStyle(
-                        fontSize: 10,
-                        color: Theme.of(context).colorScheme.onSecondaryContainer,
-                      ),
-                    ),
-                  )).toList(),
-                );
-              },
+    Color statusColor;
+    IconData statusIcon;
+    switch (event.status) {
+      case Status.toDo:
+        statusColor = Colors.grey;
+        statusIcon = Icons.circle_outlined;
+        break;
+      case Status.inProgress:
+        statusColor = Colors.orange;
+        statusIcon = Icons.pending_actions;
+        break;
+      case Status.done:
+        statusColor = Colors.green;
+        statusIcon = Icons.check_circle;
+        break;
+    }
+
+    IconData priorityIcon;
+    Color priorityColor;
+    switch (event.priority) {
+      case Priority.low:
+        priorityIcon = Icons.keyboard_double_arrow_down;
+        priorityColor = Colors.blue;
+        break;
+      case Priority.medium:
+        priorityIcon = Icons.remove;
+        priorityColor = Colors.orange;
+        break;
+      case Priority.high:
+        priorityIcon = Icons.keyboard_double_arrow_up;
+        priorityColor = Colors.red;
+        break;
+    }
+
+    return Dismissible(
+      key: UniqueKey(), // Use UniqueKey to force total removal/rebuild
+      background: Container(
+        color: Colors.green,
+        alignment: Alignment.centerLeft,
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        child: const Icon(Icons.check, color: Colors.white),
+      ),
+      secondaryBackground: Container(
+        color: Colors.red,
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        child: const Icon(Icons.delete, color: Colors.white),
+      ),
+      confirmDismiss: (direction) async {
+        if (direction == DismissDirection.startToEnd) {
+          // Swipe Right: Complete Task (no popup needed, just update)
+          await widget.isar.writeTxn(() async {
+            event.status = Status.done;
+            await widget.isar.events.put(event);
+          });
+          return false; // Return false to keep item in list (it will update via stream)
+        } else {
+          // Swipe Left: Show Delete Confirmation Pop-up
+          return await showDialog<bool>(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('Delete Task?'),
+              content: Text('Are you sure you want to delete "${event.title}"?'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  child: const Text('CANCEL'),
+                ),
+                TextButton(
+                  style: TextButton.styleFrom(foregroundColor: Colors.red),
+                  onPressed: () => Navigator.pop(context, true),
+                  child: const Text('DELETE'),
+                ),
+              ],
             ),
-          ],
-        ),
-        trailing: Text(event.dateTime.toLocal().toString().split(' ')[0]),
-        onLongPress: () async {
+          );
+        }
+      },
+      onDismissed: (direction) async {
+        if (direction == DismissDirection.endToStart) {
+          // Backup data and category IDs before deletion for Undo
+          final backupEvent = event;
+          await event.categories.load();
+          final categoryIds = event.categories.map((c) => c.id).toList();
+          
+          // Delete immediately
           await widget.isar.writeTxn(() async {
             await widget.isar.events.delete(event.id);
           });
-        },
+
+          // Show snackbar with undo
+          if (mounted) {
+            ScaffoldMessenger.of(context).hideCurrentSnackBar();
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Task "${backupEvent.title}" deleted'),
+                action: SnackBarAction(
+                  label: 'UNDO',
+                  onPressed: () async {
+                    final restoredEvent = Event()
+                      ..title = backupEvent.title
+                      ..description = backupEvent.description
+                      ..dateTime = backupEvent.dateTime
+                      ..status = backupEvent.status
+                      ..priority = backupEvent.priority
+                      ..assignees = List.from(backupEvent.assignees);
+                    
+                    await widget.isar.writeTxn(() async {
+                      await widget.isar.events.put(restoredEvent);
+                      for (var catId in categoryIds) {
+                        final cat = await widget.isar.categorys.get(catId);
+                        if (cat != null) restoredEvent.categories.add(cat);
+                      }
+                      await restoredEvent.categories.save();
+                    });
+                  },
+                ),
+              ),
+            );
+          }
+        }
+      },
+      child: Card(
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        child: ListTile(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => AddEventPage(isar: widget.isar, eventToEdit: event),
+              ),
+            );
+          },
+          leading: Icon(statusIcon, color: statusColor),
+          title: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  event.title,
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
+              Icon(priorityIcon, size: 18, color: priorityColor),
+            ],
+          ),
+          subtitle: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (event.description.isNotEmpty) ...[
+                Text(
+                  event.description, 
+                  maxLines: 1, 
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
+                ),
+                const SizedBox(height: 4),
+              ],
+              Row(
+                children: [
+                  Expanded(
+                    child: FutureBuilder(
+                      future: event.categories.load(),
+                      builder: (context, snapshot) {
+                        if (event.categories.isEmpty) return const SizedBox.shrink();
+                        return Wrap(
+                          spacing: 4,
+                          children: event.categories.map((cat) => Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).colorScheme.secondaryContainer,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              cat.name,
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: Theme.of(context).colorScheme.onSecondaryContainer,
+                              ),
+                            ),
+                          )).toList(),
+                        );
+                      },
+                    ),
+                  ),
+                  if (event.assignees.isNotEmpty)
+                    SizedBox(
+                      height: 24,
+                      width: (event.assignees.length.clamp(0, 4) * 16.0) + 8,
+                      child: Stack(
+                        children: List.generate(
+                          event.assignees.length.clamp(0, 4),
+                          (i) {
+                            if (i >= event.assignees.length) return const SizedBox.shrink();
+                            return Positioned(
+                              right: i * 14.0,
+                              child: CircleAvatar(
+                                radius: 10,
+                                backgroundColor: Theme.of(context).colorScheme.tertiaryContainer,
+                                child: Text(
+                                  event.assignees[i].isNotEmpty 
+                                      ? event.assignees[i].characters.first.toUpperCase()
+                                      : '?',
+                                  style: TextStyle(
+                                    fontSize: 9, 
+                                    fontWeight: FontWeight.bold,
+                                    color: Theme.of(context).colorScheme.onTertiaryContainer,
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ],
+          ),
+          trailing: Text(
+            event.dateTime.toLocal().toString().split(' ')[0],
+            style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.outline),
+          ),
+          onLongPress: () async {
+            await widget.isar.writeTxn(() async {
+              await widget.isar.events.delete(event.id);
+            });
+          },
+        ),
       ),
     );
   }

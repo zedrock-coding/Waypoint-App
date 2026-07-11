@@ -1,16 +1,57 @@
-# Events Manager
+# Helm - Event & Task Manager
 
-Events Manager helps you organize your life by keeping track of all your important events and tasks. Stay on top of your schedule and never miss a detail again!
+Helm is a lightweight, high-performance task and event management system built with Flutter and the Isar Database. Designed for both mobile and desktop use, it features a robust team management structure and deep UI customization.
 
-## Key Features
+## 🚀 Key Features
 
-- **Effortless Event & Task Management**: Quickly add, edit, and organize your events and their corresponding tasks.
-- **Organize with Categories**: Group your events and tasks by category to keep everything neatly organized and easy to find.
-- **Works Offline**: Your data is saved locally on your device, so you have access to your schedule anytime, even without an internet connection.
-- **Multi-Platform Support**: Use Events Manager on your favorite devices, with support for Windows, Linux, Android, and the Web.
-- **Customizable Themes**: Personalize your experience with light and dark themes to match your preference and reduce eye strain.
-- **Accessible Fonts**: Adjust the font size for comfortable reading, making the app accessible for everyone.
+### 1. Team & Project Management
+*   **Status Tracking:** Manage lifecycle with `To Do`, `In Progress`, and `Done` states.
+*   **Priority Levels:** Visual indicators for `High`, `Medium`, and `Low` importance.
+*   **Assignee System:** Add multiple team members to any task using a dynamic chip-input system.
+*   **Sub-tasks:** Hierarchical support with self-referential parent-child relationships.
 
-## Getting Started
+### 2. Advanced Organization
+*   **Unlimited Categories:** Categorize tasks without limits using a flexible linking system.
+*   **Optimized Sorting:** Mandatory category-based sorting that queries the database per-category for maximum memory efficiency.
+*   **Collapsible Sections:** A clean dashboard UI using `ExpansionTiles` to group tasks by category.
+*   **Category Filtering:** A dedicated dropdown menu to focus on specific project areas instantly.
 
-[This section can be updated with instructions on how to download and install the application once it's available for release.]
+### 3. Deep UI Customization
+*   **Global Font Scaling:** A 5-point selection system (Very Small to Large) that scales the entire UI proportionally using `MediaQuery`.
+*   **Theme Engine:** 
+    *   Native Light and Dark modes.
+    *   **Custom JSON Themes:** Upload your own color schemes.
+    *   **Seed Color System:** Dynamically generate entire palettes from a single base color.
+
+### 4. Interactive UX
+*   **Swipe Gestures:**
+    *   **Swipe Right:** Instantly mark a task as "Done".
+    *   **Swipe Left:** Quick delete with a safety confirmation pop-up.
+*   **Undo System:** Accidental deletions can be reversed with a single tap, restoring all data including category links.
+*   **Responsive Desktop Shell:** A persistent sidebar designed specifically for wide-screen productivity.
+
+## 🛠 Technical Stack
+*   **Framework:** Flutter (Material 3)
+*   **Database:** Isar (NoSQL)
+*   **State Management:** Reactive Streams (Broadcast)
+*   **Architecture:** App Shell pattern for unified navigation.
+
+## 🏗 Setup & Installation
+1.  Ensure you have Flutter installed.
+2.  Run `flutter pub get` to install dependencies.
+3.  Generate the database schema:
+    ```bash
+    dart run build_runner build --delete-conflicting-outputs
+    ```
+4.  Launch the app: `flutter run`
+
+## 🎨 Custom Theme Example
+Users can modify the look of Helm by uploading a JSON file with the following structure:
+```json
+{
+  "seedColor": "0xFFE91E63",
+  "brightness": "dark",
+  "backgroundColor": "0xFF1A1A1A",
+  "comment": "Colors must be in 0xAARRGGBB format"
+}
+```

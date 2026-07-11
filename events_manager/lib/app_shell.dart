@@ -87,7 +87,17 @@ class AppShell extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        title: Text(title),
+        title: Row(
+          children: [
+            Image.asset(
+              'assets/icon/Helm_logo.png',
+              height: 32,
+              errorBuilder: (context, error, stackTrace) => const Icon(Icons.event),
+            ),
+            const SizedBox(width: 8),
+            Text(title),
+          ],
+        ),
         leading: isDesktop ? const SizedBox.shrink() : null,
         actions: actions,
       ),
