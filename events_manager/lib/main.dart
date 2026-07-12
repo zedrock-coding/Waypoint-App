@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:isar/isar.dart';
 import 'package:path_provider/path_provider.dart';
 import 'models/event.dart';
-import 'models/category.dart';
+import 'models/category.dart' as model;
 import 'models/settings.dart';
 import 'settings_page.dart';
 import 'add_event_page.dart';
@@ -12,18 +12,39 @@ import 'app_shell.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  final dir = await getApplicationDocumentsDirectory();
-  final isar = await Isar.open([EventSchema, CategorySchema, SettingsSchema], directory: dir.path);
   
-  // Ensure default settings exist
-  await isar.writeTxn(() async {
-    final settings = await isar.settings.get(0);
-    if (settings == null) {
-      await isar.settings.put(Settings()..id = 0);
-    }
-  });
+  try {
+    // Optimized path handling for Native (Android/Windows)
+    final dir = await getApplicationDocumentsDirectory();
+    
+    final isar = await Isar.open(
+      [EventSchema, model.CategorySchema, SettingsSchema],
+      directory: dir.path,
+    );
+    
+    // Ensure default settings exist
+    await isar.writeTxn(() async {
+      final settings = await isar.settings.get(0);
+      if (settings == null) {
+        await isar.settings.put(Settings()..id = 0);
+      }
+    });
 
-  runApp(MyApp(isar: isar));
+    runApp(MyApp(isar: isar));
+  } catch (e, stack) {
+    debugPrint('FATAL INITIALIZATION ERROR: $e');
+    debugPrint('STACK TRACE: $stack');
+    runApp(MaterialApp(
+      home: Scaffold(
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: SelectableText('Failed to initialize Helm: $e\n\nPlease restart the app.'),
+          ),
+        ),
+      ),
+    ));
+  }
 }
 
 class MyApp extends StatelessWidget {
@@ -36,6 +57,8 @@ class MyApp extends StatelessWidget {
     return StreamBuilder<Settings?>(
       stream: isar.settings.watchObject(0, fireImmediately: true).asBroadcastStream(),
       builder: (context, snapshot) {
+        if (snapshot.hasError) return const MaterialApp(home: Scaffold(body: Center(child: Text('Settings Error'))));
+        
         final settings = snapshot.data ?? Settings();
         
         ThemeData theme;
@@ -225,24 +248,39 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 
-  Widget _buildEventCard(Event event) {
-    Color statusColor;
-    IconData statusIcon;
-    switch (event.status) {
+  Widget _buildStatusIcon(Status status) {
+    IconData iconData;
+    Color color;
+    Key key;
+
+    switch (status) {
       case Status.toDo:
-        statusColor = Colors.grey;
-        statusIcon = Icons.circle_outlined;
+        iconData = Icons.radio_button_unchecked;
+        color = Colors.grey;
+        key = const ValueKey('todo');
         break;
       case Status.inProgress:
-        statusColor = Colors.orange;
-        statusIcon = Icons.pending_actions;
+        iconData = Icons.published_with_changes; // Half-filled/Active circle
+        color = Theme.of(context).colorScheme.primary;
+        key = const ValueKey('inprogress');
         break;
       case Status.done:
-        statusColor = Colors.green;
-        statusIcon = Icons.check_circle;
+        iconData = Icons.check_circle;
+        color = Colors.green;
+        key = const ValueKey('done');
         break;
     }
 
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 300),
+      transitionBuilder: (Widget child, Animation<double> animation) {
+        return ScaleTransition(scale: animation, child: child);
+      },
+      child: Icon(iconData, color: color, key: key),
+    );
+  }
+
+  Widget _buildEventCard(Event event) {
     IconData priorityIcon;
     Color priorityColor;
     switch (event.priority) {
@@ -306,7 +344,7 @@ class _MyHomePageState extends State<MyHomePage> {
       },
       onDismissed: (direction) async {
         if (direction == DismissDirection.endToStart) {
-          // Backup data and category IDs before deletion for Undo
+          // backup data and category IDs before deletion for Undo
           final backupEvent = event;
           await event.categories.load();
           final categoryIds = event.categories.map((c) => c.id).toList();
@@ -316,7 +354,7 @@ class _MyHomePageState extends State<MyHomePage> {
             await widget.isar.events.delete(event.id);
           });
 
-          // Show snackbar with undo
+          // Show SnackBar with undo
           if (mounted) {
             ScaffoldMessenger.of(context).hideCurrentSnackBar();
             ScaffoldMessenger.of(context).showSnackBar(
@@ -359,7 +397,7 @@ class _MyHomePageState extends State<MyHomePage> {
               ),
             );
           },
-          leading: Icon(statusIcon, color: statusColor),
+          leading: _buildStatusIcon(event.status),
           title: Row(
             children: [
               Expanded(
@@ -459,7 +497,7 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   Widget _buildCategoryFilterDropdown() {
-    return FutureBuilder<List<Category>>(
+    return FutureBuilder<List<model.Category>>(
       future: widget.isar.categorys.where().sortByName().findAll(),
       builder: (context, snapshot) {
         if (!snapshot.hasData) return const SizedBox.shrink();

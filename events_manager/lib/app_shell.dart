@@ -90,7 +90,7 @@ class AppShell extends StatelessWidget {
         title: Row(
           children: [
             Image.asset(
-              'assets/icon/Helm_logo.png',
+              'assets/icon/icon.png',
               height: 32,
               errorBuilder: (context, error, stackTrace) => const Icon(Icons.event),
             ),

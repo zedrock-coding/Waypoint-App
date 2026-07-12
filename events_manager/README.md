@@ -9,6 +9,7 @@ Helm is a lightweight, high-performance task and event management system built w
 *   **Priority Levels:** Visual indicators for `High`, `Medium`, and `Low` importance.
 *   **Assignee System:** Add multiple team members to any task using a dynamic chip-input system.
 *   **Sub-tasks:** Hierarchical support with self-referential parent-child relationships.
+*   **Visual Hierarchy:** Subtle 'L-shaped' tree lines visually connect parent tasks to their child sub-tasks in the editor.
 
 ### 2. Advanced Organization
 *   **Unlimited Categories:** Categorize tasks without limits using a flexible linking system.
@@ -29,6 +30,9 @@ Helm is a lightweight, high-performance task and event management system built w
     *   **Swipe Left:** Quick delete with a safety confirmation pop-up.
 *   **Undo System:** Accidental deletions can be reversed with a single tap, restoring all data including category links.
 *   **Responsive Desktop Shell:** A persistent sidebar designed specifically for wide-screen productivity.
+*   **Status Animations:** Micro-animations for status toggles using `AnimatedSwitcher` for satisfying visual feedback.
+*   **Keyboard Shortcuts:** Full desktop productivity with `Escape` to close and `Enter` to save (smart-disabled in multiline fields).
+*   **Data Protection:** Built-in "Unsaved Changes" warning prevents accidental data loss when exiting the editor.
 
 ## 🛠 Technical Stack
 *   **Framework:** Flutter (Material 3)
