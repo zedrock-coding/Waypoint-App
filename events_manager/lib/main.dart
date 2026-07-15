@@ -1,7 +1,8 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:isar/isar.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:provider/provider.dart';
 import 'models/event.dart';
 import 'models/category.dart' as model;
 import 'models/settings.dart';
@@ -9,12 +10,15 @@ import 'settings_page.dart';
 import 'add_event_page.dart';
 import 'category_page.dart';
 import 'app_shell.dart';
+import 'notification_service.dart';
+import 'velocity_dashboard_card.dart';
+import 'theme_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
   try {
-    // Optimized path handling for Native (Android/Windows)
+    await NotificationService().init();
     final dir = await getApplicationDocumentsDirectory();
     
     final isar = await Isar.open(
@@ -22,7 +26,6 @@ void main() async {
       directory: dir.path,
     );
     
-    // Ensure default settings exist
     await isar.writeTxn(() async {
       final settings = await isar.settings.get(0);
       if (settings == null) {
@@ -30,111 +33,103 @@ void main() async {
       }
     });
 
-    runApp(MyApp(isar: isar));
-  } catch (e, stack) {
-    debugPrint('FATAL INITIALIZATION ERROR: $e');
-    debugPrint('STACK TRACE: $stack');
-    runApp(MaterialApp(
-      home: Scaffold(
-        body: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: SelectableText('Failed to initialize Helm: $e\n\nPlease restart the app.'),
-          ),
-        ),
+    runApp(
+      ChangeNotifierProvider(
+        create: (_) => ThemeProvider(isar),
+        child: MyApp(isar: isar),
       ),
+    );
+  } catch (e) {
+    debugPrint('FATAL INITIALIZATION ERROR: $e');
+    runApp(MaterialApp(
+      home: Scaffold(body: Center(child: Text('Failed to initialize: $e'))),
     ));
   }
 }
 
 class MyApp extends StatelessWidget {
   final Isar isar;
-
   const MyApp({super.key, required this.isar});
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<Settings?>(
-      stream: isar.settings.watchObject(0, fireImmediately: true).asBroadcastStream(),
-      builder: (context, snapshot) {
-        if (snapshot.hasError) return const MaterialApp(home: Scaffold(body: Center(child: Text('Settings Error'))));
-        
-        final settings = snapshot.data ?? Settings();
-        
-        ThemeData theme;
-        if (settings.themeMode == 1) {
-          theme = ThemeData.dark(useMaterial3: true);
-        } else if (settings.themeMode == 2 && settings.customThemeJson != null) {
-          try {
-            final json = jsonDecode(settings.customThemeJson!);
-            theme = _createThemeFromJson(json);
-          } catch (e) {
-            theme = ThemeData.light(useMaterial3: true);
-          }
-        } else {
-          theme = ThemeData(
-            colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
-            useMaterial3: true,
-          );
-        }
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final settings = themeProvider.settings;
 
-        final fontScales = [0.7, 0.85, 1.0, 1.2, 1.4];
-        final double scale = fontScales[settings.fontSizeIndex.clamp(0, 4)];
+    // --- REFINED LIGHT THEME ---
+    final ColorScheme lightScheme = ColorScheme.fromSeed(
+      seedColor: const Color(0xFF26A69A), // Teal/Mint
+      brightness: Brightness.light,
+    );
 
-        return MaterialApp(
-          title: 'Helm',
-          theme: theme,
-          builder: (context, child) {
-            return MediaQuery(
-              data: MediaQuery.of(context).copyWith(
-                textScaler: TextScaler.linear(scale),
-              ),
-              child: child!,
-            );
-          },
-          initialRoute: '/',
-          routes: {
-            '/': (context) => MyHomePage(title: 'Helm', isar: isar),
-            '/settings': (context) => SettingPage(isar: isar),
-            '/add-event': (context) => AddEventPage(isar: isar),
-            '/categories': (context) => CategoryPage(isar: isar),
-          },
+    final ThemeData lightTheme = ThemeData(
+      useMaterial3: true,
+      colorScheme: lightScheme,
+      scaffoldBackgroundColor: const Color(0xFFF5F6F8), // Soft off-white
+      cardTheme: CardThemeData(
+        elevation: 1,
+        color: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(color: Colors.grey.withOpacity(0.1), width: 1),
+        ),
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      ),
+      listTileTheme: ListTileThemeData(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
+
+    // --- PREMIUM SLATE & MINT DARK THEME ---
+    final ColorScheme slateScheme = ColorScheme.fromSeed(
+      seedColor: const Color(0xFF88C0A4), 
+      brightness: Brightness.dark,
+      surface: const Color(0xFF1E2124),
+    );
+
+    final ThemeData darkTheme = ThemeData(
+      useMaterial3: true,
+      colorScheme: slateScheme,
+      scaffoldBackgroundColor: const Color(0xFF1E2124),
+      cardTheme: CardThemeData(
+        elevation: 0,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        color: const Color(0xFF2A2D32),
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      ),
+    );
+
+    final fontScales = [0.7, 0.85, 1.0, 1.2, 1.4];
+    final double scale = fontScales[settings.fontSizeIndex.clamp(0, 4)];
+
+    return MaterialApp(
+      key: const ValueKey('helm_app_root'),
+      title: 'Helm',
+      theme: lightTheme,
+      darkTheme: darkTheme,
+      themeMode: themeProvider.themeMode,
+      builder: (context, child) {
+        return MediaQuery(
+          data: MediaQuery.of(context).copyWith(
+            textScaler: TextScaler.linear(scale),
+          ),
+          child: child!,
         );
       },
+      initialRoute: '/',
+      routes: {
+        '/': (context) => MyHomePage(title: 'Helm', isar: isar),
+        '/settings': (context) => SettingPage(isar: isar),
+        '/add-event': (context) => AddEventPage(isar: isar),
+        '/categories': (context) => CategoryPage(isar: isar),
+      },
     );
-  }
-
-  ThemeData _createThemeFromJson(Map<String, dynamic> json) {
-    try {
-      final String? seedColorStr = json['seedColor'];
-      final String? bgColorStr = json['backgroundColor'];
-      
-      final Color seedColor = seedColorStr != null 
-          ? Color(int.parse(seedColorStr)) 
-          : Colors.blue;
-          
-      final Brightness brightness = json['brightness'] == 'dark' 
-          ? Brightness.dark 
-          : Brightness.light;
-
-      return ThemeData(
-        useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: seedColor,
-          brightness: brightness,
-        ),
-        scaffoldBackgroundColor: bgColorStr != null ? Color(int.parse(bgColorStr)) : null,
-      );
-    } catch (e) {
-      debugPrint('Error creating theme from JSON: $e');
-      return ThemeData.light(useMaterial3: true);
-    }
   }
 }
 
 class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key, required this.title, required this.isar});
-
   final String title;
   final Isar isar;
 
@@ -145,7 +140,7 @@ class MyHomePage extends StatefulWidget {
 class _MyHomePageState extends State<MyHomePage> {
   late Stream<void> _changeStream;
   bool _sortByCategory = true;
-  Id? _selectedCategoryId; // null means "All Categories"
+  Id? _selectedCategoryId;
 
   @override
   void initState() {
@@ -159,24 +154,23 @@ class _MyHomePageState extends State<MyHomePage> {
       title: widget.title,
       actions: [
         IconButton(
-          tooltip: _sortByCategory ? 'Switch to Chronological' : 'Switch to Category View',
           icon: Icon(_sortByCategory ? Icons.sort_by_alpha : Icons.calendar_month),
           onPressed: () {
-            setState(() {
-              _sortByCategory = !_sortByCategory;
-            });
+            HapticFeedback.lightImpact();
+            setState(() => _sortByCategory = !_sortByCategory);
           },
         ),
       ],
       floatingActionButton: FloatingActionButton(
         onPressed: () {
+          HapticFeedback.mediumImpact();
           Navigator.pushNamed(context, '/add-event');
         },
-        tooltip: 'Add Event',
         child: const Icon(Icons.add),
       ),
       child: Column(
         children: [
+          _buildVelocityDashboard(),
           if (_sortByCategory) _buildCategoryFilterDropdown(),
           Expanded(
             child: StreamBuilder<void>(
@@ -185,57 +179,19 @@ class _MyHomePageState extends State<MyHomePage> {
                 return FutureBuilder<List<dynamic>>(
                   future: _getOptimizedFlattenedList(),
                   builder: (context, listSnapshot) {
-                    if (listSnapshot.hasError) return Center(child: Text('Error: ${listSnapshot.error}'));
                     if (!listSnapshot.hasData) return const Center(child: CircularProgressIndicator());
-
                     final flattenedList = listSnapshot.data!;
-                    if (flattenedList.isEmpty) {
-                      return const Center(child: Text('No events found. Add one!'));
-                    }
-
-                    if (!_sortByCategory && _selectedCategoryId == null) {
-                      return ListView.builder(
-                        itemCount: flattenedList.length,
-                        itemBuilder: (context, index) {
-                          final item = flattenedList[index];
-                          if (item is Event) {
-                            return _buildEventCard(item);
-                          }
-                          return const SizedBox.shrink(); // Safety fallback
-                        },
-                      );
-                    }
-
-                    final Map<String, List<Event>> grouped = {};
-                    String currentHeader = "";
-                    for (var item in flattenedList) {
-                      if (item is String) {
-                        currentHeader = item;
-                        grouped[currentHeader] = [];
-                      } else {
-                        grouped[currentHeader]?.add(item as Event);
-                      }
-                    }
-
-                    final headers = grouped.keys.toList();
+                    if (flattenedList.isEmpty) return const DashboardEmptyState();
 
                     return ListView.builder(
-                      itemCount: headers.length,
+                      padding: const EdgeInsets.only(bottom: 24),
+                      itemCount: flattenedList.length,
                       itemBuilder: (context, index) {
-                        final header = headers[index];
-                        final events = grouped[header]!;
-                        
-                        return ExpansionTile(
-                          initiallyExpanded: true,
-                          title: Text(
-                            header,
-                            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: Theme.of(context).colorScheme.primary,
-                            ),
-                          ),
-                          children: events.map((event) => _buildEventCard(event)).toList(),
-                        );
+                        final item = flattenedList[index];
+                        if (item is String) {
+                          return CategoryHeaderRow(categoryName: item);
+                        }
+                        return TaskItemCard(event: item as Event, isar: widget.isar);
                       },
                     );
                   },
@@ -248,251 +204,41 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 
-  Widget _buildStatusIcon(Status status) {
-    IconData iconData;
-    Color color;
-    Key key;
+  Widget _buildVelocityDashboard() {
+    final now = DateTime.now();
+    final todayStart = DateTime(now.year, now.month, now.day);
+    final todayEnd = DateTime(now.year, now.month, now.day, 23, 59, 59);
+    final themeProvider = Provider.of<ThemeProvider>(context);
 
-    switch (status) {
-      case Status.toDo:
-        iconData = Icons.radio_button_unchecked;
-        color = Colors.grey;
-        key = const ValueKey('todo');
-        break;
-      case Status.inProgress:
-        iconData = Icons.published_with_changes; // Half-filled/Active circle
-        color = Theme.of(context).colorScheme.primary;
-        key = const ValueKey('inprogress');
-        break;
-      case Status.done:
-        iconData = Icons.check_circle;
-        color = Colors.green;
-        key = const ValueKey('done');
-        break;
-    }
-
-    return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 300),
-      transitionBuilder: (Widget child, Animation<double> animation) {
-        return ScaleTransition(scale: animation, child: child);
-      },
-      child: Icon(iconData, color: color, key: key),
-    );
-  }
-
-  Widget _buildEventCard(Event event) {
-    IconData priorityIcon;
-    Color priorityColor;
-    switch (event.priority) {
-      case Priority.low:
-        priorityIcon = Icons.keyboard_double_arrow_down;
-        priorityColor = Colors.blue;
-        break;
-      case Priority.medium:
-        priorityIcon = Icons.remove;
-        priorityColor = Colors.orange;
-        break;
-      case Priority.high:
-        priorityIcon = Icons.keyboard_double_arrow_up;
-        priorityColor = Colors.red;
-        break;
-    }
-
-    return Dismissible(
-      key: UniqueKey(), // Use UniqueKey to force total removal/rebuild
-      background: Container(
-        color: Colors.green,
-        alignment: Alignment.centerLeft,
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        child: const Icon(Icons.check, color: Colors.white),
-      ),
-      secondaryBackground: Container(
-        color: Colors.red,
-        alignment: Alignment.centerRight,
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        child: const Icon(Icons.delete, color: Colors.white),
-      ),
-      confirmDismiss: (direction) async {
-        if (direction == DismissDirection.startToEnd) {
-          // Swipe Right: Complete Task (no popup needed, just update)
-          await widget.isar.writeTxn(() async {
-            event.status = Status.done;
-            await widget.isar.events.put(event);
-          });
-          return false; // Return false to keep item in list (it will update via stream)
-        } else {
-          // Swipe Left: Show Delete Confirmation Pop-up
-          return await showDialog<bool>(
-            context: context,
-            builder: (context) => AlertDialog(
-              title: const Text('Delete Task?'),
-              content: Text('Are you sure you want to delete "${event.title}"?'),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context, false),
-                  child: const Text('CANCEL'),
-                ),
-                TextButton(
-                  style: TextButton.styleFrom(foregroundColor: Colors.red),
-                  onPressed: () => Navigator.pop(context, true),
-                  child: const Text('DELETE'),
-                ),
-              ],
-            ),
-          );
-        }
-      },
-      onDismissed: (direction) async {
-        if (direction == DismissDirection.endToStart) {
-          // backup data and category IDs before deletion for Undo
-          final backupEvent = event;
-          await event.categories.load();
-          final categoryIds = event.categories.map((c) => c.id).toList();
-          
-          // Delete immediately
-          await widget.isar.writeTxn(() async {
-            await widget.isar.events.delete(event.id);
-          });
-
-          // Show SnackBar with undo
-          if (mounted) {
-            ScaffoldMessenger.of(context).hideCurrentSnackBar();
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Task "${backupEvent.title}" deleted'),
-                action: SnackBarAction(
-                  label: 'UNDO',
-                  onPressed: () async {
-                    final restoredEvent = Event()
-                      ..title = backupEvent.title
-                      ..description = backupEvent.description
-                      ..dateTime = backupEvent.dateTime
-                      ..status = backupEvent.status
-                      ..priority = backupEvent.priority
-                      ..assignees = List.from(backupEvent.assignees);
-                    
-                    await widget.isar.writeTxn(() async {
-                      await widget.isar.events.put(restoredEvent);
-                      for (var catId in categoryIds) {
-                        final cat = await widget.isar.categorys.get(catId);
-                        if (cat != null) restoredEvent.categories.add(cat);
-                      }
-                      await restoredEvent.categories.save();
-                    });
-                  },
-                ),
-              ),
-            );
-          }
-        }
-      },
-      child: Card(
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-        child: ListTile(
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => AddEventPage(isar: widget.isar, eventToEdit: event),
-              ),
+    return StreamBuilder<void>(
+      stream: _changeStream,
+      builder: (context, snapshot) {
+        return FutureBuilder<List<Event>>(
+          future: widget.isar.events.filter().dateTimeBetween(todayStart, todayEnd).findAll(),
+          builder: (context, taskSnapshot) {
+            if (!taskSnapshot.hasData) return const SizedBox.shrink();
+            final todayTasks = taskSnapshot.data!;
+            return VelocityDashboardCard(
+              totalTasksToday: todayTasks.length,
+              completedTasksToday: todayTasks.where((t) => t.status == Status.done).length,
+              remindersEnabled: themeProvider.settings.remindersEnabled,
+              onRemindersToggle: (enabled) async {
+                HapticFeedback.selectionClick();
+                final NotificationService ns = NotificationService();
+                if (enabled) {
+                  final granted = await ns.requestPermissions();
+                  if (granted) await ns.scheduleDailyNotification(id: 0, title: 'Helm Reminder', body: 'Check your tasks!', time: const TimeOfDay(hour: 9, minute: 0));
+                } else {
+                  await ns.cancelAllNotifications();
+                }
+                themeProvider.settings.remindersEnabled = enabled;
+                await widget.isar.writeTxn(() => widget.isar.settings.put(themeProvider.settings));
+                themeProvider.refresh();
+              },
             );
           },
-          leading: _buildStatusIcon(event.status),
-          title: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  event.title,
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-              ),
-              Icon(priorityIcon, size: 18, color: priorityColor),
-            ],
-          ),
-          subtitle: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (event.description.isNotEmpty) ...[
-                Text(
-                  event.description, 
-                  maxLines: 1, 
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
-                ),
-                const SizedBox(height: 4),
-              ],
-              Row(
-                children: [
-                  Expanded(
-                    child: FutureBuilder(
-                      future: event.categories.load(),
-                      builder: (context, snapshot) {
-                        if (event.categories.isEmpty) return const SizedBox.shrink();
-                        return Wrap(
-                          spacing: 4,
-                          children: event.categories.map((cat) => Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: Theme.of(context).colorScheme.secondaryContainer,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              cat.name,
-                              style: TextStyle(
-                                fontSize: 10,
-                                color: Theme.of(context).colorScheme.onSecondaryContainer,
-                              ),
-                            ),
-                          )).toList(),
-                        );
-                      },
-                    ),
-                  ),
-                  if (event.assignees.isNotEmpty)
-                    SizedBox(
-                      height: 24,
-                      width: (event.assignees.length.clamp(0, 4) * 16.0) + 8,
-                      child: Stack(
-                        children: List.generate(
-                          event.assignees.length.clamp(0, 4),
-                          (i) {
-                            if (i >= event.assignees.length) return const SizedBox.shrink();
-                            return Positioned(
-                              right: i * 14.0,
-                              child: CircleAvatar(
-                                radius: 10,
-                                backgroundColor: Theme.of(context).colorScheme.tertiaryContainer,
-                                child: Text(
-                                  event.assignees[i].isNotEmpty 
-                                      ? event.assignees[i].characters.first.toUpperCase()
-                                      : '?',
-                                  style: TextStyle(
-                                    fontSize: 9, 
-                                    fontWeight: FontWeight.bold,
-                                    color: Theme.of(context).colorScheme.onTertiaryContainer,
-                                  ),
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            ],
-          ),
-          trailing: Text(
-            event.dateTime.toLocal().toString().split(' ')[0],
-            style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.outline),
-          ),
-          onLongPress: () async {
-            await widget.isar.writeTxn(() async {
-              await widget.isar.events.delete(event.id);
-            });
-          },
-        ),
-      ),
+        );
+      },
     );
   }
 
@@ -501,35 +247,15 @@ class _MyHomePageState extends State<MyHomePage> {
       future: widget.isar.categorys.where().sortByName().findAll(),
       builder: (context, snapshot) {
         if (!snapshot.hasData) return const SizedBox.shrink();
-        final categories = snapshot.data!;
-
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
           child: DropdownButtonFormField<Id?>(
-            initialValue: _selectedCategoryId,
-            decoration: const InputDecoration(
-              labelText: 'Filter by Category',
-              border: OutlineInputBorder(),
-              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            ),
-            items: [
-              const DropdownMenuItem<Id?>(
-                value: null,
-                child: Text('All Categories'),
-              ),
-              ...categories.map((cat) => DropdownMenuItem<Id?>(
-                    value: cat.id,
-                    child: Text(cat.name),
-                  )),
-              const DropdownMenuItem<Id?>(
-                value: -1,
-                child: Text('Uncategorized'),
-              ),
-            ],
-            onChanged: (value) {
-              setState(() {
-                _selectedCategoryId = value;
-              });
+            value: _selectedCategoryId,
+            decoration: const InputDecoration(labelText: 'Filter Category', border: OutlineInputBorder()),
+            items: [const DropdownMenuItem(value: null, child: Text('All')), ...snapshot.data!.map((c) => DropdownMenuItem(value: c.id, child: Text(c.name)))],
+            onChanged: (v) {
+              HapticFeedback.selectionClick();
+              setState(() => _selectedCategoryId = v);
             },
           ),
         );
@@ -539,64 +265,301 @@ class _MyHomePageState extends State<MyHomePage> {
 
   Future<List<dynamic>> _getOptimizedFlattenedList() async {
     final List<dynamic> flattened = [];
-    
-    if (_selectedCategoryId != null) {
-      // 1. FILTERED VIEW: Show only one category
-      if (_selectedCategoryId == -1) {
-        // Uncategorized
-        final uncategorized = await widget.isar.events
-            .filter()
-            .categoriesLengthEqualTo(0)
-            .sortByDateTime()
-            .findAll();
-        if (uncategorized.isNotEmpty) {
-          flattened.add('Uncategorized');
-          flattened.addAll(uncategorized);
-        }
-      } else {
-        // Specific category
-        final cat = await widget.isar.categorys.get(_selectedCategoryId!);
-        if (cat != null) {
-          final events = await widget.isar.events
-              .filter()
-              .categories((q) => q.idEqualTo(cat.id))
-              .sortByDateTime()
-              .findAll();
-          if (events.isNotEmpty) {
-            flattened.add(cat.name);
-            flattened.addAll(events);
-          }
-        }
-      }
-    } else if (_sortByCategory) {
-      // 2. CATEGORY VIEW (ALL)
+    if (_sortByCategory) {
       final categories = await widget.isar.categorys.where().sortByName().findAll();
       for (var cat in categories) {
-        final events = await widget.isar.events
-            .filter()
-            .categories((q) => q.idEqualTo(cat.id))
-            .sortByDateTime()
-            .findAll();
-        if (events.isNotEmpty) {
-          flattened.add(cat.name);
-          flattened.addAll(events);
-        }
-      }
-      final uncategorized = await widget.isar.events
-          .filter()
-          .categoriesLengthEqualTo(0)
-          .sortByDateTime()
-          .findAll();
-      if (uncategorized.isNotEmpty) {
-        flattened.add('Uncategorized');
-        flattened.addAll(uncategorized);
+        final events = await widget.isar.events.filter().categories((q) => q.idEqualTo(cat.id)).sortByDateTime().findAll();
+        if (events.isNotEmpty) { flattened.add(cat.name); flattened.addAll(events); }
       }
     } else {
-      // 3. CHRONOLOGICAL VIEW (ALL)
-      final allEvents = await widget.isar.events.where().sortByDateTime().findAll();
-      flattened.addAll(allEvents);
+      flattened.addAll(await widget.isar.events.where().sortByDateTime().findAll());
     }
-
     return flattened;
+  }
+}
+
+class DashboardEmptyState extends StatelessWidget {
+  const DashboardEmptyState({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.done_all_rounded,
+            size: 80,
+            color: colorScheme.onSurface.withOpacity(0.1),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'All caught up!',
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              color: colorScheme.onSurface.withOpacity(0.5),
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Tap the + button to add a task',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: colorScheme.onSurface.withOpacity(0.4),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class CategoryHeaderRow extends StatelessWidget {
+  final String categoryName;
+  const CategoryHeaderRow({super.key, required this.categoryName});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 24, 24, 12),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              categoryName,
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: colorScheme.onSurface,
+              ),
+            ),
+          ),
+          Container(
+            height: 32,
+            width: 32,
+            decoration: BoxDecoration(
+              color: colorScheme.primary,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: IconButton(
+              padding: EdgeInsets.zero,
+              icon: Icon(Icons.add, color: colorScheme.onPrimary, size: 20),
+              onPressed: () {
+                HapticFeedback.lightImpact();
+                Navigator.pushNamed(context, '/add-event');
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class TaskItemCard extends StatelessWidget {
+  final Event event;
+  final Isar isar;
+  const TaskItemCard({super.key, required this.event, required this.isar});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final isDone = event.status == Status.done;
+    final isOverdue = !isDone && event.dateTime.isBefore(DateTime.now());
+
+    return Dismissible(
+      key: ValueKey(event.id),
+      background: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        decoration: BoxDecoration(
+          color: colorScheme.primary,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        alignment: Alignment.centerLeft,
+        child: const Icon(Icons.check, color: Colors.white),
+      ),
+      secondaryBackground: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        decoration: BoxDecoration(
+          color: Colors.red.shade400,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        alignment: Alignment.centerRight,
+        child: const Icon(Icons.delete_outline, color: Colors.white),
+      ),
+      onDismissed: (direction) async {
+        HapticFeedback.mediumImpact();
+        if (direction == DismissDirection.startToEnd) {
+          await isar.writeTxn(() async {
+            event.status = Status.done;
+            await isar.events.put(event);
+          });
+        } else {
+          // UNDO LOGIC
+          final backupEvent = Event()
+            ..title = event.title
+            ..description = event.description
+            ..dateTime = event.dateTime
+            ..status = event.status
+            ..priority = event.priority
+            ..assignees = List.from(event.assignees);
+          
+          await event.categories.load();
+          final categoryIds = event.categories.map((c) => c.id).toList();
+          
+          await isar.writeTxn(() async {
+            await isar.events.delete(event.id);
+          });
+
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).clearSnackBars();
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Task "${backupEvent.title}" deleted'),
+                action: SnackBarAction(
+                  label: 'UNDO',
+                  onPressed: () async {
+                    await isar.writeTxn(() async {
+                      final restored = Event()
+                        ..title = backupEvent.title
+                        ..description = backupEvent.description
+                        ..dateTime = backupEvent.dateTime
+                        ..status = backupEvent.status
+                        ..priority = backupEvent.priority
+                        ..assignees = List.from(backupEvent.assignees);
+                      
+                      await isar.events.put(restored);
+                      for (final catId in categoryIds) {
+                        final cat = await isar.categorys.get(catId);
+                        if (cat != null) restored.categories.add(cat);
+                      }
+                      await restored.categories.save();
+                    });
+                  },
+                ),
+              ),
+            );
+          }
+        }
+      },
+      child: Card(
+        elevation: 0,
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(color: colorScheme.outlineVariant.withOpacity(0.5)),
+        ),
+        clipBehavior: Clip.hardEdge,
+        child: InkWell(
+          onTap: () {
+            HapticFeedback.selectionClick();
+            Navigator.push(context, MaterialPageRoute(builder: (context) => AddEventPage(isar: isar, eventToEdit: event)));
+          },
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Row(
+              children: [
+                // Leading Status
+                Container(
+                  width: 24,
+                  height: 24,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: isDone ? Colors.green : colorScheme.outline,
+                      width: 2,
+                    ),
+                  ),
+                  child: isDone 
+                      ? const Icon(Icons.check, size: 14, color: Colors.green)
+                      : null,
+                ),
+                const SizedBox(width: 16),
+                // Center Content
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        event.title,
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          decoration: isDone ? TextDecoration.lineThrough : null,
+                          color: isDone ? colorScheme.onSurface.withOpacity(0.5) : colorScheme.onSurface,
+                        ),
+                      ),
+                      if (event.description.isNotEmpty)
+                        Text(
+                          event.description,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 4,
+                        runSpacing: 4,
+                        children: [
+                          _buildPillTag(context, event.priority.name.toUpperCase()),
+                          ...event.assignees.take(2).map((a) => _buildPillTag(context, a, isAssignee: true)),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 16),
+                // Trailing
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      event.dateTime.toLocal().toString().split(' ')[0],
+                      style: TextStyle(fontSize: 11, color: colorScheme.onSurfaceVariant),
+                    ),
+                    if (isOverdue)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.flag, color: Colors.red, size: 12),
+                            const SizedBox(width: 2),
+                            const Text('Overdue', style: TextStyle(color: Colors.red, fontSize: 10, fontWeight: FontWeight.bold)),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPillTag(BuildContext context, String label, {bool isAssignee = false}) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: isAssignee 
+            ? colorScheme.tertiary.withOpacity(0.1)
+            : colorScheme.primary.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 9,
+          fontWeight: FontWeight.bold,
+          color: isAssignee ? colorScheme.tertiary : colorScheme.primary,
+        ),
+      ),
+    );
   }
 }

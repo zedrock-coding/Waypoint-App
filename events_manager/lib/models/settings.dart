@@ -11,4 +11,6 @@ class Settings {
   int themeMode = 0; // 0: Light, 1: Dark, 2: Custom
 
   String? customThemeJson;
+
+  bool remindersEnabled = false;
 }

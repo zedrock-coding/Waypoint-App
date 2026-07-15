@@ -27,8 +27,13 @@ const SettingsSchema = CollectionSchema(
       name: r'fontSizeIndex',
       type: IsarType.long,
     ),
-    r'themeMode': PropertySchema(
+    r'remindersEnabled': PropertySchema(
       id: 2,
+      name: r'remindersEnabled',
+      type: IsarType.bool,
+    ),
+    r'themeMode': PropertySchema(
+      id: 3,
       name: r'themeMode',
       type: IsarType.long,
     )
@@ -70,7 +75,8 @@ void _settingsSerialize(
 ) {
   writer.writeString(offsets[0], object.customThemeJson);
   writer.writeLong(offsets[1], object.fontSizeIndex);
-  writer.writeLong(offsets[2], object.themeMode);
+  writer.writeBool(offsets[2], object.remindersEnabled);
+  writer.writeLong(offsets[3], object.themeMode);
 }
 
 Settings _settingsDeserialize(
@@ -83,7 +89,8 @@ Settings _settingsDeserialize(
   object.customThemeJson = reader.readStringOrNull(offsets[0]);
   object.fontSizeIndex = reader.readLong(offsets[1]);
   object.id = id;
-  object.themeMode = reader.readLong(offsets[2]);
+  object.remindersEnabled = reader.readBool(offsets[2]);
+  object.themeMode = reader.readLong(offsets[3]);
   return object;
 }
 
@@ -99,6 +106,8 @@ P _settingsDeserializeProp<P>(
     case 1:
       return (reader.readLong(offset)) as P;
     case 2:
+      return (reader.readBool(offset)) as P;
+    case 3:
       return (reader.readLong(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -454,6 +463,16 @@ extension SettingsQueryFilter
     });
   }
 
+  QueryBuilder<Settings, Settings, QAfterFilterCondition>
+      remindersEnabledEqualTo(bool value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'remindersEnabled',
+        value: value,
+      ));
+    });
+  }
+
   QueryBuilder<Settings, Settings, QAfterFilterCondition> themeModeEqualTo(
       int value) {
     return QueryBuilder.apply(this, (query) {
@@ -539,6 +558,18 @@ extension SettingsQuerySortBy on QueryBuilder<Settings, Settings, QSortBy> {
     });
   }
 
+  QueryBuilder<Settings, Settings, QAfterSortBy> sortByRemindersEnabled() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'remindersEnabled', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Settings, Settings, QAfterSortBy> sortByRemindersEnabledDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'remindersEnabled', Sort.desc);
+    });
+  }
+
   QueryBuilder<Settings, Settings, QAfterSortBy> sortByThemeMode() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'themeMode', Sort.asc);
@@ -590,6 +621,18 @@ extension SettingsQuerySortThenBy
     });
   }
 
+  QueryBuilder<Settings, Settings, QAfterSortBy> thenByRemindersEnabled() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'remindersEnabled', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Settings, Settings, QAfterSortBy> thenByRemindersEnabledDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'remindersEnabled', Sort.desc);
+    });
+  }
+
   QueryBuilder<Settings, Settings, QAfterSortBy> thenByThemeMode() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'themeMode', Sort.asc);
@@ -619,6 +662,12 @@ extension SettingsQueryWhereDistinct
     });
   }
 
+  QueryBuilder<Settings, Settings, QDistinct> distinctByRemindersEnabled() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'remindersEnabled');
+    });
+  }
+
   QueryBuilder<Settings, Settings, QDistinct> distinctByThemeMode() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'themeMode');
@@ -643,6 +692,12 @@ extension SettingsQueryProperty
   QueryBuilder<Settings, int, QQueryOperations> fontSizeIndexProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'fontSizeIndex');
+    });
+  }
+
+  QueryBuilder<Settings, bool, QQueryOperations> remindersEnabledProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'remindersEnabled');
     });
   }
 

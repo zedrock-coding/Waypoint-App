@@ -1,61 +1,70 @@
-# Helm - Event & Task Manager
+# Helm - Team Event & Task Management
 
-Helm is a lightweight, high-performance task and event management system built with Flutter and the Isar Database. Designed for both mobile and desktop use, it features a robust team management structure and deep UI customization.
+**Helm** is a high-performance, team-oriented task management system optimized for **Android** and **Windows**. Built with Flutter and the Isar Database, Helm provides a premium, reactive experience for tracking team progress and personal productivity.
+
+![Aesthetic](https://img.shields.io/badge/Aesthetic-Slate%20%26%20Mint-88C0A4)
+![Platform](https://img.shields.io/badge/Platform-Android%20%7C%20Windows-blue)
 
 ## 🚀 Key Features
 
-### 1. Team & Project Management
-*   **Status Tracking:** Manage lifecycle with `To Do`, `In Progress`, and `Done` states.
-*   **Priority Levels:** Visual indicators for `High`, `Medium`, and `Low` importance.
-*   **Assignee System:** Add multiple team members to any task using a dynamic chip-input system.
-*   **Sub-tasks:** Hierarchical support with self-referential parent-child relationships.
-*   **Visual Hierarchy:** Subtle 'L-shaped' tree lines visually connect parent tasks to their child sub-tasks in the editor.
+### 📊 Team Velocity Dashboard
+*   **Actionable Snapshots**: A 60/40 dual-card layout at the top of your dashboard.
+*   **Progress Gauges**: Thick Circular and Linear indicators showing real-time completion percentages.
+*   **Streak Tracking**: Gamified consistency tracking with a "Streak" flame indicator.
+*   **Quick Controls**: Manage Daily Reminders and global Font Size directly from the dashboard.
 
-### 2. Advanced Organization
-*   **Unlimited Categories:** Categorize tasks without limits using a flexible linking system.
-*   **Optimized Sorting:** Mandatory category-based sorting that queries the database per-category for maximum memory efficiency.
-*   **Collapsible Sections:** A clean dashboard UI using `ExpansionTiles` to group tasks by category.
-*   **Category Filtering:** A dedicated dropdown menu to focus on specific project areas instantly.
+### 🎨 Premium UI/UX
+*   **Slate & Mint Aesthetic**: A modern, deep-slate charcoal background with vibrant mint-green accents.
+*   **Material 3 Ready**: Full use of M3 components, including Segmented Buttons and elevated surface depths.
+*   **Haptic Micro-Interactions**: Subtle tactile feedback on every toggle, button press, and swipe.
+*   **Context-Aware Themes**: Seamlessly switches between a crisp White Light Mode and a deep Slate Dark Mode.
 
-### 3. Deep UI Customization
-*   **Global Font Scaling:** A 5-point selection system (Very Small to Large) that scales the entire UI proportionally using `MediaQuery`.
-*   **Theme Engine:** 
-    *   Native Light and Dark modes.
-    *   **Custom JSON Themes:** Upload your own color schemes.
-    *   **Seed Color System:** Dynamically generate entire palettes from a single base color.
+### 🛠 Robust Core Functionality
+*   **Team Schema**: Support for Status (To-Do, In Progress, Done), Priority (Low, Medium, High), and multiple Assignees per task.
+*   **Nested Sub-Tasks**: Create hierarchical task trees with "L-shaped" visual connectors.
+*   **Deep Undo System**: Accidents happen. Swipe to delete and instantly restore tasks with all categories and assignees intact.
+*   **Daily Reminders**: Timezone-aware notification service for morning briefings (9:00 AM).
 
-### 4. Interactive UX
-*   **Swipe Gestures:**
-    *   **Swipe Right:** Instantly mark a task as "Done".
-    *   **Swipe Left:** Quick delete with a safety confirmation pop-up.
-*   **Undo System:** Accidental deletions can be reversed with a single tap, restoring all data including category links.
-*   **Responsive Desktop Shell:** A persistent sidebar designed specifically for wide-screen productivity.
-*   **Status Animations:** Micro-animations for status toggles using `AnimatedSwitcher` for satisfying visual feedback.
-*   **Keyboard Shortcuts:** Full desktop productivity with `Escape` to close and `Enter` to save (smart-disabled in multiline fields).
-*   **Data Protection:** Built-in "Unsaved Changes" warning prevents accidental data loss when exiting the editor.
+### 📱 Fully Responsive
+*   **Adaptive Sidebar**: A persistent navigation sidebar on Desktop (>900px) that transforms into a sleek drawer on Mobile.
+*   **Zero-Overflow Layouts**: Uses `LayoutBuilder` to intelligently stack dashboard components vertically on narrow screens.
 
-## 🛠 Technical Stack
-*   **Framework:** Flutter (Material 3)
-*   **Database:** Isar (NoSQL)
-*   **State Management:** Reactive Streams (Broadcast)
-*   **Architecture:** App Shell pattern for unified navigation.
+## 🛠 Tech Stack
+*   **Framework**: Flutter (Material 3)
+*   **Database**: Isar (High-performance NoSQL)
+*   **State Management**: Provider (Centralized Theme & Settings)
+*   **Local Storage**: path_provider
+*   **Notifications**: flutter_local_notifications (Timezone-aware)
 
-## 🏗 Setup & Installation
-1.  Ensure you have Flutter installed.
-2.  Run `flutter pub get` to install dependencies.
-3.  Generate the database schema:
+## ⚙️ Installation & Setup
+
+### Prerequisites
+*   **Flutter SDK**: ^3.0.0
+*   **Windows Build Tools**: Visual Studio 2022 with "Desktop development with C++" workload.
+*   **Important (Windows Notifications)**: Ensure "**C++ ATL for latest v143 build tools**" is installed via the Visual Studio Installer to enable the reminder system.
+
+### Steps
+1.  **Clone the Repo**:
+    ```bash
+    git clone https://github.com/your-repo/helm.git
+    cd helm
+    ```
+2.  **Install Dependencies**:
+    ```bash
+    flutter pub get
+    ```
+3.  **Generate Database Schemas**:
     ```bash
     dart run build_runner build --delete-conflicting-outputs
     ```
-4.  Launch the app: `flutter run`
+4.  **Run the App**:
+    ```bash
+    # For Windows
+    flutter run -d windows
+    
+    # For Android
+    flutter run -d android
+    ```
 
-## 🎨 Custom Theme Example
-Users can modify the look of Helm by uploading a JSON file with the following structure:
-```json
-{
-  "seedColor": "0xFFE91E63",
-  "brightness": "dark",
-  "backgroundColor": "0xFF1A1A1A",
-  "comment": "Colors must be in 0xAARRGGBB format"
-}
-```
+## ✅ Project Status
+Helm is currently feature-complete for its initial release, featuring a stabilized context-aware architecture and full native build support for Android and Windows.

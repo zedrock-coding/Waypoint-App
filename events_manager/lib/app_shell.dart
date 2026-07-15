@@ -17,96 +17,152 @@ class AppShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bool isDesktop = MediaQuery.of(context).size.width > 900;
+    final String currentRoute = ModalRoute.of(context)?.settings.name ?? '/';
+    final ColorScheme colorScheme = Theme.of(context).colorScheme;
 
-    Widget sidebar = Drawer(
-      elevation: isDesktop ? 0 : null,
-      child: ListView(
-        padding: EdgeInsets.zero,
-        children: [
-          DrawerHeader(
+    Widget navItem({
+      required IconData icon,
+      required String label,
+      required String route,
+    }) {
+      final bool isActive = currentRoute == route;
+      
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        child: InkWell(
+          onTap: () {
+            if (isActive) {
+              if (!isDesktop) Navigator.pop(context);
+              return;
+            }
+            Navigator.pushReplacementNamed(context, route);
+          },
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.primary,
+              color: isActive ? colorScheme.primary.withOpacity(0.15) : Colors.transparent,
+              borderRadius: BorderRadius.circular(12),
             ),
-            child: const Text(
-              'Menu',
-              style: TextStyle(color: Colors.white, fontSize: 24),
+            child: Row(
+              children: [
+                Icon(
+                  icon,
+                  color: isActive ? colorScheme.primary : colorScheme.onSurface.withOpacity(0.6),
+                  size: 22,
+                ),
+                const SizedBox(width: 16),
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: isActive ? colorScheme.primary : colorScheme.onSurface.withOpacity(0.6),
+                    fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+                    fontSize: 15,
+                  ),
+                ),
+              ],
             ),
           ),
-          ListTile(
-            leading: const Icon(Icons.home),
-            title: const Text('Home'),
-            onTap: () {
-              if (ModalRoute.of(context)?.settings.name == '/') {
-                if (!isDesktop) Navigator.pop(context);
-                return;
-              }
-              if (!isDesktop) {
-                Navigator.pop(context);
-                Navigator.pushReplacementNamed(context, '/');
-              } else {
-                Navigator.pushReplacementNamed(context, '/');
-              }
-            },
+        ),
+      );
+    }
+
+    Widget sidebarContent = Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(24.0),
+          alignment: Alignment.centerLeft,
+          child: Row(
+            children: [
+              Image.asset(
+                'assets/icon/icon.png',
+                height: 32,
+                errorBuilder: (context, error, stackTrace) => 
+                    Icon(Icons.shield, color: colorScheme.primary),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                'Helm',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1,
+                  color: colorScheme.onSurface,
+                ),
+              ),
+            ],
           ),
-          ListTile(
-            leading: const Icon(Icons.settings),
-            title: const Text('Settings'),
-            onTap: () {
-              if (ModalRoute.of(context)?.settings.name == '/settings') {
-                if (!isDesktop) Navigator.pop(context);
-                return;
-              }
-              if (!isDesktop) {
-                Navigator.pop(context);
-                Navigator.pushReplacementNamed(context, '/settings');
-              } else {
-                Navigator.pushReplacementNamed(context, '/settings');
-              }
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.category),
-            title: const Text('Categories'),
-            onTap: () {
-              if (ModalRoute.of(context)?.settings.name == '/categories') {
-                if (!isDesktop) Navigator.pop(context);
-                return;
-              }
-              if (!isDesktop) {
-                Navigator.pop(context);
-                Navigator.pushReplacementNamed(context, '/categories');
-              } else {
-                Navigator.pushReplacementNamed(context, '/categories');
-              }
-            },
-          ),
-        ],
-      ),
+        ),
+        const SizedBox(height: 8),
+        navItem(icon: Icons.dashboard_rounded, label: 'Dashboard', route: '/'),
+        navItem(icon: Icons.category_rounded, label: 'Categories', route: '/categories'),
+        navItem(icon: Icons.settings_rounded, label: 'Settings', route: '/settings'),
+        const Spacer(),
+        Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Divider(color: colorScheme.outlineVariant),
+        ),
+      ],
     );
 
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        title: Row(
-          children: [
-            Image.asset(
-              'assets/icon/icon.png',
-              height: 32,
-              errorBuilder: (context, error, stackTrace) => const Icon(Icons.event),
-            ),
-            const SizedBox(width: 8),
-            Text(title),
-          ],
-        ),
-        leading: isDesktop ? const SizedBox.shrink() : null,
-        actions: actions,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      drawer: isDesktop ? null : Drawer(
+        backgroundColor: colorScheme.surface,
+        child: sidebarContent,
       ),
-      drawer: isDesktop ? null : sidebar,
       body: Row(
         children: [
-          if (isDesktop) SizedBox(width: 250, child: sidebar),
-          if (isDesktop) const VerticalDivider(width: 1),
-          Expanded(child: child),
+          if (isDesktop) 
+            Container(
+              width: 260, 
+              decoration: BoxDecoration(
+                color: colorScheme.surface,
+                border: Border(right: BorderSide(color: colorScheme.outlineVariant, width: 1)),
+              ),
+              child: sidebarContent
+            ),
+          Expanded(
+            child: Column(
+              children: [
+                // Custom Header
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                  child: Row(
+                    children: [
+                      if (!isDesktop)
+                        Builder(
+                          builder: (context) => IconButton(
+                            icon: Icon(Icons.menu, color: colorScheme.onSurface),
+                            onPressed: () => Scaffold.of(context).openDrawer(),
+                          ),
+                        ),
+                      if (!isDesktop) const SizedBox(width: 8),
+                      Text(
+                        title,
+                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: colorScheme.onSurface,
+                        ),
+                      ),
+                      const Spacer(),
+                      if (actions != null) ...actions!,
+                      const SizedBox(width: 8),
+                      IconButton(
+                        icon: Icon(Icons.person_outline, color: colorScheme.onSurface.withOpacity(0.7)),
+                        onPressed: () {},
+                      ),
+                      IconButton(
+                        icon: Icon(Icons.notifications_none_rounded, color: colorScheme.onSurface.withOpacity(0.7)),
+                        onPressed: () {},
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(child: child),
+              ],
+            ),
+          ),
         ],
       ),
       floatingActionButton: floatingActionButton,

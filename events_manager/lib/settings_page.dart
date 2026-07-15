@@ -1,11 +1,11 @@
-import 'dart:convert';
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:isar/isar.dart';
-import 'package:file_picker/file_picker.dart';
+import 'package:provider/provider.dart';
 import 'models/settings.dart';
 import 'app_shell.dart';
+import 'notification_service.dart';
+import 'theme_provider.dart';
 
 class SettingPage extends StatefulWidget {
   final Isar isar;
@@ -16,213 +16,108 @@ class SettingPage extends StatefulWidget {
 }
 
 class _SettingPageState extends State<SettingPage> {
-  Settings? _settings;
+  final NotificationService _notificationService = NotificationService();
 
-  @override
-  void initState() {
-    super.initState();
-    _loadSettings();
-  }
-
-  Future<void> _loadSettings() async {
-    final settings = await widget.isar.settings.get(0);
-    setState(() {
-      _settings = settings;
-    });
-  }
-
-  Future<void> _updateFontSize(double value) async {
-    if (_settings == null) return;
-    setState(() {
-      _settings!.fontSizeIndex = value.toInt();
-    });
-    await widget.isar.writeTxn(() async {
-      await widget.isar.settings.put(_settings!);
-    });
-  }
-
-  Future<void> _updateThemeMode(int mode) async {
-    if (_settings == null) return;
-    setState(() {
-      _settings!.themeMode = mode;
-    });
-    await widget.isar.writeTxn(() async {
-      await widget.isar.settings.put(_settings!);
-    });
-  }
-
-  Future<void> _uploadTheme() async {
-    try {
-      FilePickerResult? result = await FilePicker.platform.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: ['json'],
-      );
-
-      if (result != null) {
-        String content;
-        if (result.files.single.bytes != null) {
-          content = utf8.decode(result.files.single.bytes!);
-        } else {
-          File file = File(result.files.single.path!);
-          content = await file.readAsString();
-        }
-
-        // Basic validation
-        final json = jsonDecode(content);
-        if (json['seedColor'] != null) {
-          setState(() {
-            _settings!.customThemeJson = content;
-            _settings!.themeMode = 2; // Switch to custom
-          });
-          await widget.isar.writeTxn(() async {
-            await widget.isar.settings.put(_settings!);
-          });
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Custom theme applied!')),
-            );
-          }
-        } else {
-          throw Exception('Missing seedColor');
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Invalid theme file: $e')),
+  Future<void> _toggleReminders(bool enabled, ThemeProvider provider) async {
+    HapticFeedback.selectionClick();
+    if (enabled) {
+      final granted = await _notificationService.requestPermissions();
+      if (granted) {
+        await _notificationService.scheduleDailyNotification(
+          id: 0,
+          title: 'Helm Reminder',
+          body: 'Time to check your tasks for the day!',
+          time: const TimeOfDay(hour: 9, minute: 0),
         );
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Notification permissions denied.')),
+          );
+        }
+        return;
       }
+    } else {
+      await _notificationService.cancelAllNotifications();
     }
-  }
 
-  void _showSampleTheme() {
-    const sample = '''
-{
-  "seedColor": "0xFFE91E63",
-  "brightness": "dark",
-  "backgroundColor": "0xFF1A1A1A",
-  "comment": "Colors must be in 0xAARRGGBB format. brightness can be 'light' or 'dark'."
-}
-''';
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Sample Theme JSON'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              'Copy this JSON to a .json file, modify it, and upload it back.',
-              style: TextStyle(fontSize: 12),
-            ),
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(8),
-              color: Colors.grey[200],
-              child: const SelectableText(
-                sample,
-                style: TextStyle(fontFamily: 'monospace', fontSize: 12, color: Colors.black),
-              ),
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'NOTE: "seedColor" is the primary base color. The app will automatically generate a matching color scheme (primary, secondary, accents) based on this single value.',
-              style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, fontStyle: FontStyle.italic),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Clipboard.setData(const ClipboardData(text: sample));
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Sample copied to clipboard!')),
-              );
-            },
-            child: const Text('Copy to Clipboard'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
-          ),
-        ],
-      ),
-    );
+    provider.settings.remindersEnabled = enabled;
+    await widget.isar.writeTxn(() async {
+      await widget.isar.settings.put(provider.settings);
+    });
+    provider.refresh();
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_settings == null) return const Scaffold(body: Center(child: CircularProgressIndicator()));
-
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final settings = themeProvider.settings;
     final fontSizeLabels = ['Very Small', 'Small', 'Normal', 'Medium', 'Large'];
+    final colorScheme = Theme.of(context).colorScheme;
 
     return AppShell(
       title: 'Settings',
       child: ListView(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(24.0),
         children: [
-          Text(
-            'Font Size',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          const SizedBox(height: 8),
-          DropdownButtonFormField<int>(
-            initialValue: _settings!.fontSizeIndex,
-            decoration: const InputDecoration(
-              border: OutlineInputBorder(),
-              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          Text('Appearance', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+          const SizedBox(height: 16),
+          Card(
+            margin: EdgeInsets.zero,
+            color: Theme.of(context).cardColor,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+              side: BorderSide(color: colorScheme.outlineVariant.withOpacity(0.5)),
             ),
-            items: List.generate(fontSizeLabels.length, (index) {
-              return DropdownMenuItem(
-                value: index,
-                child: Text(fontSizeLabels[index]),
-              );
-            }),
-            onChanged: (value) {
-              if (value != null) _updateFontSize(value.toDouble());
+            child: Column(
+              children: [
+                RadioListTile<int>(
+                  title: const Text('Light Mode'),
+                  value: 0,
+                  groupValue: settings.themeMode,
+                  activeColor: colorScheme.primary,
+                  onChanged: (val) {
+                    HapticFeedback.lightImpact();
+                    themeProvider.updateThemeMode(val!);
+                  },
+                ),
+                RadioListTile<int>(
+                  title: const Text('Dark Mode'),
+                  value: 1,
+                  groupValue: settings.themeMode,
+                  activeColor: colorScheme.primary,
+                  onChanged: (val) {
+                    HapticFeedback.lightImpact();
+                    themeProvider.updateThemeMode(val!);
+                  },
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+          Text('Typography', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+          const SizedBox(height: 16),
+          DropdownButtonFormField<int>(
+            value: settings.fontSizeIndex,
+            decoration: InputDecoration(
+              border: const OutlineInputBorder(), 
+              labelText: 'Font Size',
+              filled: true,
+              fillColor: Theme.of(context).cardColor,
+            ),
+            items: List.generate(fontSizeLabels.length, (i) => DropdownMenuItem(value: i, child: Text(fontSizeLabels[i]))),
+            onChanged: (v) {
+              HapticFeedback.selectionClick();
+              themeProvider.updateFontSize(v!);
             },
           ),
-          const Divider(),
-          const Text('Theme Mode', style: TextStyle(fontWeight: FontWeight.bold)),
-          RadioListTile<int>(
-            title: const Text('Light'),
-            value: 0,
-            groupValue: _settings!.themeMode,
-            onChanged: (val) => _updateThemeMode(val!),
-          ),
-          RadioListTile<int>(
-            title: const Text('Dark'),
-            value: 1,
-            groupValue: _settings!.themeMode,
-            onChanged: (val) => _updateThemeMode(val!),
-          ),
-          RadioListTile<int>(
-            title: const Text('Custom Theme'),
-            value: 2,
-            groupValue: _settings!.themeMode,
-            onChanged: (val) => _updateThemeMode(val!),
-          ),
-          if (_settings!.themeMode == 2) ...[
-            const SizedBox(height: 8),
-            ElevatedButton.icon(
-              onPressed: _uploadTheme,
-              icon: const Icon(Icons.upload_file),
-              label: const Text('Upload Custom Theme (JSON)'),
-            ),
-            if (_settings!.customThemeJson == null)
-              const Padding(
-                padding: EdgeInsets.only(top: 8.0),
-                child: Text(
-                  'No custom theme uploaded yet.',
-                  style: TextStyle(color: Colors.red, fontSize: 12),
-                ),
-              ),
-          ],
-          const SizedBox(height: 16),
-          TextButton.icon(
-            onPressed: _showSampleTheme,
-            icon: const Icon(Icons.code),
-            label: const Text('View Sample Theme Template'),
+          const SizedBox(height: 24),
+          Text('Notifications', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+          SwitchListTile(
+            title: const Text('Daily Reminders'),
+            subtitle: const Text('Morning briefing at 9:00 AM'),
+            value: settings.remindersEnabled,
+            onChanged: (v) => _toggleReminders(v, themeProvider),
           ),
         ],
       ),
