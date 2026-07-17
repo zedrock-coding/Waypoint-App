@@ -31,6 +31,12 @@ void main() async {
       if (settings == null) {
         await isar.settings.put(Settings()..id = 0);
       }
+      
+      // Ensure 'General' category exists
+      final existingGeneral = await isar.categorys.filter().nameEqualTo('General').findFirst();
+      if (existingGeneral == null) {
+        await isar.categorys.put(model.Category()..name = 'General');
+      }
     });
 
     runApp(
@@ -141,11 +147,27 @@ class _MyHomePageState extends State<MyHomePage> {
   late Stream<void> _changeStream;
   bool _sortByCategory = true;
   Id? _selectedCategoryId;
+  List<dynamic> _flattenedList = [];
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
     _changeStream = widget.isar.events.watchLazy().asBroadcastStream();
+    _refreshList();
+    
+    // Listen for database changes and refresh the local list
+    _changeStream.listen((_) => _refreshList());
+  }
+
+  Future<void> _refreshList() async {
+    final newList = await _getOptimizedFlattenedList();
+    if (mounted) {
+      setState(() {
+        _flattenedList = newList;
+        _isLoading = false;
+      });
+    }
   }
 
   @override
@@ -158,13 +180,14 @@ class _MyHomePageState extends State<MyHomePage> {
           onPressed: () {
             HapticFeedback.lightImpact();
             setState(() => _sortByCategory = !_sortByCategory);
+            _refreshList();
           },
         ),
       ],
       floatingActionButton: FloatingActionButton(
         onPressed: () {
           HapticFeedback.mediumImpact();
-          Navigator.pushNamed(context, '/add-event');
+          showAddTaskForm(context, isar: widget.isar);
         },
         child: const Icon(Icons.add),
       ),
@@ -173,31 +196,96 @@ class _MyHomePageState extends State<MyHomePage> {
           _buildVelocityDashboard(),
           if (_sortByCategory) _buildCategoryFilterDropdown(),
           Expanded(
-            child: StreamBuilder<void>(
-              stream: _changeStream,
-              builder: (context, snapshot) {
-                return FutureBuilder<List<dynamic>>(
-                  future: _getOptimizedFlattenedList(),
-                  builder: (context, listSnapshot) {
-                    if (!listSnapshot.hasData) return const Center(child: CircularProgressIndicator());
-                    final flattenedList = listSnapshot.data!;
-                    if (flattenedList.isEmpty) return const DashboardEmptyState();
-
-                    return ListView.builder(
+            child: _isLoading 
+              ? const Center(child: CircularProgressIndicator())
+              : _flattenedList.isEmpty 
+                  ? const DashboardEmptyState()
+                  : ListView.builder(
                       padding: const EdgeInsets.only(bottom: 24),
-                      itemCount: flattenedList.length,
+                      itemCount: _flattenedList.length,
                       itemBuilder: (context, index) {
-                        final item = flattenedList[index];
+                        final item = _flattenedList[index];
                         if (item is String) {
-                          return CategoryHeaderRow(categoryName: item);
+                          return CategoryHeaderRow(categoryName: item, isar: widget.isar);
                         }
-                        return TaskItemCard(event: item as Event, isar: widget.isar);
+                        final event = item as Event;
+                        return TaskItemCard(
+                          key: ValueKey('task_${event.id}'),
+                          event: event, 
+                          isar: widget.isar,
+                          onDismiss: (direction) async {
+                            final backupItem = event;
+                            final originalIndex = index;
+
+                            // Synchronously remove from the local list to prevent tree errors
+                            setState(() {
+                              _flattenedList.removeAt(originalIndex);
+                            });
+
+                            if (direction == DismissDirection.startToEnd) {
+                              // COMPLETE
+                              await widget.isar.writeTxn(() async {
+                                backupItem.status = Status.done;
+                                await widget.isar.events.put(backupItem);
+                              });
+                            } else {
+                              // DELETE
+                              await event.categories.load();
+                              final categoryIds = event.categories.map((c) => c.id).toList();
+
+                              await widget.isar.writeTxn(() async {
+                                await widget.isar.events.delete(backupItem.id);
+                              });
+
+                              if (context.mounted) {
+                                final colorScheme = Theme.of(context).colorScheme;
+                                ScaffoldMessenger.of(context).clearSnackBars();
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    behavior: SnackBarBehavior.floating,
+                                    width: 400,
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                    backgroundColor: colorScheme.inverseSurface,
+                                    content: Text(
+                                      'Task "${backupItem.title}" deleted',
+                                      style: TextStyle(color: colorScheme.onInverseSurface),
+                                    ),
+                                    action: SnackBarAction(
+                                      label: 'UNDO',
+                                      textColor: colorScheme.onInverseSurface,
+                                      onPressed: () async {
+                                        // 1. UI Undo: Insert back to local list
+                                        setState(() {
+                                          _flattenedList.insert(originalIndex, backupItem);
+                                        });
+
+                                        // 2. DB Undo: Restore to Isar
+                                        await widget.isar.writeTxn(() async {
+                                          final restored = Event()
+                                            ..title = backupItem.title
+                                            ..description = backupItem.description
+                                            ..dateTime = backupItem.dateTime
+                                            ..status = backupItem.status
+                                            ..priority = backupItem.priority
+                                            ..assignees = List.from(backupItem.assignees);
+                                          
+                                          await widget.isar.events.put(restored);
+                                          for (final catId in categoryIds) {
+                                            final cat = await widget.isar.categorys.get(catId);
+                                            if (cat != null) restored.categories.add(cat);
+                                          }
+                                          await restored.categories.save();
+                                        });
+                                      },
+                                    ),
+                                  ),
+                                );
+                              }
+                            }
+                          },
+                        );
                       },
-                    );
-                  },
-                );
-              },
-            ),
+                    ),
           ),
         ],
       ),
@@ -231,6 +319,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 } else {
                   await ns.cancelAllNotifications();
                 }
+                if (!mounted) return;
                 themeProvider.settings.remindersEnabled = enabled;
                 await widget.isar.writeTxn(() => widget.isar.settings.put(themeProvider.settings));
                 themeProvider.refresh();
@@ -256,6 +345,7 @@ class _MyHomePageState extends State<MyHomePage> {
             onChanged: (v) {
               HapticFeedback.selectionClick();
               setState(() => _selectedCategoryId = v);
+              _refreshList();
             },
           ),
         );
@@ -265,15 +355,39 @@ class _MyHomePageState extends State<MyHomePage> {
 
   Future<List<dynamic>> _getOptimizedFlattenedList() async {
     final List<dynamic> flattened = [];
-    if (_sortByCategory) {
+    
+    if (_selectedCategoryId != null) {
+      // 1. Specific category selected
+      final cat = await widget.isar.categorys.get(_selectedCategoryId!);
+      if (cat != null) {
+        final events = await widget.isar.events.filter().categories((q) => q.idEqualTo(cat.id)).sortByDateTime().findAll();
+        if (events.isNotEmpty) {
+          flattened.add(cat.name);
+          flattened.addAll(events);
+        }
+      }
+    } else if (_sortByCategory) {
+      // 2. Group by ALL categories
       final categories = await widget.isar.categorys.where().sortByName().findAll();
       for (var cat in categories) {
         final events = await widget.isar.events.filter().categories((q) => q.idEqualTo(cat.id)).sortByDateTime().findAll();
-        if (events.isNotEmpty) { flattened.add(cat.name); flattened.addAll(events); }
+        if (events.isNotEmpty) {
+          flattened.add(cat.name);
+          flattened.addAll(events);
+        }
+      }
+      
+      // Fallback for tasks that might still be uncategorized (though new logic prevents this)
+      final uncategorized = await widget.isar.events.filter().categoriesLengthEqualTo(0).sortByDateTime().findAll();
+      if (uncategorized.isNotEmpty) {
+        flattened.add('Inbox');
+        flattened.addAll(uncategorized);
       }
     } else {
+      // 3. Chronological view (No grouping)
       flattened.addAll(await widget.isar.events.where().sortByDateTime().findAll());
     }
+
     return flattened;
   }
 }
@@ -285,30 +399,32 @@ class DashboardEmptyState extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.done_all_rounded,
-            size: 80,
-            color: colorScheme.onSurface.withOpacity(0.1),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'All caught up!',
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              color: colorScheme.onSurface.withOpacity(0.5),
-              fontWeight: FontWeight.bold,
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.done_all_rounded,
+              size: 80,
+              color: colorScheme.onSurface.withOpacity(0.1),
             ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'Tap the + button to add a task',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: colorScheme.onSurface.withOpacity(0.4),
+            const SizedBox(height: 16),
+            Text(
+              'All caught up!',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                color: colorScheme.onSurface.withOpacity(0.5),
+                fontWeight: FontWeight.bold,
+              ),
             ),
-          ),
-        ],
+            const SizedBox(height: 4),
+            Text(
+              'Tap the + button to add a task',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: colorScheme.onSurface.withOpacity(0.4),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -316,7 +432,8 @@ class DashboardEmptyState extends StatelessWidget {
 
 class CategoryHeaderRow extends StatelessWidget {
   final String categoryName;
-  const CategoryHeaderRow({super.key, required this.categoryName});
+  final Isar isar;
+  const CategoryHeaderRow({super.key, required this.categoryName, required this.isar});
 
   @override
   Widget build(BuildContext context) {
@@ -346,7 +463,7 @@ class CategoryHeaderRow extends StatelessWidget {
               icon: Icon(Icons.add, color: colorScheme.onPrimary, size: 20),
               onPressed: () {
                 HapticFeedback.lightImpact();
-                Navigator.pushNamed(context, '/add-event');
+                showAddTaskForm(context, isar: isar, category: categoryName);
               },
             ),
           ),
@@ -359,13 +476,29 @@ class CategoryHeaderRow extends StatelessWidget {
 class TaskItemCard extends StatelessWidget {
   final Event event;
   final Isar isar;
-  const TaskItemCard({super.key, required this.event, required this.isar});
+  final Function(DismissDirection) onDismiss;
+  const TaskItemCard({
+    super.key, 
+    required this.event, 
+    required this.isar,
+    required this.onDismiss,
+  });
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final isDone = event.status == Status.done;
     final isOverdue = !isDone && event.dateTime.isBefore(DateTime.now());
+
+    // --- SUBTLE PRIORITY COLORING ---
+    Color cardColor;
+    if (event.priority == Priority.high) {
+      cardColor = Color.lerp(Theme.of(context).cardColor, Colors.red, 0.1)!;
+    } else if (event.priority == Priority.low) {
+      cardColor = Color.lerp(Theme.of(context).cardColor, Colors.blueGrey, 0.1)!;
+    } else {
+      cardColor = Theme.of(context).cardColor;
+    }
 
     return Dismissible(
       key: ValueKey(event.id),
@@ -389,63 +522,13 @@ class TaskItemCard extends StatelessWidget {
         alignment: Alignment.centerRight,
         child: const Icon(Icons.delete_outline, color: Colors.white),
       ),
-      onDismissed: (direction) async {
+      onDismissed: (direction) {
         HapticFeedback.mediumImpact();
-        if (direction == DismissDirection.startToEnd) {
-          await isar.writeTxn(() async {
-            event.status = Status.done;
-            await isar.events.put(event);
-          });
-        } else {
-          // UNDO LOGIC
-          final backupEvent = Event()
-            ..title = event.title
-            ..description = event.description
-            ..dateTime = event.dateTime
-            ..status = event.status
-            ..priority = event.priority
-            ..assignees = List.from(event.assignees);
-          
-          await event.categories.load();
-          final categoryIds = event.categories.map((c) => c.id).toList();
-          
-          await isar.writeTxn(() async {
-            await isar.events.delete(event.id);
-          });
-
-          if (context.mounted) {
-            ScaffoldMessenger.of(context).clearSnackBars();
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Task "${backupEvent.title}" deleted'),
-                action: SnackBarAction(
-                  label: 'UNDO',
-                  onPressed: () async {
-                    await isar.writeTxn(() async {
-                      final restored = Event()
-                        ..title = backupEvent.title
-                        ..description = backupEvent.description
-                        ..dateTime = backupEvent.dateTime
-                        ..status = backupEvent.status
-                        ..priority = backupEvent.priority
-                        ..assignees = List.from(backupEvent.assignees);
-                      
-                      await isar.events.put(restored);
-                      for (final catId in categoryIds) {
-                        final cat = await isar.categorys.get(catId);
-                        if (cat != null) restored.categories.add(cat);
-                      }
-                      await restored.categories.save();
-                    });
-                  },
-                ),
-              ),
-            );
-          }
-        }
+        onDismiss(direction);
       },
       child: Card(
         elevation: 0,
+        color: cardColor,
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
@@ -455,7 +538,7 @@ class TaskItemCard extends StatelessWidget {
         child: InkWell(
           onTap: () {
             HapticFeedback.selectionClick();
-            Navigator.push(context, MaterialPageRoute(builder: (context) => AddEventPage(isar: isar, eventToEdit: event)));
+            showAddTaskForm(context, isar: isar, eventToEdit: event);
           },
           child: Padding(
             padding: const EdgeInsets.all(16.0),
@@ -558,6 +641,34 @@ class TaskItemCard extends StatelessWidget {
           fontSize: 9,
           fontWeight: FontWeight.bold,
           color: isAssignee ? colorScheme.tertiary : colorScheme.primary,
+        ),
+      ),
+    );
+  }
+}
+
+void showAddTaskForm(BuildContext context, {required Isar isar, Event? eventToEdit, String? category}) {
+  final double width = MediaQuery.of(context).size.width;
+
+  if (width < 800) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => AddEventPage(
+          isar: isar, 
+          eventToEdit: eventToEdit, 
+          initialCategory: category,
+        ),
+      ),
+    );
+  } else {
+    showDialog(
+      context: context,
+      builder: (context) => Center(
+        child: AddEventPage(
+          isar: isar, 
+          eventToEdit: eventToEdit, 
+          initialCategory: category,
         ),
       ),
     );

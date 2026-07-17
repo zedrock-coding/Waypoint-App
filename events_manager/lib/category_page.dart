@@ -35,6 +35,15 @@ class _CategoryPageState extends State<CategoryPage> {
   }
 
   Future<void> _deleteCategory(Id id) async {
+    final cat = await widget.isar.categorys.get(id);
+    if (cat != null && cat.name == 'General') {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('The "General" category cannot be deleted.')),
+        );
+      }
+      return;
+    }
     await widget.isar.writeTxn(() async {
       await widget.isar.categorys.delete(id);
     });

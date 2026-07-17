@@ -7,8 +7,14 @@ import 'models/category.dart';
 class AddEventPage extends StatefulWidget {
   final Isar isar;
   final Event? eventToEdit;
+  final String? initialCategory;
 
-  const AddEventPage({super.key, required this.isar, this.eventToEdit});
+  const AddEventPage({
+    super.key, 
+    required this.isar, 
+    this.eventToEdit, 
+    this.initialCategory,
+  });
 
   @override
   State<AddEventPage> createState() => _AddEventPageState();
@@ -19,6 +25,7 @@ class _AddEventPageState extends State<AddEventPage> {
   late TextEditingController _titleController;
   late TextEditingController _descriptionController;
   final TextEditingController _assigneeInputController = TextEditingController();
+  final FocusNode _assigneeFocusNode = FocusNode();
   late DateTime _selectedDate;
   
   late Status _selectedStatus;
@@ -60,11 +67,17 @@ class _AddEventPageState extends State<AddEventPage> {
       final categories = await widget.isar.categorys.where().sortByName().findAll();
       setState(() {
         _availableCategories = categories;
+        
         if (widget.eventToEdit != null) {
           widget.eventToEdit!.categories.loadSync();
           _selectedCategories.addAll(widget.eventToEdit!.categories);
           if (_selectedCategories.length > 1) {
             _allowMultiple = true;
+          }
+        } else if (widget.initialCategory != null) {
+          final match = categories.where((c) => c.name == widget.initialCategory).firstOrNull;
+          if (match != null) {
+            _selectedCategories.add(match);
           }
         }
       });
@@ -81,8 +94,12 @@ class _AddEventPageState extends State<AddEventPage> {
         _assigneeInputController.clear();
         _hasUnsavedChanges = true;
       });
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _assigneeFocusNode.requestFocus();
+      });
     } else {
       _assigneeInputController.clear();
+      _assigneeFocusNode.requestFocus();
     }
   }
 
@@ -96,6 +113,13 @@ class _AddEventPageState extends State<AddEventPage> {
         event.status = _selectedStatus;
         event.priority = _selectedPriority;
         event.assignees = List.from(_assignees);
+
+        if (_selectedCategories.isEmpty) {
+          final generalCat = await widget.isar.categorys.filter().nameEqualTo('General').findFirst();
+          if (generalCat != null) {
+            _selectedCategories.add(generalCat);
+          }
+        }
 
         await widget.isar.writeTxn(() async {
           await widget.isar.events.put(event);
@@ -162,6 +186,7 @@ class _AddEventPageState extends State<AddEventPage> {
     Priority subtaskPriority = Priority.medium;
     List<String> subtaskAssignees = [];
     final subtaskAssigneeInputController = TextEditingController();
+    final subtaskAssigneeFocusNode = FocusNode();
 
     showModalBottomSheet(
       context: context,
@@ -181,7 +206,9 @@ class _AddEventPageState extends State<AddEventPage> {
               Text('Add Sub-task', style: Theme.of(context).textTheme.headlineSmall),
               const SizedBox(height: 16),
               TextField(
+                key: const ValueKey('subtask_title_field'),
                 controller: subtaskTitleController,
+                textInputAction: TextInputAction.next,
                 decoration: const InputDecoration(labelText: 'Title', border: OutlineInputBorder()),
               ),
               const SizedBox(height: 16),
@@ -208,8 +235,27 @@ class _AddEventPageState extends State<AddEventPage> {
               ),
               const SizedBox(height: 16),
               TextField(
+                key: const ValueKey('subtask_assignee_field'),
                 controller: subtaskAssigneeInputController,
-                decoration: const InputDecoration(labelText: 'Add Assignee', border: OutlineInputBorder()),
+                focusNode: subtaskAssigneeFocusNode,
+                textInputAction: TextInputAction.done,
+                decoration: const InputDecoration(
+                  labelText: 'Add Assignee', 
+                  hintText: 'Type and press Enter or comma',
+                  border: OutlineInputBorder(),
+                ),
+                onChanged: (val) {
+                  if (val.endsWith(',')) {
+                    final name = val.substring(0, val.length - 1).trim();
+                    if (name.isNotEmpty) {
+                      setModalState(() {
+                        subtaskAssignees.add(name);
+                        subtaskAssigneeInputController.clear();
+                      });
+                      subtaskAssigneeFocusNode.requestFocus();
+                    }
+                  }
+                },
                 onSubmitted: (val) {
                   final name = val.trim();
                   if (name.isNotEmpty) {
@@ -217,6 +263,7 @@ class _AddEventPageState extends State<AddEventPage> {
                       subtaskAssignees.add(name);
                       subtaskAssigneeInputController.clear();
                     });
+                    subtaskAssigneeFocusNode.requestFocus();
                   }
                 },
               ),
@@ -291,6 +338,273 @@ class _AddEventPageState extends State<AddEventPage> {
   @override
   Widget build(BuildContext context) {
     final isEditing = widget.eventToEdit != null;
+    final bool isDialog = ModalRoute.of(context)?.isCurrent == false;
+
+    Widget formContent = Form(
+      key: _formKey,
+      child: ListView(
+        shrinkWrap: isDialog,
+        physics: isDialog ? const ClampingScrollPhysics() : null,
+        children: [
+          TextFormField(
+            key: const ValueKey('main_title_field'),
+            controller: _titleController,
+            textInputAction: TextInputAction.next,
+            decoration: const InputDecoration(labelText: 'Title', border: OutlineInputBorder()),
+            validator: (value) => value == null || value.isEmpty ? 'Please enter a title' : null,
+          ),
+          const SizedBox(height: 16),
+          TextFormField(
+            key: const ValueKey('main_description_field'),
+            controller: _descriptionController,
+            focusNode: FocusNode(debugLabel: 'description'),
+            textInputAction: TextInputAction.next,
+            decoration: const InputDecoration(labelText: 'Description', border: OutlineInputBorder()),
+            maxLines: 2,
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: DropdownButtonFormField<Status>(
+                  initialValue: _selectedStatus,
+                  decoration: const InputDecoration(labelText: 'Status', border: OutlineInputBorder()),
+                  items: Status.values.map((s) => DropdownMenuItem(
+                    value: s, 
+                    child: Text(_formatStatus(s).toUpperCase()),
+                  )).toList(),
+                  onChanged: (val) {
+                    setState(() {
+                      _selectedStatus = val!;
+                      _hasUnsavedChanges = true;
+                    });
+                  },
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: DropdownButtonFormField<Priority>(
+                  initialValue: _selectedPriority,
+                  decoration: const InputDecoration(labelText: 'Priority', border: OutlineInputBorder()),
+                  items: Priority.values.map((p) => DropdownMenuItem(
+                    value: p, 
+                    child: Text(p.name.toUpperCase()),
+                  )).toList(),
+                  onChanged: (val) {
+                    setState(() {
+                      _selectedPriority = val!;
+                      _hasUnsavedChanges = true;
+                    });
+                  },
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              TextField(
+                key: const ValueKey('main_assignee_field'),
+                controller: _assigneeInputController,
+                focusNode: _assigneeFocusNode..debugLabel = 'assignee',
+                textInputAction: TextInputAction.done,
+                decoration: const InputDecoration(
+                  labelText: 'Add Assignee', 
+                  hintText: 'Type name and press Enter or comma',
+                  border: OutlineInputBorder(),
+                ),
+                onSubmitted: (value) => _addAssignee(value),
+                onChanged: (value) {
+                  if (value.endsWith(',')) {
+                    final name = value.substring(0, value.length - 1).trim();
+                    if (name.isNotEmpty) {
+                      _addAssignee(name);
+                    } else {
+                      _assigneeInputController.clear();
+                    }
+                  }
+                },
+              ),
+              if (_assignees.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8.0,
+                  runSpacing: 4.0,
+                  children: _assignees.map((name) => InputChip(
+                    label: Text(name),
+                    onDeleted: () {
+                      setState(() {
+                        _assignees.remove(name);
+                        _hasUnsavedChanges = true;
+                      });
+                    },
+                  )).toList(),
+                ),
+              ],
+            ],
+          ),
+          const SizedBox(height: 16),
+          ListTile(
+            shape: RoundedRectangleBorder(
+              side: BorderSide(color: Theme.of(context).dividerColor),
+              borderRadius: BorderRadius.circular(4),
+            ),
+            title: Text("Date: ${_selectedDate.toLocal()}".split(' ')[0]),
+            trailing: const Icon(Icons.calendar_today),
+            onTap: () async {
+              final DateTime? picked = await showDatePicker(
+                context: context,
+                initialDate: _selectedDate,
+                firstDate: DateTime(2000),
+                lastDate: DateTime(2101),
+              );
+              if (picked != null) {
+                setState(() {
+                  _selectedDate = picked;
+                  _hasUnsavedChanges = true;
+                });
+              }
+            },
+          ),
+          const Divider(height: 32),
+          SwitchListTile(
+            title: const Text('Allow Multiple Categories'),
+            contentPadding: EdgeInsets.zero,
+            value: _allowMultiple,
+            onChanged: (val) {
+              setState(() {
+                _allowMultiple = val;
+                _hasUnsavedChanges = true;
+                if (!_allowMultiple && _selectedCategories.length > 1) {
+                  final first = _selectedCategories.first;
+                  _selectedCategories.clear();
+                  _selectedCategories.add(first);
+                }
+              });
+            },
+          ),
+          const Text('Select Categories:', style: TextStyle(fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8.0,
+            children: _availableCategories.map((cat) {
+              final isSelected = _selectedCategories.any((element) => element.id == cat.id);
+              return FilterChip(
+                label: Text(cat.name),
+                selected: isSelected,
+                onSelected: (selected) {
+                  setState(() {
+                    _hasUnsavedChanges = true;
+                    if (selected) {
+                      if (!_allowMultiple) _selectedCategories.clear();
+                      _selectedCategories.add(cat);
+                    } else {
+                      _selectedCategories.removeWhere((element) => element.id == cat.id);
+                    }
+                  });
+                },
+              );
+            }).toList(),
+          ),
+          
+          if (isEditing) ...[
+            const Divider(height: 48),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('Sub-tasks', style: Theme.of(context).textTheme.titleLarge),
+                TextButton.icon(
+                  onPressed: _showAddSubtaskSheet,
+                  icon: const Icon(Icons.add),
+                  label: const Text('Add Sub-task'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            StreamBuilder<void>(
+              stream: widget.isar.events.watchLazy(),
+              builder: (context, snapshot) {
+                return FutureBuilder<List<Event>>(
+                  future: widget.isar.events.filter().parent((q) => q.idEqualTo(widget.eventToEdit!.id)).findAll(),
+                  builder: (context, subtaskSnapshot) {
+                    if (!subtaskSnapshot.hasData || subtaskSnapshot.data!.isEmpty) {
+                      return const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 16.0),
+                        child: Center(child: Text('No sub-tasks yet', style: TextStyle(color: Colors.grey))),
+                      );
+                    }
+                    
+                    final subtasks = subtaskSnapshot.data!;
+                    return Column(
+                      children: subtasks.map((st) {
+                        return IntrinsicHeight(
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Container(
+                                width: 32,
+                                margin: const EdgeInsets.only(left: 16),
+                                child: Stack(
+                                  children: [
+                                    Align(
+                                      alignment: Alignment.topCenter,
+                                      child: Container(
+                                        width: 2,
+                                        height: double.infinity,
+                                        color: Theme.of(context).colorScheme.outlineVariant,
+                                      ),
+                                    ),
+                                    Align(
+                                      alignment: Alignment.centerRight,
+                                      child: Container(
+                                        height: 2,
+                                        width: 16,
+                                        color: Theme.of(context).colorScheme.outlineVariant,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Expanded(
+                                child: Card(
+                                  margin: const EdgeInsets.only(bottom: 8, right: 16),
+                                  child: ListTile(
+                                    dense: true,
+                                    leading: _buildStatusIcon(st.status),
+                                    title: Text(st.title, style: const TextStyle(fontWeight: FontWeight.bold)),
+                                    subtitle: st.assignees.isEmpty 
+                                      ? null 
+                                      : Wrap(
+                                          spacing: 4,
+                                          children: st.assignees.map((a) => Text(
+                                            a, 
+                                            style: const TextStyle(fontSize: 9, fontStyle: FontStyle.italic),
+                                          )).toList(),
+                                        ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }).toList(),
+                    );
+                  },
+                );
+              },
+            ),
+          ],
+
+          const SizedBox(height: 32),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(minimumSize: const Size.fromHeight(50)),
+            onPressed: _saveEvent,
+            child: Text(isEditing ? 'Update Task' : 'Save Task'),
+          ),
+        ],
+      ),
+    );
 
     return PopScope(
       canPop: !_hasUnsavedChanges,
@@ -310,276 +624,49 @@ class _AddEventPageState extends State<AddEventPage> {
             }
           },
           const SingleActivator(LogicalKeyboardKey.enter): () {
-            // Only trigger if not on multiline description
-            if (FocusManager.instance.primaryFocus?.debugLabel?.contains('description') != true) {
+            final focusLabel = FocusManager.instance.primaryFocus?.debugLabel ?? '';
+            if (!focusLabel.contains('description') && !focusLabel.contains('assignee')) {
               _saveEvent();
             }
           },
         },
         child: Focus(
           autofocus: true,
-          child: Scaffold(
-            appBar: AppBar(
-              title: Text(isEditing ? 'Edit Task' : 'Add New Task'),
-              backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-            ),
-            body: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Form(
-                key: _formKey,
-                child: ListView(
-                  children: [
-                    TextFormField(
-                      controller: _titleController,
-                      decoration: const InputDecoration(labelText: 'Title', border: OutlineInputBorder()),
-                      validator: (value) => value == null || value.isEmpty ? 'Please enter a title' : null,
-                    ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _descriptionController,
-                      focusNode: FocusNode(debugLabel: 'description'),
-                      decoration: const InputDecoration(labelText: 'Description', border: OutlineInputBorder()),
-                      maxLines: 2,
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
+          child: isDialog 
+            ? ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 600, maxHeight: 800),
+                child: Material(
+                  color: Theme.of(context).cardColor,
+                  borderRadius: BorderRadius.circular(24),
+                  child: Padding(
+                    padding: const EdgeInsets.all(24.0),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        Expanded(
-                          child: DropdownButtonFormField<Status>(
-                            initialValue: _selectedStatus,
-                            decoration: const InputDecoration(labelText: 'Status', border: OutlineInputBorder()),
-                            items: Status.values.map((s) => DropdownMenuItem(
-                              value: s, 
-                              child: Text(_formatStatus(s).toUpperCase()),
-                            )).toList(),
-                            onChanged: (val) {
-                              setState(() {
-                                _selectedStatus = val!;
-                                _hasUnsavedChanges = true;
-                              });
-                            },
-                          ),
+                        Row(
+                          children: [
+                            Text(isEditing ? 'Edit Task' : 'Add New Task', style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
+                            const Spacer(),
+                            IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
+                          ],
                         ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: DropdownButtonFormField<Priority>(
-                            initialValue: _selectedPriority,
-                            decoration: const InputDecoration(labelText: 'Priority', border: OutlineInputBorder()),
-                            items: Priority.values.map((p) => DropdownMenuItem(
-                              value: p, 
-                              child: Text(p.name.toUpperCase()),
-                            )).toList(),
-                            onChanged: (val) {
-                              setState(() {
-                                _selectedPriority = val!;
-                                _hasUnsavedChanges = true;
-                              });
-                            },
-                          ),
-                        ),
+                        const SizedBox(height: 24),
+                        Flexible(child: formContent),
                       ],
                     ),
-                    const SizedBox(height: 16),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        TextField(
-                          controller: _assigneeInputController,
-                          decoration: const InputDecoration(
-                            labelText: 'Add Assignee', 
-                            hintText: 'Type name and press Enter or comma',
-                            border: OutlineInputBorder(),
-                          ),
-                          onSubmitted: (value) => _addAssignee(value),
-                          onChanged: (value) {
-                            if (value.endsWith(',')) {
-                              _addAssignee(value);
-                            }
-                          },
-                        ),
-                        if (_assignees.isNotEmpty) ...[
-                          const SizedBox(height: 8),
-                          Wrap(
-                            spacing: 8.0,
-                            runSpacing: 4.0,
-                            children: _assignees.map((name) => InputChip(
-                              label: Text(name),
-                              onDeleted: () {
-                                setState(() {
-                                  _assignees.remove(name);
-                                  _hasUnsavedChanges = true;
-                                });
-                              },
-                            )).toList(),
-                          ),
-                        ],
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    ListTile(
-                      shape: RoundedRectangleBorder(
-                        side: BorderSide(color: Theme.of(context).dividerColor),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      title: Text("Date: ${_selectedDate.toLocal()}".split(' ')[0]),
-                      trailing: const Icon(Icons.calendar_today),
-                      onTap: () async {
-                        final DateTime? picked = await showDatePicker(
-                          context: context,
-                          initialDate: _selectedDate,
-                          firstDate: DateTime(2000),
-                          lastDate: DateTime(2101),
-                        );
-                        if (picked != null) {
-                          setState(() {
-                            _selectedDate = picked;
-                            _hasUnsavedChanges = true;
-                          });
-                        }
-                      },
-                    ),
-                    const Divider(height: 32),
-                    SwitchListTile(
-                      title: const Text('Allow Multiple Categories'),
-                      value: _allowMultiple,
-                      onChanged: (val) {
-                        setState(() {
-                          _allowMultiple = val;
-                          _hasUnsavedChanges = true;
-                          if (!_allowMultiple && _selectedCategories.length > 1) {
-                            final first = _selectedCategories.first;
-                            _selectedCategories.clear();
-                            _selectedCategories.add(first);
-                          }
-                        });
-                      },
-                    ),
-                    const Text('Select Categories:', style: TextStyle(fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 8.0,
-                      children: _availableCategories.map((cat) {
-                        final isSelected = _selectedCategories.any((element) => element.id == cat.id);
-                        return FilterChip(
-                          label: Text(cat.name),
-                          selected: isSelected,
-                          onSelected: (selected) {
-                            setState(() {
-                              _hasUnsavedChanges = true;
-                              if (selected) {
-                                if (!_allowMultiple) _selectedCategories.clear();
-                                _selectedCategories.add(cat);
-                              } else {
-                                _selectedCategories.removeWhere((element) => element.id == cat.id);
-                              }
-                            });
-                          },
-                        );
-                      }).toList(),
-                    ),
-                    
-                    if (isEditing) ...[
-                      const Divider(height: 48),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text('Sub-tasks', style: Theme.of(context).textTheme.titleLarge),
-                          TextButton.icon(
-                            onPressed: _showAddSubtaskSheet,
-                            icon: const Icon(Icons.add),
-                            label: const Text('Add Sub-task'),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      StreamBuilder<void>(
-                        stream: widget.isar.events.watchLazy(),
-                        builder: (context, snapshot) {
-                          return FutureBuilder<List<Event>>(
-                            future: widget.isar.events.filter().parent((q) => q.idEqualTo(widget.eventToEdit!.id)).findAll(),
-                            builder: (context, subtaskSnapshot) {
-                              if (!subtaskSnapshot.hasData || subtaskSnapshot.data!.isEmpty) {
-                                return const Padding(
-                                  padding: EdgeInsets.symmetric(vertical: 16.0),
-                                  child: Center(child: Text('No sub-tasks yet', style: TextStyle(color: Colors.grey))),
-                                );
-                              }
-                              
-                              final subtasks = subtaskSnapshot.data!;
-                              return Column(
-                                children: subtasks.map((st) {
-                                  return IntrinsicHeight(
-                                    child: Row(
-                                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                                      children: [
-                                        // Visual Subtask Tree Line (L-shape)
-                                        Container(
-                                          width: 32,
-                                          margin: const EdgeInsets.only(left: 16),
-                                          child: Stack(
-                                            children: [
-                                              // Vertical line
-                                              Align(
-                                                alignment: Alignment.topCenter,
-                                                child: Container(
-                                                  width: 2,
-                                                  height: double.infinity,
-                                                  color: Theme.of(context).colorScheme.outlineVariant,
-                                                ),
-                                              ),
-                                              // Horizontal connector
-                                              Align(
-                                                alignment: Alignment.centerRight,
-                                                child: Container(
-                                                  height: 2,
-                                                  width: 16,
-                                                  color: Theme.of(context).colorScheme.outlineVariant,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                        Expanded(
-                                          child: Card(
-                                            margin: const EdgeInsets.only(bottom: 8, right: 16),
-                                            child: ListTile(
-                                              dense: true,
-                                              leading: _buildStatusIcon(st.status),
-                                              title: Text(st.title, style: const TextStyle(fontWeight: FontWeight.bold)),
-                                              subtitle: st.assignees.isEmpty 
-                                                ? null 
-                                                : Wrap(
-                                                    spacing: 4,
-                                                    children: st.assignees.map((a) => Text(
-                                                      a, 
-                                                      style: const TextStyle(fontSize: 9, fontStyle: FontStyle.italic),
-                                                    )).toList(),
-                                                  ),
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  );
-                                }).toList(),
-                              );
-                            },
-                          );
-                        },
-                      ),
-                    ],
-
-                    const SizedBox(height: 32),
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(minimumSize: const Size.fromHeight(50)),
-                      onPressed: _saveEvent,
-                      child: Text(isEditing ? 'Update Task' : 'Save Task'),
-                    ),
-                  ],
+                  ),
+                ),
+              )
+            : Scaffold(
+                appBar: AppBar(
+                  title: Text(isEditing ? 'Edit Task' : 'Add New Task'),
+                  backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+                ),
+                body: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: formContent,
                 ),
               ),
-            ),
-          ),
         ),
       ),
     );
@@ -590,6 +677,7 @@ class _AddEventPageState extends State<AddEventPage> {
     _titleController.dispose();
     _descriptionController.dispose();
     _assigneeInputController.dispose();
+    _assigneeFocusNode.dispose();
     super.dispose();
   }
 }

@@ -1,9 +1,9 @@
 # Helm - Team Event & Task Management
 
-**Helm** is a high-performance, team-oriented task management system optimized for **Android** and **Windows**. Built with Flutter and the Isar Database, Helm provides a premium, reactive experience for tracking team progress and personal productivity.
+**Helm** is a high-performance, team-oriented task management system optimized for **Android**, **Windows**, and **Linux**. Built with Flutter and the Isar Database, Helm provides a premium, reactive experience for tracking team progress and personal productivity.
 
 ![Aesthetic](https://img.shields.io/badge/Aesthetic-Slate%20%26%20Mint-88C0A4)
-![Platform](https://img.shields.io/badge/Platform-Android%20%7C%20Windows-blue)
+![Platform](https://img.shields.io/badge/Platform-Android%20%7C%20Windows%20%7C%20Linux-blue)
 
 ## 🚀 Key Features
 
@@ -15,6 +15,7 @@
 
 ### 🎨 Premium UI/UX
 *   **Slate & Mint Aesthetic**: A modern, deep-slate charcoal background with vibrant mint-green accents.
+*   **Semantic Priority Colors**: Task cards subtly shift color based on priority (Warm red tint for High, Calm blue-grey for Low).
 *   **Material 3 Ready**: Full use of M3 components, including Segmented Buttons and elevated surface depths.
 *   **Haptic Micro-Interactions**: Subtle tactile feedback on every toggle, button press, and swipe.
 *   **Context-Aware Themes**: Seamlessly switches between a crisp White Light Mode and a deep Slate Dark Mode.
@@ -22,11 +23,13 @@
 ### 🛠 Robust Core Functionality
 *   **Team Schema**: Support for Status (To-Do, In Progress, Done), Priority (Low, Medium, High), and multiple Assignees per task.
 *   **Nested Sub-Tasks**: Create hierarchical task trees with "L-shaped" visual connectors.
-*   **Deep Undo System**: Accidents happen. Swipe to delete and instantly restore tasks with all categories and assignees intact.
+*   **Advanced Undo System**: Robust restoration with deep-copy logic ensuring all categories and assignees are perfectly preserved.
+*   **Intelligent Input**: Add assignees rapidly using commas or the Enter key. Focus management and stable keys ensure the keyboard stays open during multi-field edits.
 *   **Daily Reminders**: Timezone-aware notification service for morning briefings (9:00 AM).
 
 ### 📱 Fully Responsive
 *   **Adaptive Sidebar**: A persistent navigation sidebar on Desktop (>900px) that transforms into a sleek drawer on Mobile.
+*   **Desktop Pro**: Optimized task forms open in constrained floating windows for better screen utilization.
 *   **Zero-Overflow Layouts**: Uses `LayoutBuilder` to intelligently stack dashboard components vertically on narrow screens.
 
 ## 🛠 Tech Stack
@@ -41,6 +44,7 @@
 ### Prerequisites
 *   **Flutter SDK**: ^3.0.0
 *   **Windows Build Tools**: Visual Studio 2022 with "Desktop development with C++" workload.
+*   **Linux Build Tools**: `clang`, `cmake`, `pkg-config`, `ninja-build`, and GTK development headers (`libgtk-3-dev` on Debian/Ubuntu).
 *   **Important (Windows Notifications)**: Ensure "**C++ ATL for latest v143 build tools**" is installed via the Visual Studio Installer to enable the reminder system.
 
 ### Steps
@@ -64,7 +68,10 @@
     
     # For Android
     flutter run -d android
+    
+    # For Linux
+    flutter run -d linux
     ```
 
 ## ✅ Project Status
-Helm is currently feature-complete for its initial release, featuring a stabilized context-aware architecture and full native build support for Android and Windows.
+Helm is currently feature-complete for its initial release, featuring a stabilized context-aware architecture and full native build support for Android, Windows, and Linux.

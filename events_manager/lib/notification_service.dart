@@ -32,9 +32,16 @@ class NotificationService {
   }
 
   Future<bool> requestPermissions() async {
-    final bool? androidGranted = await _notificationsPlugin
-        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
-        ?.requestNotificationsPermission();
+    final androidPlugin = _notificationsPlugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+    
+    // Request notification permission (Android 13+)
+    final bool? androidGranted = await androidPlugin?.requestNotificationsPermission();
+    
+    // Request exact alarm permission (Android 12+)
+    if (androidPlugin != null) {
+      final bool? exactAlarmsGranted = await androidPlugin.requestExactAlarmsPermission();
+      debugPrint('Exact Alarms Permission: $exactAlarmsGranted');
+    }
     
     final bool? iosGranted = await _notificationsPlugin
         .resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>()
