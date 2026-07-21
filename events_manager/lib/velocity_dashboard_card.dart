@@ -46,7 +46,10 @@ class VelocityDashboardCard extends StatelessWidget {
                       color: colorScheme.onSurface,
                     ),
                   ),
-                  Icon(Icons.edit_note, color: colorScheme.onSurface.withOpacity(0.4), size: 20),
+                  IconButton(
+                    icon: Icon(Icons.edit_note, color: colorScheme.onSurface.withOpacity(0.4), size: 20),
+                    onPressed: () => _showAdjustGoalDialog(context),
+                  ),
                 ],
               ),
               const SizedBox(height: 24),
@@ -206,6 +209,37 @@ class VelocityDashboardCard extends StatelessWidget {
                 ),
         );
       },
+    );
+  }
+
+  void _showAdjustGoalDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text("Adjust Daily Goal"),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text("Set your daily task target to help calculate velocity snapshots."),
+            const SizedBox(height: 16),
+            const TextField(
+              decoration: InputDecoration(
+                labelText: "Daily Target",
+                hintText: "e.g. 10",
+                border: OutlineInputBorder(),
+              ),
+              keyboardType: TextInputType.number,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("CANCEL")),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx), 
+            child: const Text("SAVE"),
+          ),
+        ],
+      ),
     );
   }
 }

@@ -8,12 +8,14 @@ class AddEventPage extends StatefulWidget {
   final Isar isar;
   final Event? eventToEdit;
   final String? initialCategory;
+  final bool isDialog;
 
   const AddEventPage({
     super.key, 
     required this.isar, 
     this.eventToEdit, 
     this.initialCategory,
+    this.isDialog = false,
   });
 
   @override
@@ -338,13 +340,12 @@ class _AddEventPageState extends State<AddEventPage> {
   @override
   Widget build(BuildContext context) {
     final isEditing = widget.eventToEdit != null;
-    final bool isDialog = ModalRoute.of(context)?.isCurrent == false;
 
     Widget formContent = Form(
       key: _formKey,
       child: ListView(
-        shrinkWrap: isDialog,
-        physics: isDialog ? const ClampingScrollPhysics() : null,
+        shrinkWrap: widget.isDialog,
+        physics: widget.isDialog ? const ClampingScrollPhysics() : null,
         children: [
           TextFormField(
             key: const ValueKey('main_title_field'),
@@ -606,6 +607,36 @@ class _AddEventPageState extends State<AddEventPage> {
       ),
     );
 
+    if (widget.isDialog) {
+      return Dialog(
+        backgroundColor: Colors.transparent,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 600, maxHeight: 800),
+          child: Material(
+            color: Theme.of(context).cardColor,
+            borderRadius: BorderRadius.circular(24),
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    children: [
+                      Text(isEditing ? 'Edit Task' : 'Add New Task', style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
+                      const Spacer(),
+                      IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  Flexible(child: formContent),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
     return PopScope(
       canPop: !_hasUnsavedChanges,
       onPopInvokedWithResult: (didPop, result) async {
@@ -632,41 +663,16 @@ class _AddEventPageState extends State<AddEventPage> {
         },
         child: Focus(
           autofocus: true,
-          child: isDialog 
-            ? ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 600, maxHeight: 800),
-                child: Material(
-                  color: Theme.of(context).cardColor,
-                  borderRadius: BorderRadius.circular(24),
-                  child: Padding(
-                    padding: const EdgeInsets.all(24.0),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Row(
-                          children: [
-                            Text(isEditing ? 'Edit Task' : 'Add New Task', style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
-                            const Spacer(),
-                            IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
-                          ],
-                        ),
-                        const SizedBox(height: 24),
-                        Flexible(child: formContent),
-                      ],
-                    ),
-                  ),
-                ),
-              )
-            : Scaffold(
-                appBar: AppBar(
-                  title: Text(isEditing ? 'Edit Task' : 'Add New Task'),
-                  backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-                ),
-                body: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: formContent,
-                ),
-              ),
+          child: Scaffold(
+            appBar: AppBar(
+              title: Text(isEditing ? 'Edit Task' : 'Add New Task'),
+              backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+            ),
+            body: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: formContent,
+            ),
+          ),
         ),
       ),
     );

@@ -53,6 +53,7 @@ class _CategoryPageState extends State<CategoryPage> {
   Widget build(BuildContext context) {
     return AppShell(
       title: 'Manage Categories',
+      isar: widget.isar,
       child: Column(
         children: [
           Padding(

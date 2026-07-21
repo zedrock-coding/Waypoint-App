@@ -174,6 +174,7 @@ class _MyHomePageState extends State<MyHomePage> {
   Widget build(BuildContext context) {
     return AppShell(
       title: widget.title,
+      isar: widget.isar,
       actions: [
         IconButton(
           icon: Icon(_sortByCategory ? Icons.sort_by_alpha : Icons.calendar_month),
@@ -245,14 +246,14 @@ class _MyHomePageState extends State<MyHomePage> {
                                     behavior: SnackBarBehavior.floating,
                                     width: 400,
                                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                    backgroundColor: colorScheme.inverseSurface,
+                                    backgroundColor: colorScheme.surfaceVariant,
                                     content: Text(
                                       'Task "${backupItem.title}" deleted',
-                                      style: TextStyle(color: colorScheme.onInverseSurface),
+                                      style: TextStyle(color: colorScheme.onSurfaceVariant),
                                     ),
                                     action: SnackBarAction(
                                       label: 'UNDO',
-                                      textColor: colorScheme.onInverseSurface,
+                                      textColor: colorScheme.onSurfaceVariant,
                                       onPressed: () async {
                                         // 1. UI Undo: Insert back to local list
                                         setState(() {
@@ -669,6 +670,7 @@ void showAddTaskForm(BuildContext context, {required Isar isar, Event? eventToEd
           isar: isar, 
           eventToEdit: eventToEdit, 
           initialCategory: category,
+          isDialog: true,
         ),
       ),
     );

@@ -11,7 +11,13 @@
 *   **Actionable Snapshots**: A 60/40 dual-card layout at the top of your dashboard.
 *   **Progress Gauges**: Thick Circular and Linear indicators showing real-time completion percentages.
 *   **Streak Tracking**: Gamified consistency tracking with a "Streak" flame indicator.
+*   **Interactive Goals**: Adjust daily task targets directly from the dashboard via a sleek edit dialog.
 *   **Quick Controls**: Manage Daily Reminders and global Font Size directly from the dashboard.
+
+### 🤖 Hands-Free AI Voice UI
+*   **Listening Overlay**: Modern pulsing microphone animation with real-time state feedback.
+*   **Smart Transitions**: Automatically shifts from listening to processing and success states with auto-dismissal.
+*   **Adaptive Trigger**: Slides up as a BottomSheet on mobile or appears as a centered floating dialog on desktop.
 
 ### 🎨 Premium UI/UX
 *   **Slate & Mint Aesthetic**: A modern, deep-slate charcoal background with vibrant mint-green accents.
@@ -20,15 +26,17 @@
 *   **Haptic Micro-Interactions**: Subtle tactile feedback on every toggle, button press, and swipe.
 *   **Context-Aware Themes**: Seamlessly switches between a crisp White Light Mode and a deep Slate Dark Mode.
 
-### 🛠 Robust Core Functionality
-*   **Team Schema**: Support for Status (To-Do, In Progress, Done), Priority (Low, Medium, High), and multiple Assignees per task.
+### 🛠 Robust Core Functionality & Collaboration
+*   **Communities Tree**: Hierarchical "Communities" section using `ExpansionTile` for professional project organization.
+*   **Role-Based Access**: Level 1 (Admin) and Level 2 (User) roles with strictly gated UI controls for task assignments.
+*   **Community Gating**: Securely filter assignee lists based on the active community context.
 *   **Nested Sub-Tasks**: Create hierarchical task trees with "L-shaped" visual connectors.
 *   **Advanced Undo System**: Robust restoration with deep-copy logic ensuring all categories and assignees are perfectly preserved.
-*   **Intelligent Input**: Add assignees rapidly using commas or the Enter key. Focus management and stable keys ensure the keyboard stays open during multi-field edits.
-*   **Daily Reminders**: Timezone-aware notification service for morning briefings (9:00 AM).
+*   **Intelligent Input**: Add assignees rapidly using commas or the Enter key.
+*   **Secure Invitations**: Generate and copy community invite links directly from the Settings page.
 
 ### 📱 Fully Responsive
-*   **Adaptive Sidebar**: A persistent navigation sidebar on Desktop (>900px) that transforms into a sleek drawer on Mobile.
+*   **Adaptive Sidebar**: A persistent navigation sidebar on Desktop (>800px) that transforms into a sleek drawer on Mobile.
 *   **Desktop Pro**: Optimized task forms open in constrained floating windows for better screen utilization.
 *   **Zero-Overflow Layouts**: Uses `LayoutBuilder` to intelligently stack dashboard components vertically on narrow screens.
 
@@ -73,5 +81,31 @@
     flutter run -d linux
     ```
 
-## ✅ Project Status
-Helm is currently feature-complete for its initial release, featuring a stabilized context-aware architecture and full native build support for Android, Windows, and Linux.
+---
+
+## 🔐 Generating a Signed APK for Android
+
+To prepare **Helm** for the Google Play Store or private distribution, follow these steps:
+
+### 1. Create a Keystore
+Run the following command in your terminal to generate a secure upload key:
+```bash
+keytool -genkey -v -keystore helm-release.keystore -alias helm -keyalg RSA -keysize 2048 -validity 10000
+```
+*Keep your password and the `.keystore` file safe!*
+
+### 2. Configure Gradle
+Create a file named `android/key.properties` and add your credentials (replacing `your_password` with the actual passwords you chose):
+```properties
+storePassword=your_password
+keyPassword=your_password
+keyAlias=helm
+storeFile=../helm-release.keystore
+```
+
+### 3. Build the Release
+Execute the following command to generate the signed APK:
+```bash
+flutter build apk --release
+```
+The final file will be located at: `build/app/outputs/flutter-apk/app-release.apk`

@@ -57,6 +57,7 @@ class _SettingPageState extends State<SettingPage> {
 
     return AppShell(
       title: 'Settings',
+      isar: widget.isar,
       child: ListView(
         padding: const EdgeInsets.all(24.0),
         children: [

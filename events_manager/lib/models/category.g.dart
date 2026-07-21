@@ -17,8 +17,13 @@ const CategorySchema = CollectionSchema(
   name: r'Category',
   id: 5751694338128944171,
   properties: {
-    r'name': PropertySchema(
+    r'isAdmin': PropertySchema(
       id: 0,
+      name: r'isAdmin',
+      type: IsarType.bool,
+    ),
+    r'name': PropertySchema(
+      id: 1,
       name: r'name',
       type: IsarType.string,
     )
@@ -43,7 +48,21 @@ const CategorySchema = CollectionSchema(
       ],
     )
   },
-  links: {},
+  links: {
+    r'parent': LinkSchema(
+      id: -2512975869131360965,
+      name: r'parent',
+      target: r'Category',
+      single: true,
+    ),
+    r'subCategories': LinkSchema(
+      id: -1061364544542625407,
+      name: r'subCategories',
+      target: r'Category',
+      single: false,
+      linkName: r'parent',
+    )
+  },
   embeddedSchemas: {},
   getId: _categoryGetId,
   getLinks: _categoryGetLinks,
@@ -67,7 +86,8 @@ void _categorySerialize(
   List<int> offsets,
   Map<Type, List<int>> allOffsets,
 ) {
-  writer.writeString(offsets[0], object.name);
+  writer.writeBool(offsets[0], object.isAdmin);
+  writer.writeString(offsets[1], object.name);
 }
 
 Category _categoryDeserialize(
@@ -78,7 +98,8 @@ Category _categoryDeserialize(
 ) {
   final object = Category();
   object.id = id;
-  object.name = reader.readString(offsets[0]);
+  object.isAdmin = reader.readBool(offsets[0]);
+  object.name = reader.readString(offsets[1]);
   return object;
 }
 
@@ -90,6 +111,8 @@ P _categoryDeserializeProp<P>(
 ) {
   switch (propertyId) {
     case 0:
+      return (reader.readBool(offset)) as P;
+    case 1:
       return (reader.readString(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -101,11 +124,14 @@ Id _categoryGetId(Category object) {
 }
 
 List<IsarLinkBase<dynamic>> _categoryGetLinks(Category object) {
-  return [];
+  return [object.parent, object.subCategories];
 }
 
 void _categoryAttach(IsarCollection<dynamic> col, Id id, Category object) {
   object.id = id;
+  object.parent.attach(col, col.isar.collection<Category>(), r'parent', id);
+  object.subCategories
+      .attach(col, col.isar.collection<Category>(), r'subCategories', id);
 }
 
 extension CategoryByIndex on IsarCollection<Category> {
@@ -335,6 +361,16 @@ extension CategoryQueryFilter
     });
   }
 
+  QueryBuilder<Category, Category, QAfterFilterCondition> isAdminEqualTo(
+      bool value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'isAdmin',
+        value: value,
+      ));
+    });
+  }
+
   QueryBuilder<Category, Category, QAfterFilterCondition> nameEqualTo(
     String value, {
     bool caseSensitive = true,
@@ -470,9 +506,95 @@ extension CategoryQueryObject
     on QueryBuilder<Category, Category, QFilterCondition> {}
 
 extension CategoryQueryLinks
-    on QueryBuilder<Category, Category, QFilterCondition> {}
+    on QueryBuilder<Category, Category, QFilterCondition> {
+  QueryBuilder<Category, Category, QAfterFilterCondition> parent(
+      FilterQuery<Category> q) {
+    return QueryBuilder.apply(this, (query) {
+      return query.link(q, r'parent');
+    });
+  }
+
+  QueryBuilder<Category, Category, QAfterFilterCondition> parentIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.linkLength(r'parent', 0, true, 0, true);
+    });
+  }
+
+  QueryBuilder<Category, Category, QAfterFilterCondition> subCategories(
+      FilterQuery<Category> q) {
+    return QueryBuilder.apply(this, (query) {
+      return query.link(q, r'subCategories');
+    });
+  }
+
+  QueryBuilder<Category, Category, QAfterFilterCondition>
+      subCategoriesLengthEqualTo(int length) {
+    return QueryBuilder.apply(this, (query) {
+      return query.linkLength(r'subCategories', length, true, length, true);
+    });
+  }
+
+  QueryBuilder<Category, Category, QAfterFilterCondition>
+      subCategoriesIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.linkLength(r'subCategories', 0, true, 0, true);
+    });
+  }
+
+  QueryBuilder<Category, Category, QAfterFilterCondition>
+      subCategoriesIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.linkLength(r'subCategories', 0, false, 999999, true);
+    });
+  }
+
+  QueryBuilder<Category, Category, QAfterFilterCondition>
+      subCategoriesLengthLessThan(
+    int length, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.linkLength(r'subCategories', 0, true, length, include);
+    });
+  }
+
+  QueryBuilder<Category, Category, QAfterFilterCondition>
+      subCategoriesLengthGreaterThan(
+    int length, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.linkLength(r'subCategories', length, include, 999999, true);
+    });
+  }
+
+  QueryBuilder<Category, Category, QAfterFilterCondition>
+      subCategoriesLengthBetween(
+    int lower,
+    int upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.linkLength(
+          r'subCategories', lower, includeLower, upper, includeUpper);
+    });
+  }
+}
 
 extension CategoryQuerySortBy on QueryBuilder<Category, Category, QSortBy> {
+  QueryBuilder<Category, Category, QAfterSortBy> sortByIsAdmin() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'isAdmin', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Category, Category, QAfterSortBy> sortByIsAdminDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'isAdmin', Sort.desc);
+    });
+  }
+
   QueryBuilder<Category, Category, QAfterSortBy> sortByName() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'name', Sort.asc);
@@ -500,6 +622,18 @@ extension CategoryQuerySortThenBy
     });
   }
 
+  QueryBuilder<Category, Category, QAfterSortBy> thenByIsAdmin() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'isAdmin', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Category, Category, QAfterSortBy> thenByIsAdminDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'isAdmin', Sort.desc);
+    });
+  }
+
   QueryBuilder<Category, Category, QAfterSortBy> thenByName() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'name', Sort.asc);
@@ -515,6 +649,12 @@ extension CategoryQuerySortThenBy
 
 extension CategoryQueryWhereDistinct
     on QueryBuilder<Category, Category, QDistinct> {
+  QueryBuilder<Category, Category, QDistinct> distinctByIsAdmin() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'isAdmin');
+    });
+  }
+
   QueryBuilder<Category, Category, QDistinct> distinctByName(
       {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
@@ -528,6 +668,12 @@ extension CategoryQueryProperty
   QueryBuilder<Category, int, QQueryOperations> idProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'id');
+    });
+  }
+
+  QueryBuilder<Category, bool, QQueryOperations> isAdminProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'isAdmin');
     });
   }
 

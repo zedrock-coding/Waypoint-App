@@ -8,4 +8,12 @@ class Category {
 
   @Index(unique: true, replace: true)
   late String name;
+
+  bool isAdmin = false;
+  
+  // For the file tree structure
+  final parent = IsarLink<Category>();
+
+  @Backlink(to: 'parent')
+  final subCategories = IsarLinks<Category>();
 }
