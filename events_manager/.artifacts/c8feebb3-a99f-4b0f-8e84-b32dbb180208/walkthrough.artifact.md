@@ -1,39 +1,41 @@
-# Expanded Notifications Settings Walkthrough
+# Global Search UI Walkthrough
 
-I have successfully expanded the notifications settings in Helm to provide a more structured and granular user experience.
+I have implemented a customized Global Search UI for the Helm app, utilizing Flutter's `SearchDelegate` and integrating it with the app's dark theme and mint green accents.
 
-## Key Changes
+## Key Accomplishments
 
-### 1. Enhanced Data Persistence
-Updated the `Settings` Isar collection with 5 new granular notification fields.
-> [!IMPORTANT]
-> You must run `flutter pub run build_runner build` to regenerate the database schemas after these changes.
+### 1. Robust Search Logic
+- **Isar Querying**: Added a `searchEvents(String query)` method to the `EventRepository` to efficiently find tasks by title or description.
+- **Custom Delegate**: Created `CustomTaskSearchDelegate` to handle search logic and UI states (suggestions vs. results).
 
-### 2. Structured UI Sections
-The Settings page now features two distinct, Card-styled sections for notifications:
+### 2. Themed Search UI
+- **Custom App Bar Theme**: Overrode the `appBarTheme` to match the app's dark surface, with white text and a mint green cursor for a premium look.
+- **Empty State**: Implemented a "Recent Searches" view with community action chips for quick filtering when the query is empty.
+- **Zero Results Feedback**: Added a clear message when no tasks match the search query.
 
-#### Essential Alerts
-- **Task Assignments**: Notify when assigned a task (Default: ON).
-- **Due Date Reminders**: 24-hour advance notice (Default: ON).
-- **Community Mentions**: Tagging notifications (Default: ON).
+### 3. Integrated Global Access
+- **Search Button**: Added a search `IconButton` to the global `AppShell` header, making search accessible from anywhere in the app.
+- **Navigation Utility**: Refactored task form navigation into a shared utility (`task_form_utils.dart`) to allow search results to seamlessly open the edit form.
 
-#### General & Promotional
-- **Daily Briefing**: Morning summary at 9:00 AM (Default: ON).
-- **News & Offers**: Marketing and tips (Default: OFF).
+## Summary of Changes
 
-### 3. Mint Green Styling
-All switches now consistently use the mint green accent (`Theme.of(context).colorScheme.primary`) for their active state, matching the premium Helm aesthetic.
+### [Repositories]
+- `[MODIFY]` [event_repository.dart](file:///C:/Users/Lenovo/StudioProjects/EventsManager/events_manager/lib/repositories/event_repository.dart): Added `searchEvents`.
 
-## Modified Files
-- `lib/models/settings.dart`: Added new fields.
-- `lib/theme_provider.dart`: Added unified update method for notification settings.
-- `lib/settings_page.dart`: Completely refactored the notifications UI with new sections and styling.
+### [Widgets]
+- `[NEW]` [task_search_delegate.dart](file:///C:/Users/Lenovo/StudioProjects/EventsManager/events_manager/lib/widgets/task_search_delegate.dart): Full search implementation.
+- `[NEW]` [task_form_utils.dart](file:///C:/Users/Lenovo/StudioProjects/EventsManager/events_manager/lib/widgets/task_form_utils.dart): Shared navigation utility.
+
+### [Core Files]
+- `[MODIFY]` [app_shell.dart](file:///C:/Users/Lenovo/StudioProjects/EventsManager/events_manager/lib/app_shell.dart): Integrated search button.
+- `[MODIFY]` [main.dart](file:///C:/Users/Lenovo/StudioProjects/EventsManager/events_manager/lib/main.dart): Cleaned up and used shared navigation utility.
 
 ## Verification
-- [x] Verified card styling matches the dark theme.
-- [x] Confirmed default states (Promotional OFF, others ON).
-- [x] Checked `SwitchListTile` active colors.
+- Verified that the search bar correctly uses the app's color scheme.
+- Confirmed that community chips appear and trigger search results.
+- Validated that searching for task titles or descriptions returns the correct `TaskItemCard`s.
+- Ensured clicking a result opens the correct edit dialog/page.
 
-## Dynamic Versioning
-- **package_info_plus Integration**: Updated the About page to dynamically fetch and display the app's version and build number using `PackageInfo`.
-- **License Page**: Pass the dynamic version to Flutter's native license page for consistency.
+## Global Keyboard Shortcuts Fix
+- **Corrected Activators**: Fixed an issue where shortcuts required both Ctrl and Meta simultaneously. They now correctly support either Ctrl (Windows/Linux) or Meta (macOS) as modifiers.
+- **Focus Management**: Added an explicit `Focus` widget with `autofocus: true` around the main application area to ensure keyboard events are captured reliably.

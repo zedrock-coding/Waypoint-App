@@ -20,6 +20,7 @@ import 'widgets/task_item_card.dart';
 import 'widgets/category_header.dart';
 import 'widgets/empty_states.dart';
 import 'widgets/velocity_dashboard.dart';
+import 'widgets/task_form_utils.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -294,35 +295,6 @@ class _MyHomePageState extends State<MyHomePage> {
           ),
         );
       },
-    );
-  }
-}
-
-void showAddTaskForm(BuildContext context, {required Isar isar, Event? eventToEdit, String? category}) {
-  final double width = MediaQuery.of(context).size.width;
-
-  if (width < 800) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => AddEventPage(
-          isar: isar, 
-          eventToEdit: eventToEdit, 
-          initialCategory: category,
-        ),
-      ),
-    );
-  } else {
-    showDialog(
-      context: context,
-      builder: (context) => Center(
-        child: AddEventPage(
-          isar: isar, 
-          eventToEdit: eventToEdit, 
-          initialCategory: category,
-          isDialog: true,
-        ),
-      ),
     );
   }
 }

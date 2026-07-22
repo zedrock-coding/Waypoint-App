@@ -14,6 +14,15 @@
 *   **Progress Gauges**: Compact Circular and Linear indicators showing real-time completion percentages.
 *   **Quick Controls**: Unified state-management for managing Reminders and global Font Size directly from the dashboard.
 
+### 🔍 Global Search & Filtering
+*   **Deep Indexing**: Instantly find tasks by title or description using optimized database queries.
+*   **Custom Search UI**: A bespoke, themed search experience with mint-green accents and interactive community filters.
+*   **Recent Searches**: Quickly access common search terms and filter by communities via interactive chips.
+
+### ⌨️ Desktop Power Features
+*   **Global Shortcuts**: Navigate like a pro with `Ctrl/Cmd + N` (New Task), `Ctrl/Cmd + F` (Search), and `Ctrl/Cmd + Space` (AI Voice).
+*   **Focus Optimized**: Reliable keyboard interaction across all main screens.
+
 ### 🔔 Granular Notification Settings
 *   **Essential Alerts**: Dedicated controls for Task Assignments, Due Date Reminders (24h lead), and Community Mentions.
 *   **General & Promotional**: Opt-in/out of Daily Briefings and News & Offers separately.
@@ -28,6 +37,7 @@
 *   **Slate & Mint Aesthetic**: A modern, deep-slate charcoal background with vibrant mint-green accents.
 *   **Semantic Priority Colors**: Task cards subtly shift color based on priority (Warm red tint for High, Calm blue-grey for Low).
 *   **Safe Area Optimized**: Guaranteed UI stability on devices with notches or system bars.
+*   **Empty State Visuals**: Beautifully illustrated empty states for dashboards and communities with zero tasks.
 *   **Haptic Micro-Interactions**: Subtle tactile feedback on every toggle, button press, and swipe.
 *   **Context-Aware Themes**: Seamlessly switches between a crisp White Light Mode and a deep Slate Dark Mode.
 

@@ -37,3 +37,50 @@ class DashboardEmptyState extends StatelessWidget {
     );
   }
 }
+
+class CommunityEmptyState extends StatelessWidget {
+  const CommunityEmptyState({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.inventory_2_outlined,
+            size: 100,
+            color: colorScheme.onSurface.withOpacity(0.2),
+          ),
+          const SizedBox(height: 24),
+          Text(
+            'No tasks here yet.',
+            style: textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Enjoy the silence, or add a new task to get started.',
+            style: textTheme.bodyMedium?.copyWith(
+              color: colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 32),
+          FilledButton.icon(
+            onPressed: () {},
+            icon: const Icon(Icons.add),
+            label: const Text('Create Task'),
+            style: FilledButton.styleFrom(
+              backgroundColor: colorScheme.primary,
+              foregroundColor: colorScheme.onPrimary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

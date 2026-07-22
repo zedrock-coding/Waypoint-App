@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:isar/isar.dart';
 import 'package:provider/provider.dart';
 import 'models/category.dart';
 import 'ai_voice_overlay.dart';
 import 'repositories/category_repository.dart';
+import 'widgets/task_search_delegate.dart';
+import 'widgets/app_intents.dart';
+import 'widgets/task_form_utils.dart';
 
 class AppShell extends StatelessWidget {
   final Widget child;
@@ -150,87 +154,126 @@ class AppShell extends StatelessWidget {
       ),
     );
 
-    return SafeArea(
-      top: true,
-      child: Scaffold(
-        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      drawer: isDesktop ? null : Drawer(
-        backgroundColor: colorScheme.surface,
-        child: sidebarContent,
-      ),
-      endDrawer: isDesktop ? null : _buildNotificationEndDrawer(context),
-      body: Row(
-        children: [
-          if (isDesktop) 
-            Container(
-              width: 280, 
-              decoration: BoxDecoration(
-                color: colorScheme.surface,
-                border: Border(right: BorderSide(color: colorScheme.outlineVariant, width: 1)),
-              ),
-              child: sidebarContent
+    return Shortcuts(
+      shortcuts: <ShortcutActivator, Intent>{
+        // Windows/Linux (Control)
+        const SingleActivator(LogicalKeyboardKey.keyN, control: true): const NewTaskIntent(),
+        const SingleActivator(LogicalKeyboardKey.keyF, control: true): const SearchIntent(),
+        const SingleActivator(LogicalKeyboardKey.space, control: true): const AIVoiceIntent(),
+        // macOS (Meta)
+        const SingleActivator(LogicalKeyboardKey.keyN, meta: true): const NewTaskIntent(),
+        const SingleActivator(LogicalKeyboardKey.keyF, meta: true): const SearchIntent(),
+        const SingleActivator(LogicalKeyboardKey.space, meta: true): const AIVoiceIntent(),
+      },
+      child: Actions(
+        actions: <Type, Action<Intent>>{
+          NewTaskIntent: CallbackAction<NewTaskIntent>(
+            onInvoke: (intent) => showAddTaskForm(context, isar: isar),
+          ),
+          SearchIntent: CallbackAction<SearchIntent>(
+            onInvoke: (intent) => showSearch(
+              context: context,
+              delegate: CustomTaskSearchDelegate(),
             ),
-          Expanded(
-            child: Column(
+          ),
+          AIVoiceIntent: CallbackAction<AIVoiceIntent>(
+            onInvoke: (intent) => _showAIVoiceOverlay(context, isDesktop),
+          ),
+        },
+        child: Focus(
+          autofocus: true,
+          child: SafeArea(
+            top: true,
+            child: Scaffold(
+            backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+            drawer: isDesktop ? null : Drawer(
+              backgroundColor: colorScheme.surface,
+              child: sidebarContent,
+            ),
+            endDrawer: isDesktop ? null : _buildNotificationEndDrawer(context),
+            body: Row(
               children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                  child: Row(
+                if (isDesktop) 
+                  Container(
+                    width: 280, 
+                    decoration: BoxDecoration(
+                      color: colorScheme.surface,
+                      border: Border(right: BorderSide(color: colorScheme.outlineVariant, width: 1)),
+                    ),
+                    child: sidebarContent
+                  ),
+                Expanded(
+                  child: Column(
                     children: [
-                      if (!isDesktop)
-                        Builder(
-                          builder: (context) => IconButton(
-                            icon: Icon(Icons.menu, color: colorScheme.onSurface),
-                            onPressed: () => Scaffold.of(context).openDrawer(),
-                          ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                        child: Row(
+                          children: [
+                            if (!isDesktop)
+                              Builder(
+                                builder: (context) => IconButton(
+                                  icon: Icon(Icons.menu, color: colorScheme.onSurface),
+                                  onPressed: () => Scaffold.of(context).openDrawer(),
+                                ),
+                              ),
+                            if (!isDesktop) const SizedBox(width: 8),
+                            Text(
+                              title,
+                              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: colorScheme.onSurface,
+                              ),
+                            ),
+                            const Spacer(),
+                            IconButton(
+                              icon: Icon(Icons.search, color: colorScheme.onSurface.withOpacity(0.7)),
+                              onPressed: () => showSearch(
+                                context: context,
+                                delegate: CustomTaskSearchDelegate(),
+                              ),
+                            ),
+                            IconButton(
+                              icon: Icon(Icons.auto_awesome_rounded, color: colorScheme.primary),
+                              onPressed: () => _showAIVoiceOverlay(context, isDesktop),
+                            ),
+                            IconButton(
+                              icon: Icon(Icons.notifications_none_rounded, color: colorScheme.onSurface.withOpacity(0.7)),
+                              onPressed: () {
+                                if (isDesktop) {
+                                  _showNotificationMenu(context);
+                                } else {
+                                  Scaffold.of(context).openEndDrawer();
+                                }
+                              },
+                            ),
+                            PopupMenuButton<String>(
+                              icon: Icon(Icons.account_circle_outlined, color: colorScheme.onSurface.withOpacity(0.7)),
+                              offset: const Offset(0, 45),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                              onSelected: (value) {},
+                              itemBuilder: (context) => [
+                                const PopupMenuItem(value: 'settings', child: ListTile(dense: true, leading: Icon(Icons.manage_accounts), title: Text('Account Settings'))),
+                                const PopupMenuItem(value: 'communities', child: ListTile(dense: true, leading: Icon(Icons.hub), title: Text('Manage Communities'))),
+                                const PopupMenuDivider(),
+                                const PopupMenuItem(value: 'logout', child: ListTile(dense: true, leading: Icon(Icons.logout, color: Colors.red), title: Text('Log Out', style: TextStyle(color: Colors.red)))),
+                              ],
+                            ),
+                          ],
                         ),
-                      if (!isDesktop) const SizedBox(width: 8),
-                      Text(
-                        title,
-                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: colorScheme.onSurface,
-                        ),
                       ),
-                      const Spacer(),
-                      IconButton(
-                        icon: Icon(Icons.auto_awesome_rounded, color: colorScheme.primary),
-                        onPressed: () => _showAIVoiceOverlay(context, isDesktop),
-                      ),
-                      IconButton(
-                        icon: Icon(Icons.notifications_none_rounded, color: colorScheme.onSurface.withOpacity(0.7)),
-                        onPressed: () {
-                          if (isDesktop) {
-                            _showNotificationMenu(context);
-                          } else {
-                            Scaffold.of(context).openEndDrawer();
-                          }
-                        },
-                      ),
-                      PopupMenuButton<String>(
-                        icon: Icon(Icons.account_circle_outlined, color: colorScheme.onSurface.withOpacity(0.7)),
-                        offset: const Offset(0, 45),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                        onSelected: (value) {},
-                        itemBuilder: (context) => [
-                          const PopupMenuItem(value: 'settings', child: ListTile(dense: true, leading: Icon(Icons.manage_accounts), title: Text('Account Settings'))),
-                          const PopupMenuItem(value: 'communities', child: ListTile(dense: true, leading: Icon(Icons.hub), title: Text('Manage Communities'))),
-                          const PopupMenuDivider(),
-                          const PopupMenuItem(value: 'logout', child: ListTile(dense: true, leading: Icon(Icons.logout, color: Colors.red), title: Text('Log Out', style: TextStyle(color: Colors.red)))),
-                        ],
-                      ),
+                      Expanded(child: child),
                     ],
                   ),
                 ),
-                Expanded(child: child),
               ],
             ),
+            floatingActionButton: floatingActionButton,
           ),
-        ],
+        ),
       ),
-      floatingActionButton: floatingActionButton,
-    ));
-  }
+    ),
+  );
+}
 
   void _showAIVoiceOverlay(BuildContext context, bool isDesktop) {
     if (!isDesktop) {

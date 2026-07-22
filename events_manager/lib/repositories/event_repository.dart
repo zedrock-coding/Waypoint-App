@@ -55,6 +55,17 @@ class EventRepository {
     });
   }
 
+  Future<List<Event>> searchEvents(String query) async {
+    if (query.isEmpty) return [];
+    return await isar.events
+        .filter()
+        .titleContains(query, caseSensitive: false)
+        .or()
+        .descriptionContains(query, caseSensitive: false)
+        .sortByDateTime()
+        .findAll();
+  }
+
   /// Optimized method to get the dashboard list in one go if possible
   Future<List<dynamic>> getDashboardList({
     bool sortByCategory = true,
