@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:isar/isar.dart';
+import 'package:provider/provider.dart';
 import 'models/category.dart';
 import 'ai_voice_overlay.dart';
+import 'repositories/category_repository.dart';
 
 class AppShell extends StatelessWidget {
   final Widget child;
@@ -21,11 +23,14 @@ class AppShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final categoryRepo = context.read<CategoryRepository>();
     final double width = MediaQuery.of(context).size.width;
     final bool isDesktop = width >= 800;
     final String currentRoute = ModalRoute.of(context)?.settings.name ?? '/';
     final ColorScheme colorScheme = Theme.of(context).colorScheme;
 
+    // ... (rest of the helper functions remain similar but using proper routing)
+    
     Widget navItem({
       required IconData icon,
       required String label,
@@ -60,7 +65,6 @@ class AppShell extends StatelessWidget {
                   size: isSubItem ? 18 : 22,
                 ),
                 const SizedBox(width: 16),
-                // --- FIXED OVERFLOW HERE ---
                 Expanded(
                   child: Text(
                     label,
@@ -109,9 +113,8 @@ class AppShell extends StatelessWidget {
           const SizedBox(height: 8),
           navItem(icon: Icons.dashboard_rounded, label: 'Dashboard', route: '/'),
           
-          // --- COMMUNITIES TREE (ExpansionTile) ---
           StreamBuilder<List<Category>>(
-            stream: isar.categorys.filter().parentIsNull().watch(fireImmediately: true),
+            stream: categoryRepo.watchRootCategories(),
             builder: (context, snapshot) {
               final rootCategories = snapshot.data ?? [];
               return Theme(
@@ -147,8 +150,10 @@ class AppShell extends StatelessWidget {
       ),
     );
 
-    return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+    return SafeArea(
+      top: true,
+      child: Scaffold(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       drawer: isDesktop ? null : Drawer(
         backgroundColor: colorScheme.surface,
         child: sidebarContent,
@@ -168,7 +173,6 @@ class AppShell extends StatelessWidget {
           Expanded(
             child: Column(
               children: [
-                // Custom Header
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
                   child: Row(
@@ -225,7 +229,7 @@ class AppShell extends StatelessWidget {
         ],
       ),
       floatingActionButton: floatingActionButton,
-    );
+    ));
   }
 
   void _showAIVoiceOverlay(BuildContext context, bool isDesktop) {

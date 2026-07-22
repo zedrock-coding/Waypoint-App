@@ -12,5 +12,15 @@ class Settings {
 
   String? customThemeJson;
 
+  // Essential Alerts
+  bool taskAssignmentsEnabled = true;
+  bool dueDateRemindersEnabled = true;
+  bool communityMentionsEnabled = true;
+
+  // General & Promotional
+  bool dailyBriefingEnabled = true;
+  bool newsAndOffersEnabled = false;
+
+  // Legacy field - keeping for migration if needed, but will use dailyBriefingEnabled instead
   bool remindersEnabled = false;
 }

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:isar/isar.dart';
+import 'package:provider/provider.dart';
 import 'models/category.dart';
 import 'app_shell.dart';
+import 'repositories/category_repository.dart';
 
 class CategoryPage extends StatefulWidget {
   final Isar isar;
@@ -13,29 +15,19 @@ class CategoryPage extends StatefulWidget {
 
 class _CategoryPageState extends State<CategoryPage> {
   final _categoryController = TextEditingController();
-  late Stream<List<Category>> _categoryStream;
-
-  @override
-  void initState() {
-    super.initState();
-    _categoryStream = widget.isar.categorys
-        .where()
-        .watch(fireImmediately: true)
-        .asBroadcastStream();
-  }
 
   Future<void> _addCategory() async {
     if (_categoryController.text.isNotEmpty) {
+      final categoryRepo = context.read<CategoryRepository>();
       final newCategory = Category()..name = _categoryController.text;
-      await widget.isar.writeTxn(() async {
-        await widget.isar.categorys.put(newCategory);
-      });
+      await categoryRepo.saveCategory(newCategory);
       _categoryController.clear();
     }
   }
 
   Future<void> _deleteCategory(Id id) async {
-    final cat = await widget.isar.categorys.get(id);
+    final categoryRepo = context.read<CategoryRepository>();
+    final cat = await categoryRepo.getCategoryById(id);
     if (cat != null && cat.name == 'General') {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -44,13 +36,13 @@ class _CategoryPageState extends State<CategoryPage> {
       }
       return;
     }
-    await widget.isar.writeTxn(() async {
-      await widget.isar.categorys.delete(id);
-    });
+    await categoryRepo.deleteCategory(id);
   }
 
   @override
   Widget build(BuildContext context) {
+    final categoryRepo = context.read<CategoryRepository>();
+
     return AppShell(
       title: 'Manage Categories',
       isar: widget.isar,
@@ -79,15 +71,12 @@ class _CategoryPageState extends State<CategoryPage> {
           ),
           Expanded(
             child: StreamBuilder<List<Category>>(
-              stream: _categoryStream,
+              stream: categoryRepo.watchCategories(),
               builder: (context, snapshot) {
-                if (!snapshot.hasData) {
-                  return const Center(child: CircularProgressIndicator());
-                }
+                if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
                 final categories = snapshot.data!;
-                if (categories.isEmpty) {
-                  return const Center(child: Text('No categories found.'));
-                }
+                if (categories.isEmpty) return const Center(child: Text('No categories found.'));
+                
                 return ListView.builder(
                   itemCount: categories.length,
                   itemBuilder: (context, index) {

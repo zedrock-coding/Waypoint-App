@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:isar/isar.dart';
 import 'package:provider/provider.dart';
-import 'models/settings.dart';
 import 'app_shell.dart';
 import 'notification_service.dart';
 import 'theme_provider.dart';
@@ -18,34 +17,34 @@ class SettingPage extends StatefulWidget {
 class _SettingPageState extends State<SettingPage> {
   final NotificationService _notificationService = NotificationService();
 
-  Future<void> _toggleReminders(bool enabled, ThemeProvider provider) async {
+  Future<void> _handleNotificationToggle(String key, bool enabled, ThemeProvider provider) async {
     HapticFeedback.selectionClick();
-    if (enabled) {
-      final granted = await _notificationService.requestPermissions();
-      if (granted) {
-        await _notificationService.scheduleDailyNotification(
-          id: 0,
-          title: 'Helm Reminder',
-          body: 'Time to check your tasks for the day!',
-          time: const TimeOfDay(hour: 9, minute: 0),
-        );
-      } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Notification permissions denied.')),
+    
+    // Specifically handle Daily Briefing for notification scheduling
+    if (key == 'dailyBriefing') {
+      if (enabled) {
+        final granted = await _notificationService.requestPermissions();
+        if (granted) {
+          await _notificationService.scheduleDailyNotification(
+            id: 0,
+            title: 'Helm Reminder',
+            body: 'Time to check your tasks for the day!',
+            time: const TimeOfDay(hour: 9, minute: 0),
           );
+        } else {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Notification permissions denied.')),
+            );
+          }
+          return;
         }
-        return;
+      } else {
+        await _notificationService.cancelAllNotifications();
       }
-    } else {
-      await _notificationService.cancelAllNotifications();
     }
 
-    provider.settings.remindersEnabled = enabled;
-    await widget.isar.writeTxn(() async {
-      await widget.isar.settings.put(provider.settings);
-    });
-    provider.refresh();
+    await provider.updateNotificationSetting(key, enabled);
   }
 
   @override
@@ -61,15 +60,9 @@ class _SettingPageState extends State<SettingPage> {
       child: ListView(
         padding: const EdgeInsets.all(24.0),
         children: [
-          Text('Appearance', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+          _buildSectionHeader('Appearance'),
           const SizedBox(height: 16),
-          Card(
-            margin: EdgeInsets.zero,
-            color: Theme.of(context).cardColor,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-              side: BorderSide(color: colorScheme.outlineVariant.withOpacity(0.5)),
-            ),
+          _buildCard(
             child: Column(
               children: [
                 RadioListTile<int>(
@@ -95,8 +88,9 @@ class _SettingPageState extends State<SettingPage> {
               ],
             ),
           ),
+          
           const SizedBox(height: 24),
-          Text('Typography', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+          _buildSectionHeader('Typography'),
           const SizedBox(height: 16),
           DropdownButtonFormField<int>(
             value: settings.fontSizeIndex,
@@ -112,16 +106,109 @@ class _SettingPageState extends State<SettingPage> {
               themeProvider.updateFontSize(v!);
             },
           ),
-          const SizedBox(height: 24),
-          Text('Notifications', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
-          SwitchListTile(
-            title: const Text('Daily Reminders'),
-            subtitle: const Text('Morning briefing at 9:00 AM'),
-            value: settings.remindersEnabled,
-            onChanged: (v) => _toggleReminders(v, themeProvider),
+          
+          const SizedBox(height: 32),
+          _buildSectionHeader('Essential Alerts', color: colorScheme.primary),
+          const SizedBox(height: 16),
+          _buildCard(
+            child: Column(
+              children: [
+                _buildNotificationSwitch(
+                  title: 'Task Assignments',
+                  subtitle: 'Notify when I am assigned a task',
+                  value: settings.taskAssignmentsEnabled,
+                  onChanged: (v) => _handleNotificationToggle('taskAssignments', v, themeProvider),
+                ),
+                _buildNotificationSwitch(
+                  title: 'Due Date Reminders',
+                  subtitle: 'Notify 24 hours before a task is due',
+                  value: settings.dueDateRemindersEnabled,
+                  onChanged: (v) => _handleNotificationToggle('dueDateReminders', v, themeProvider),
+                ),
+                _buildNotificationSwitch(
+                  title: 'Community Mentions',
+                  subtitle: 'Notify when I am tagged in a comment',
+                  value: settings.communityMentionsEnabled,
+                  onChanged: (v) => _handleNotificationToggle('communityMentions', v, themeProvider),
+                ),
+              ],
+            ),
           ),
+          
+          const SizedBox(height: 24),
+          _buildSectionHeader('General & Promotional'),
+          const SizedBox(height: 16),
+          _buildCard(
+            child: Column(
+              children: [
+                _buildNotificationSwitch(
+                  title: 'Daily Briefing',
+                  subtitle: 'Morning summary at 9:00 AM',
+                  value: settings.dailyBriefingEnabled,
+                  onChanged: (v) => _handleNotificationToggle('dailyBriefing', v, themeProvider),
+                ),
+                _buildNotificationSwitch(
+                  title: 'News & Offers',
+                  subtitle: 'Receive tips, marketing, and promotional updates',
+                  value: settings.newsAndOffersEnabled,
+                  onChanged: (v) => _handleNotificationToggle('newsAndOffers', v, themeProvider),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+          _buildSectionHeader('Support & Info'),
+          const SizedBox(height: 16),
+          _buildCard(
+            child: ListTile(
+              title: const Text('About Helm'),
+              subtitle: const Text('Version, Licenses, and more'),
+              leading: const Icon(Icons.info_outline),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.pushNamed(context, '/about'),
+            ),
+          ),
+          const SizedBox(height: 40),
         ],
       ),
+    );
+  }
+
+  Widget _buildSectionHeader(String title, {Color? color}) {
+    return Text(
+      title,
+      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+        fontWeight: FontWeight.bold,
+        color: color,
+      ),
+    );
+  }
+
+  Widget _buildCard({required Widget child}) {
+    return Card(
+      margin: EdgeInsets.zero,
+      color: Theme.of(context).cardColor,
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant.withOpacity(0.5)),
+      ),
+      child: child,
+    );
+  }
+
+  Widget _buildNotificationSwitch({
+    required String title,
+    required String subtitle,
+    required bool value,
+    required ValueChanged<bool> onChanged,
+  }) {
+    return SwitchListTile(
+      title: Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
+      subtitle: Text(subtitle, style: TextStyle(fontSize: 13, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6))),
+      value: value,
+      activeColor: Theme.of(context).colorScheme.primary,
+      onChanged: onChanged,
     );
   }
 }

@@ -7,12 +7,17 @@
 
 ## 🚀 Key Features
 
-### 📊 Team Velocity Dashboard
-*   **Actionable Snapshots**: A 60/40 dual-card layout at the top of your dashboard.
-*   **Progress Gauges**: Thick Circular and Linear indicators showing real-time completion percentages.
-*   **Streak Tracking**: Gamified consistency tracking with a "Streak" flame indicator.
-*   **Interactive Goals**: Adjust daily task targets directly from the dashboard via a sleek edit dialog.
-*   **Quick Controls**: Manage Daily Reminders and global Font Size directly from the dashboard.
+### 📊 Optimized Velocity Dashboard
+*   **Actionable Snapshots**: A responsive 60/40 dual-card layout at the top of your dashboard.
+*   **Performance Tuning**: High-speed list rendering using in-memory grouping and optimized Isar queries.
+*   **Responsive Visibility**: Intelligent UI that hides "Quick Settings" on narrow mobile screens (<900px) to maximize task visibility.
+*   **Progress Gauges**: Compact Circular and Linear indicators showing real-time completion percentages.
+*   **Quick Controls**: Unified state-management for managing Reminders and global Font Size directly from the dashboard.
+
+### 🔔 Granular Notification Settings
+*   **Essential Alerts**: Dedicated controls for Task Assignments, Due Date Reminders (24h lead), and Community Mentions.
+*   **General & Promotional**: Opt-in/out of Daily Briefings and News & Offers separately.
+*   **Mint-Green Styling**: Clean, Material 3 toggles that adhere to the app's premium aesthetic.
 
 ### 🤖 Hands-Free AI Voice UI
 *   **Listening Overlay**: Modern pulsing microphone animation with real-time state feedback.
@@ -22,23 +27,16 @@
 ### 🎨 Premium UI/UX
 *   **Slate & Mint Aesthetic**: A modern, deep-slate charcoal background with vibrant mint-green accents.
 *   **Semantic Priority Colors**: Task cards subtly shift color based on priority (Warm red tint for High, Calm blue-grey for Low).
-*   **Material 3 Ready**: Full use of M3 components, including Segmented Buttons and elevated surface depths.
+*   **Safe Area Optimized**: Guaranteed UI stability on devices with notches or system bars.
 *   **Haptic Micro-Interactions**: Subtle tactile feedback on every toggle, button press, and swipe.
 *   **Context-Aware Themes**: Seamlessly switches between a crisp White Light Mode and a deep Slate Dark Mode.
 
-### 🛠 Robust Core Functionality & Collaboration
-*   **Communities Tree**: Hierarchical "Communities" section using `ExpansionTile` for professional project organization.
-*   **Role-Based Access**: Level 1 (Admin) and Level 2 (User) roles with strictly gated UI controls for task assignments.
-*   **Community Gating**: Securely filter assignee lists based on the active community context.
+### 🏗 Architecture & Collaboration
+*   **Repository Pattern**: Clean separation of concerns using `EventRepository` and `CategoryRepository`.
+*   **Centralized State**: Unified state management via `Provider` and a robust `ThemeProvider`.
+*   **Communities Tree**: Hierarchical organization using `ExpansionTile` for professional project mapping.
 *   **Nested Sub-Tasks**: Create hierarchical task trees with "L-shaped" visual connectors.
 *   **Advanced Undo System**: Robust restoration with deep-copy logic ensuring all categories and assignees are perfectly preserved.
-*   **Intelligent Input**: Add assignees rapidly using commas or the Enter key.
-*   **Secure Invitations**: Generate and copy community invite links directly from the Settings page.
-
-### 📱 Fully Responsive
-*   **Adaptive Sidebar**: A persistent navigation sidebar on Desktop (>800px) that transforms into a sleek drawer on Mobile.
-*   **Desktop Pro**: Optimized task forms open in constrained floating windows for better screen utilization.
-*   **Zero-Overflow Layouts**: Uses `LayoutBuilder` to intelligently stack dashboard components vertically on narrow screens.
 
 ## 🛠 Tech Stack
 *   **Framework**: Flutter (Material 3)
@@ -46,14 +44,15 @@
 *   **State Management**: Provider (Centralized Theme & Settings)
 *   **Local Storage**: path_provider
 *   **Notifications**: flutter_local_notifications (Timezone-aware)
+*   **Versioning**: package_info_plus (Dynamic version tracking)
+*   **Localization/Formatting**: intl
 
 ## ⚙️ Installation & Setup
 
 ### Prerequisites
-*   **Flutter SDK**: ^3.0.0
+*   **Flutter SDK**: ^3.11.0
 *   **Windows Build Tools**: Visual Studio 2022 with "Desktop development with C++" workload.
-*   **Linux Build Tools**: `clang`, `cmake`, `pkg-config`, `ninja-build`, and GTK development headers (`libgtk-3-dev` on Debian/Ubuntu).
-*   **Important (Windows Notifications)**: Ensure "**C++ ATL for latest v143 build tools**" is installed via the Visual Studio Installer to enable the reminder system.
+*   **Linux Build Tools**: `clang`, `cmake`, `pkg-config`, `ninja-build`, and GTK development headers.
 
 ### Steps
 1.  **Clone the Repo**:
@@ -71,41 +70,10 @@
     ```
 4.  **Run the App**:
     ```bash
-    # For Windows
-    flutter run -d windows
-    
-    # For Android
-    flutter run -d android
-    
-    # For Linux
-    flutter run -d linux
+    flutter run
     ```
 
 ---
 
 ## 🔐 Generating a Signed APK for Android
-
-To prepare **Helm** for the Google Play Store or private distribution, follow these steps:
-
-### 1. Create a Keystore
-Run the following command in your terminal to generate a secure upload key:
-```bash
-keytool -genkey -v -keystore helm-release.keystore -alias helm -keyalg RSA -keysize 2048 -validity 10000
-```
-*Keep your password and the `.keystore` file safe!*
-
-### 2. Configure Gradle
-Create a file named `android/key.properties` and add your credentials (replacing `your_password` with the actual passwords you chose):
-```properties
-storePassword=your_password
-keyPassword=your_password
-keyAlias=helm
-storeFile=../helm-release.keystore
-```
-
-### 3. Build the Release
-Execute the following command to generate the signed APK:
-```bash
-flutter build apk --release
-```
-The final file will be located at: `build/app/outputs/flutter-apk/app-release.apk`
+See the official [Flutter documentation](https://docs.flutter.dev/deployment/android) for details on setting up keystores and release properties.

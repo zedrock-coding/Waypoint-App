@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:isar/isar.dart';
 import 'models/settings.dart';
+import 'theme/app_theme.dart';
 
 class ThemeProvider with ChangeNotifier {
   final Isar isar;
@@ -18,7 +19,7 @@ class ThemeProvider with ChangeNotifier {
       _settings = s;
       notifyListeners();
     }
-    // Watch for external changes (like from other pages)
+    
     isar.settings.watchObject(0).listen((newSettings) {
       if (newSettings != null) {
         _settings = newSettings;
@@ -28,29 +29,53 @@ class ThemeProvider with ChangeNotifier {
   }
 
   ThemeMode get themeMode {
-    // 0: Light, 1: Dark
-    if (_settings.themeMode == 1) return ThemeMode.dark;
-    return ThemeMode.light; 
+    return _settings.themeMode == 1 ? ThemeMode.dark : ThemeMode.light;
+  }
+
+  double get textScaleFactor {
+    return AppTheme.fontScales[_settings.fontSizeIndex.clamp(0, 4)];
   }
 
   Future<void> updateThemeMode(int mode) async {
     _settings.themeMode = mode;
     notifyListeners();
-    await isar.writeTxn(() async {
-      await isar.settings.put(_settings);
-    });
+    await isar.writeTxn(() => isar.settings.put(_settings));
   }
   
-  // Font size management integrated here for stability
   Future<void> updateFontSize(int index) async {
     _settings.fontSizeIndex = index;
     notifyListeners();
-    await isar.writeTxn(() async {
-      await isar.settings.put(_settings);
-    });
+    await isar.writeTxn(() => isar.settings.put(_settings));
   }
 
-  // Public method to allow external components to trigger a UI refresh
+  Future<void> toggleReminders(bool enabled) async {
+    _settings.dailyBriefingEnabled = enabled;
+    notifyListeners();
+    await isar.writeTxn(() => isar.settings.put(_settings));
+  }
+
+  Future<void> updateNotificationSetting(String key, bool value) async {
+    switch (key) {
+      case 'taskAssignments':
+        _settings.taskAssignmentsEnabled = value;
+        break;
+      case 'dueDateReminders':
+        _settings.dueDateRemindersEnabled = value;
+        break;
+      case 'communityMentions':
+        _settings.communityMentionsEnabled = value;
+        break;
+      case 'dailyBriefing':
+        _settings.dailyBriefingEnabled = value;
+        break;
+      case 'newsAndOffers':
+        _settings.newsAndOffersEnabled = value;
+        break;
+    }
+    notifyListeners();
+    await isar.writeTxn(() => isar.settings.put(_settings));
+  }
+
   void refresh() {
     notifyListeners();
   }
