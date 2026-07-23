@@ -8,8 +8,10 @@ import 'repositories/category_repository.dart';
 import 'widgets/task_search_delegate.dart';
 import 'widgets/app_intents.dart';
 import 'widgets/task_form_utils.dart';
+import 'widgets/ai_text_drawer.dart';
+import 'widgets/notification_feed.dart';
 
-class AppShell extends StatelessWidget {
+class AppShell extends StatefulWidget {
   final Widget child;
   final String title;
   final List<Widget>? actions;
@@ -26,6 +28,14 @@ class AppShell extends StatelessWidget {
   });
 
   @override
+  State<AppShell> createState() => _AppShellState();
+}
+
+class _AppShellState extends State<AppShell> {
+  bool _showDesktopNotifications = false;
+  final LayerLink _notificationLayerLink = LayerLink();
+
+  @override
   Widget build(BuildContext context) {
     final categoryRepo = context.read<CategoryRepository>();
     final double width = MediaQuery.of(context).size.width;
@@ -33,8 +43,7 @@ class AppShell extends StatelessWidget {
     final String currentRoute = ModalRoute.of(context)?.settings.name ?? '/';
     final ColorScheme colorScheme = Theme.of(context).colorScheme;
 
-    // ... (rest of the helper functions remain similar but using proper routing)
-    
+    // Helper functions moved inside State
     Widget navItem({
       required IconData icon,
       required String label,
@@ -156,11 +165,9 @@ class AppShell extends StatelessWidget {
 
     return Shortcuts(
       shortcuts: <ShortcutActivator, Intent>{
-        // Windows/Linux (Control)
         const SingleActivator(LogicalKeyboardKey.keyN, control: true): const NewTaskIntent(),
         const SingleActivator(LogicalKeyboardKey.keyF, control: true): const SearchIntent(),
         const SingleActivator(LogicalKeyboardKey.space, control: true): const AIVoiceIntent(),
-        // macOS (Meta)
         const SingleActivator(LogicalKeyboardKey.keyN, meta: true): const NewTaskIntent(),
         const SingleActivator(LogicalKeyboardKey.keyF, meta: true): const SearchIntent(),
         const SingleActivator(LogicalKeyboardKey.space, meta: true): const AIVoiceIntent(),
@@ -168,7 +175,7 @@ class AppShell extends StatelessWidget {
       child: Actions(
         actions: <Type, Action<Intent>>{
           NewTaskIntent: CallbackAction<NewTaskIntent>(
-            onInvoke: (intent) => showAddTaskForm(context, isar: isar),
+            onInvoke: (intent) => showAddTaskForm(context, isar: widget.isar),
           ),
           SearchIntent: CallbackAction<SearchIntent>(
             onInvoke: (intent) => showSearch(
@@ -184,90 +191,129 @@ class AppShell extends StatelessWidget {
           autofocus: true,
           child: SafeArea(
             top: true,
-            child: Scaffold(
-            backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-            drawer: isDesktop ? null : Drawer(
-              backgroundColor: colorScheme.surface,
-              child: sidebarContent,
-            ),
-            endDrawer: isDesktop ? null : _buildNotificationEndDrawer(context),
-            body: Row(
-              children: [
-                if (isDesktop) 
-                  Container(
-                    width: 280, 
-                    decoration: BoxDecoration(
-                      color: colorScheme.surface,
-                      border: Border(right: BorderSide(color: colorScheme.outlineVariant, width: 1)),
-                    ),
-                    child: sidebarContent
-                  ),
-                Expanded(
-                  child: Column(
+            child: GestureDetector(
+              onTap: () {
+                if (_showDesktopNotifications) setState(() => _showDesktopNotifications = false);
+              },
+              child: Scaffold(
+              backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+              drawer: isDesktop ? null : Drawer(
+                backgroundColor: colorScheme.surface,
+                child: sidebarContent,
+              ),
+              endDrawer: const AITextDrawer(),
+              body: Stack(
+                children: [
+                  Row(
                     children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                        child: Row(
+                      if (isDesktop) 
+                        Container(
+                          width: 280, 
+                          decoration: BoxDecoration(
+                            color: colorScheme.surface,
+                            border: Border(right: BorderSide(color: colorScheme.outlineVariant, width: 1)),
+                          ),
+                          child: sidebarContent
+                        ),
+                      Expanded(
+                        child: Column(
                           children: [
-                            if (!isDesktop)
-                              Builder(
-                                builder: (context) => IconButton(
-                                  icon: Icon(Icons.menu, color: colorScheme.onSurface),
-                                  onPressed: () => Scaffold.of(context).openDrawer(),
-                                ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                              child: Row(
+                                children: [
+                                  if (!isDesktop)
+                                    Builder(
+                                      builder: (context) => IconButton(
+                                        icon: Icon(Icons.menu, color: colorScheme.onSurface),
+                                        onPressed: () => Scaffold.of(context).openDrawer(),
+                                      ),
+                                    ),
+                                  if (!isDesktop) const SizedBox(width: 8),
+                                  Text(
+                                    widget.title,
+                                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                      fontWeight: FontWeight.bold,
+                                      color: colorScheme.onSurface,
+                                    ),
+                                  ),
+                                  const Spacer(),
+                                  IconButton(
+                                    icon: Icon(Icons.search, color: colorScheme.onSurface.withOpacity(0.7)),
+                                    onPressed: () => showSearch(
+                                      context: context,
+                                      delegate: CustomTaskSearchDelegate(),
+                                    ),
+                                  ),
+                                  IconButton(
+                                    icon: Icon(Icons.auto_awesome_rounded, color: colorScheme.primary),
+                                    onPressed: () => _showAIVoiceOverlay(context, isDesktop),
+                                  ),
+                                  Builder(
+                                    builder: (context) => IconButton(
+                                      icon: Icon(Icons.keyboard_alt_outlined, color: colorScheme.onSurface.withOpacity(0.7)),
+                                      onPressed: () => Scaffold.of(context).openEndDrawer(),
+                                    ),
+                                  ),
+                                  CompositedTransformTarget(
+                                    link: _notificationLayerLink,
+                                    child: IconButton(
+                                      icon: Icon(Icons.notifications_none_rounded, color: colorScheme.onSurface.withOpacity(0.7)),
+                                      onPressed: () {
+                                        if (isDesktop) {
+                                          setState(() => _showDesktopNotifications = !_showDesktopNotifications);
+                                        } else {
+                                          showModalBottomSheet(
+                                            context: context,
+                                            backgroundColor: Colors.transparent,
+                                            builder: (context) => const NotificationFeedUI(),
+                                          );
+                                        }
+                                      },
+                                    ),
+                                  ),
+                                  PopupMenuButton<String>(
+                                    icon: Icon(Icons.account_circle_outlined, color: colorScheme.onSurface.withOpacity(0.7)),
+                                    offset: const Offset(0, 45),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                    onSelected: (value) {
+                                      if (value == 'settings') {
+                                        Navigator.pushNamed(context, '/account-settings');
+                                      }
+                                    },
+                                    itemBuilder: (context) => [
+                                      const PopupMenuItem(value: 'settings', child: ListTile(dense: true, leading: Icon(Icons.manage_accounts), title: Text('Account Settings'))),
+                                      const PopupMenuItem(value: 'communities', child: ListTile(dense: true, leading: Icon(Icons.hub), title: Text('Manage Communities'))),
+                                      const PopupMenuDivider(),
+                                      const PopupMenuItem(value: 'logout', child: ListTile(dense: true, leading: Icon(Icons.logout, color: Colors.red), title: Text('Log Out', style: TextStyle(color: Colors.red)))),
+                                    ],
+                                  ),
+                                ],
                               ),
-                            if (!isDesktop) const SizedBox(width: 8),
-                            Text(
-                              title,
-                              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                fontWeight: FontWeight.bold,
-                                color: colorScheme.onSurface,
-                              ),
                             ),
-                            const Spacer(),
-                            IconButton(
-                              icon: Icon(Icons.search, color: colorScheme.onSurface.withOpacity(0.7)),
-                              onPressed: () => showSearch(
-                                context: context,
-                                delegate: CustomTaskSearchDelegate(),
-                              ),
-                            ),
-                            IconButton(
-                              icon: Icon(Icons.auto_awesome_rounded, color: colorScheme.primary),
-                              onPressed: () => _showAIVoiceOverlay(context, isDesktop),
-                            ),
-                            IconButton(
-                              icon: Icon(Icons.notifications_none_rounded, color: colorScheme.onSurface.withOpacity(0.7)),
-                              onPressed: () {
-                                if (isDesktop) {
-                                  _showNotificationMenu(context);
-                                } else {
-                                  Scaffold.of(context).openEndDrawer();
-                                }
-                              },
-                            ),
-                            PopupMenuButton<String>(
-                              icon: Icon(Icons.account_circle_outlined, color: colorScheme.onSurface.withOpacity(0.7)),
-                              offset: const Offset(0, 45),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                              onSelected: (value) {},
-                              itemBuilder: (context) => [
-                                const PopupMenuItem(value: 'settings', child: ListTile(dense: true, leading: Icon(Icons.manage_accounts), title: Text('Account Settings'))),
-                                const PopupMenuItem(value: 'communities', child: ListTile(dense: true, leading: Icon(Icons.hub), title: Text('Manage Communities'))),
-                                const PopupMenuDivider(),
-                                const PopupMenuItem(value: 'logout', child: ListTile(dense: true, leading: Icon(Icons.logout, color: Colors.red), title: Text('Log Out', style: TextStyle(color: Colors.red)))),
-                              ],
-                            ),
+                            Expanded(child: widget.child),
                           ],
                         ),
                       ),
-                      Expanded(child: child),
                     ],
                   ),
-                ),
-              ],
+                  
+                  // Desktop Notification Overlay ( Snappy alternative to showMenu )
+                  if (isDesktop && _showDesktopNotifications)
+                    Positioned(
+                      top: 60, // Positioned below header
+                      right: 20,
+                      child: CompositedTransformFollower(
+                        link: _notificationLayerLink,
+                        showWhenUnlinked: false,
+                        offset: const Offset(-310, 45),
+                        child: const NotificationFeedUI(),
+                      ),
+                    ),
+                ],
+              ),
+              floatingActionButton: widget.floatingActionButton,
             ),
-            floatingActionButton: floatingActionButton,
           ),
         ),
       ),
@@ -302,35 +348,24 @@ class AppShell extends StatelessWidget {
 
   void _showNotificationMenu(BuildContext context) {
     final RenderBox button = context.findRenderObject() as RenderBox;
-    final Offset position = button.localToGlobal(Offset.zero);
+    final Offset position = button.localToGlobal(Offset(0, button.size.height));
 
     showMenu(
       context: context,
-      position: RelativeRect.fromLTRB(position.dx, position.dy + 60, 20, 0),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      items: [
-        const PopupMenuItem(child: ListTile(dense: true, title: Text("Team meeting in 10 mins"), subtitle: Text("Sync on Project Helm"))),
-        const PopupMenuItem(child: ListTile(dense: true, title: Text("Marketing tasks updated"), subtitle: Text("3 new items added"))),
-      ],
-    );
-  }
-
-  Widget _buildNotificationEndDrawer(BuildContext context) {
-    return Drawer(
-      backgroundColor: Theme.of(context).colorScheme.surface,
-      child: Column(
-        children: [
-          const DrawerHeader(child: Center(child: Text("Notifications", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)))),
-          Expanded(
-            child: ListView(
-              children: const [
-                ListTile(title: Text("Team meeting in 10 mins"), subtitle: Text("Sync on Project Helm")),
-                ListTile(title: Text("Marketing tasks updated"), subtitle: Text("3 new items added")),
-              ],
-            ),
-          ),
-        ],
+      position: RelativeRect.fromLTRB(
+        position.dx - 300, // Offset to the left to align with right-hand button
+        position.dy + 10,
+        MediaQuery.of(context).size.width - position.dx,
+        0,
       ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      constraints: const BoxConstraints(maxWidth: 350, maxHeight: 500),
+      items: [
+        const PopupMenuItem(
+          enabled: false,
+          child: NotificationFeedUI(),
+        ),
+      ],
     );
   }
 }

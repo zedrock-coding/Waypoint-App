@@ -6,7 +6,7 @@ import '../models/category.dart';
 import '../repositories/event_repository.dart';
 import '../repositories/category_repository.dart';
 import 'task_item_card.dart';
-import 'task_form_utils.dart';
+import '../task_detail_page.dart';
 
 class CustomTaskSearchDelegate extends SearchDelegate {
   @override
@@ -84,10 +84,25 @@ class CustomTaskSearchDelegate extends SearchDelegate {
           itemBuilder: (context, index) {
             final event = results[index];
             return TaskItemCard(
+              key: ValueKey('search_task_${event.id}'),
               event: event,
+              index: index,
               onTap: () {
-                close(context, null);
-                showAddTaskForm(context, isar: isar, eventToEdit: event);
+                final double width = MediaQuery.of(context).size.width;
+                if (width <= 900) {
+                  close(context, null);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => TaskDetailScreen(event: event, isar: isar),
+                    ),
+                  );
+                } else {
+                  // For desktop search, we might want to close and select in dashboard,
+                  // but for now, we'll follow the push behavior or just close and let the dashboard handle it.
+                  // Best approach: Close search and return the event to the dashboard.
+                  close(context, event);
+                }
               },
               onDismiss: (direction) async {
                 if (direction == DismissDirection.startToEnd) {

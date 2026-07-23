@@ -10,6 +10,9 @@ import 'settings_page.dart';
 import 'add_event_page.dart';
 import 'category_page.dart';
 import 'about_page.dart';
+import 'task_detail_page.dart';
+import 'onboarding_page.dart';
+import 'account_settings_page.dart';
 import 'app_shell.dart';
 import 'notification_service.dart';
 import 'theme_provider.dart';
@@ -93,6 +96,8 @@ class MyApp extends StatelessWidget {
         '/add-event': (context) => AddEventPage(isar: context.read<Isar>()),
         '/categories': (context) => CategoryPage(isar: context.read<Isar>()),
         '/about': (context) => const AboutScreen(),
+        '/onboarding': (context) => const OnboardingScreen(),
+        '/account-settings': (context) => const AccountSettingsScreen(),
       },
     );
   }
@@ -111,6 +116,7 @@ class _MyHomePageState extends State<MyHomePage> {
   Id? _selectedCategoryId;
   List<dynamic> _flattenedList = [];
   bool _isLoading = true;
+  Event? _selectedEvent;
 
   @override
   void initState() {
@@ -132,9 +138,21 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
+  void _handleReorder(int oldIndex, int newIndex) {
+    setState(() {
+      if (newIndex > oldIndex) {
+        newIndex -= 1;
+      }
+      final item = _flattenedList.removeAt(oldIndex);
+      _flattenedList.insert(newIndex, item);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final isar = context.read<Isar>();
+    final double width = MediaQuery.of(context).size.width;
+    final bool isDesktop = width > 900;
 
     return AppShell(
       title: widget.title,
@@ -149,42 +167,85 @@ class _MyHomePageState extends State<MyHomePage> {
           },
         ),
       ],
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: _selectedEvent == null ? FloatingActionButton(
         onPressed: () {
           HapticFeedback.mediumImpact();
           showAddTaskForm(context, isar: isar);
         },
         child: const Icon(Icons.add),
-      ),
-      child: Column(
+      ) : null,
+      child: Row(
         children: [
-          _buildVelocityDashboard(),
-          if (_sortByCategory) _buildCategoryFilterDropdown(),
           Expanded(
-            child: _isLoading 
-              ? const Center(child: CircularProgressIndicator())
-              : _flattenedList.isEmpty 
-                  ? const DashboardEmptyState()
-                  : ListView.builder(
-                      padding: const EdgeInsets.only(bottom: 24),
-                      itemCount: _flattenedList.length,
-                      itemBuilder: (context, index) {
-                        final item = _flattenedList[index];
-                        if (item is String) {
-                          return CategoryHeaderRow(
-                            categoryName: item,
-                            onAddPressed: () => showAddTaskForm(context, isar: isar, category: item),
-                          );
-                        }
-                        final event = item as Event;
-                        return TaskItemCard(
-                          key: ValueKey('task_${event.id}'),
-                          event: event, 
-                          onTap: () => showAddTaskForm(context, isar: isar, eventToEdit: event),
-                          onDismiss: (direction) => _handleDismiss(event, direction, index),
-                        );
-                      },
-                    ),
+            child: Column(
+              children: [
+                _buildVelocityDashboard(),
+                if (_sortByCategory) _buildCategoryFilterDropdown(),
+                Expanded(
+                  child: _isLoading 
+                    ? const Center(child: CircularProgressIndicator())
+                    : _flattenedList.isEmpty 
+                        ? const DashboardEmptyState()
+                        : ReorderableListView.builder(
+                            buildDefaultDragHandles: false,
+                            padding: const EdgeInsets.only(bottom: 24),
+                            itemCount: _flattenedList.length,
+                            onReorder: _handleReorder,
+                            proxyDecorator: (child, index, animation) => WobbleDecorator(child: child),
+                            itemBuilder: (context, index) {
+                              final item = _flattenedList[index];
+                              if (item is String) {
+                                return CategoryHeaderRow(
+                                  key: ValueKey('header_$item'),
+                                  categoryName: item,
+                                  onAddPressed: () => showAddTaskForm(context, isar: isar, category: item),
+                                );
+                              }
+                              final event = item as Event;
+                              return TaskItemCard(
+                                key: ValueKey('task_${event.id}'),
+                                event: event, 
+                                index: index,
+                                onTap: () {
+                                  if (isDesktop) {
+                                    setState(() => _selectedEvent = event);
+                                  } else {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => TaskDetailScreen(event: event, isar: isar),
+                                      ),
+                                    );
+                                  }
+                                },
+                                onDismiss: (direction) => _handleDismiss(event, direction, index),
+                              );
+                            },
+                          ),
+                ),
+              ],
+            ),
+          ),
+          
+          // Side Panel (Desktop only)
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+            width: (isDesktop && _selectedEvent != null) ? 400 : 0,
+            clipBehavior: Clip.hardEdge,
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surface,
+              border: Border(left: BorderSide(color: Theme.of(context).colorScheme.outlineVariant, width: 0.5)),
+            ),
+            child: _selectedEvent == null 
+                ? const SizedBox.shrink()
+                : TaskDetailContent(
+                    key: ValueKey('detail_${_selectedEvent!.id}'),
+                    event: _selectedEvent!, 
+                    isar: isar,
+                    onClose: () => setState(() => _selectedEvent = null),
+                    useHero: false,
+                  ),
           ),
         ],
       ),
@@ -292,6 +353,63 @@ class _MyHomePageState extends State<MyHomePage> {
               setState(() => _selectedCategoryId = v);
               _refreshList();
             },
+          ),
+        );
+      },
+    );
+  }
+}
+
+class WobbleDecorator extends StatefulWidget {
+  final Widget child;
+  const WobbleDecorator({super.key, required this.child});
+
+  @override
+  State<WobbleDecorator> createState() => _WobbleDecoratorState();
+}
+
+class _WobbleDecoratorState extends State<WobbleDecorator> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 100),
+      vsync: this,
+    )..repeat(reverse: true);
+    
+    // Trigger heavy haptic feedback on pickup
+    HapticFeedback.heavyImpact();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return Transform.rotate(
+          angle: (_controller.value - 0.5) * 0.04, // Oscillates between -0.02 and 0.02 radians
+          child: Material(
+            color: Colors.transparent,
+            child: Container(
+              decoration: const BoxDecoration(
+                boxShadow: [
+                  BoxShadow(
+                    blurRadius: 15,
+                    color: Colors.black54,
+                    offset: Offset(0, 5),
+                  ),
+                ],
+              ),
+              child: widget.child,
+            ),
           ),
         );
       },

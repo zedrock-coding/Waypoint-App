@@ -8,45 +8,40 @@
 ## 🚀 Key Features
 
 ### 📊 Optimized Velocity Dashboard
-*   **Actionable Snapshots**: A responsive 60/40 dual-card layout at the top of your dashboard.
+*   **Master-Detail Desktop Layout**: A professional workspace for large screens with a sliding task detail panel.
+*   **Actionable Snapshots**: A responsive dual-card layout at the top of your dashboard.
 *   **Performance Tuning**: High-speed list rendering using in-memory grouping and optimized Isar queries.
 *   **Responsive Visibility**: Intelligent UI that hides "Quick Settings" on narrow mobile screens (<900px) to maximize task visibility.
 *   **Progress Gauges**: Compact Circular and Linear indicators showing real-time completion percentages.
 *   **Quick Controls**: Unified state-management for managing Reminders and global Font Size directly from the dashboard.
+
+### 📝 Intelligent Task Management
+*   **Drag & Drop Reordering**: Intuitively prioritize your tasks using a reorderable list with custom drag handles.
+*   **Wobble Animation**: Visual feedback during drag-and-drop with a playful oscillation effect.
+*   **Hero Transitions**: Smooth, high-fidelity animations when navigating between the list and task details.
+*   **Nested Sub-Tasks**: Create hierarchical task trees with visual connectors.
+
+### 🤖 Multi-Modal AI Assistant
+*   **Hands-Free Voice UI**: Modern pulsing microphone animation with real-time state feedback and smart transitions.
+*   **AI Text Chat**: A sliding end-drawer fallback for text-based task commands and assistant interactions.
+*   **Adaptive Trigger**: Seamlessly switches between BottomSheet (Mobile) and Dialog/Drawer (Desktop).
 
 ### 🔍 Global Search & Filtering
 *   **Deep Indexing**: Instantly find tasks by title or description using optimized database queries.
 *   **Custom Search UI**: A bespoke, themed search experience with mint-green accents and interactive community filters.
 *   **Recent Searches**: Quickly access common search terms and filter by communities via interactive chips.
 
-### ⌨️ Desktop Power Features
-*   **Global Shortcuts**: Navigate like a pro with `Ctrl/Cmd + N` (New Task), `Ctrl/Cmd + F` (Search), and `Ctrl/Cmd + Space` (AI Voice).
-*   **Focus Optimized**: Reliable keyboard interaction across all main screens.
+### 🔔 Performance-Optimized Notifications
+*   **Activity Feed**: A dedicated notification center for overdue tasks, assignments, and invites.
+*   **Windows Lag-Fix**: Custom state-based overlay system that eliminates UI jank on desktop platforms.
+*   **Granular Settings**: Dedicated controls for Task Alerts, Daily Briefings, and Promotional updates.
 
-### 🔔 Granular Notification Settings
-*   **Essential Alerts**: Dedicated controls for Task Assignments, Due Date Reminders (24h lead), and Community Mentions.
-*   **General & Promotional**: Opt-in/out of Daily Briefings and News & Offers separately.
-*   **Mint-Green Styling**: Clean, Material 3 toggles that adhere to the app's premium aesthetic.
-
-### 🤖 Hands-Free AI Voice UI
-*   **Listening Overlay**: Modern pulsing microphone animation with real-time state feedback.
-*   **Smart Transitions**: Automatically shifts from listening to processing and success states with auto-dismissal.
-*   **Adaptive Trigger**: Slides up as a BottomSheet on mobile or appears as a centered floating dialog on desktop.
-
-### 🎨 Premium UI/UX
+### 🎨 Premium UI/UX & Onboarding
 *   **Slate & Mint Aesthetic**: A modern, deep-slate charcoal background with vibrant mint-green accents.
-*   **Semantic Priority Colors**: Task cards subtly shift color based on priority (Warm red tint for High, Calm blue-grey for Low).
+*   **Interactive Onboarding**: A beautiful 3-page swipeable introduction for new users.
+*   **Account Management**: A dedicated Account Settings screen for profile and security management.
 *   **Safe Area Optimized**: Guaranteed UI stability on devices with notches or system bars.
-*   **Empty State Visuals**: Beautifully illustrated empty states for dashboards and communities with zero tasks.
-*   **Haptic Micro-Interactions**: Subtle tactile feedback on every toggle, button press, and swipe.
-*   **Context-Aware Themes**: Seamlessly switches between a crisp White Light Mode and a deep Slate Dark Mode.
-
-### 🏗 Architecture & Collaboration
-*   **Repository Pattern**: Clean separation of concerns using `EventRepository` and `CategoryRepository`.
-*   **Centralized State**: Unified state management via `Provider` and a robust `ThemeProvider`.
-*   **Communities Tree**: Hierarchical organization using `ExpansionTile` for professional project mapping.
-*   **Nested Sub-Tasks**: Create hierarchical task trees with "L-shaped" visual connectors.
-*   **Advanced Undo System**: Robust restoration with deep-copy logic ensuring all categories and assignees are perfectly preserved.
+*   **Haptic Micro-Interactions**: Tactile feedback on toggles, button presses, and drag-and-drop actions.
 
 ## 🛠 Tech Stack
 *   **Framework**: Flutter (Material 3)

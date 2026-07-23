@@ -1,9 +1,11 @@
-# Global Keyboard Shortcuts Fix Tasks
+# Fix Windows App Lag Tasks
 
-- `[x]` **Phase 1: Fix Activator Logic**
-    - `[x]` Update `SingleActivator` in `app_shell.dart` to support both Ctrl and Meta independently.
-- `[x]` **Phase 2: Ensure Keyboard Focus**
-    - `[x]` Wrap `AppShell` body in a `Focus` widget with `autofocus: true`.
-- `[ ]` **Phase 3: Verification**
-    - `[ ]` Test Ctrl+N, Ctrl+F, and Ctrl+Space on Desktop.
-    - `[ ]` Verify Cmd+N, Cmd+F, and Cmd+Space for Mac users.
+- `[x]` **Phase 1: Component Optimization**
+    - `[x]` Remove `shrinkWrap: true` from `NotificationFeedUI` in `lib/widgets/notification_feed.dart`.
+    - `[x]` Add explicit constraints/height for desktop rendering.
+- `[x]` **Phase 2: Navigation Refinement**
+    - `[x]` Replaced `showMenu` with a high-performance state-based overlay.
+    - `[x]` Integrated `CompositedTransformFollower` for snappy desktop positioning.
+    - `[x]` Added click-outside-to-close logic.
+- `[x]` **Phase 3: Verification**
+    - `[x]` Verified fluid UI interactions on Windows.

@@ -5,12 +5,14 @@ import '../models/event.dart';
 
 class TaskItemCard extends StatelessWidget {
   final Event event;
+  final int index;
   final Function() onTap;
   final Function(DismissDirection) onDismiss;
 
   const TaskItemCard({
     super.key,
     required this.event,
+    required this.index,
     required this.onTap,
     required this.onDismiss,
   });
@@ -31,37 +33,52 @@ class TaskItemCard extends StatelessWidget {
     }
 
     return Dismissible(
-      key: ValueKey(event.id),
+      key: ValueKey('dismiss_${event.id}'),
       background: _buildDismissBackground(colorScheme, Icons.check, colorScheme.primary, Alignment.centerLeft),
       secondaryBackground: _buildDismissBackground(colorScheme, Icons.delete_outline, Colors.red.shade400, Alignment.centerRight),
       onDismissed: (direction) {
         HapticFeedback.mediumImpact();
         onDismiss(direction);
       },
-      child: Card(
-        elevation: 0,
-        color: cardColor,
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-          side: BorderSide(color: colorScheme.outlineVariant.withOpacity(0.5)),
-        ),
-        clipBehavior: Clip.hardEdge,
-        child: InkWell(
-          onTap: () {
-            HapticFeedback.selectionClick();
-            onTap();
-          },
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Row(
-              children: [
-                _buildStatusIcon(isDone, colorScheme),
-                const SizedBox(width: 16),
-                _buildTaskContent(context, isDone, colorScheme),
-                const SizedBox(width: 16),
-                _buildTrailingInfo(isOverdue, colorScheme),
-              ],
+      child: Hero(
+        tag: 'task_card_${event.id}',
+        child: Card(
+          elevation: 0,
+          color: cardColor,
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: BorderSide(color: colorScheme.outlineVariant.withOpacity(0.5)),
+          ),
+          clipBehavior: Clip.hardEdge,
+          child: InkWell(
+            onTap: () {
+              HapticFeedback.selectionClick();
+              onTap();
+            },
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Row(
+                children: [
+                  // DRAG HANDLE
+                  ReorderableDragStartListener(
+                    index: index,
+                    child: Padding(
+                      padding: const EdgeInsets.only(right: 8.0),
+                      child: Icon(
+                        Icons.drag_indicator,
+                        color: colorScheme.onSurface.withOpacity(0.3),
+                        size: 20,
+                      ),
+                    ),
+                  ),
+                  _buildStatusIcon(isDone, colorScheme),
+                  const SizedBox(width: 16),
+                  _buildTaskContent(context, isDone, colorScheme),
+                  const SizedBox(width: 16),
+                  _buildTrailingInfo(isOverdue, colorScheme),
+                ],
+              ),
             ),
           ),
         ),

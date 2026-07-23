@@ -175,7 +175,11 @@ class _AddEventPageState extends State<AddEventPage> {
       onPopInvokedWithResult: (didPop, result) async {
         if (didPop) return;
         final shouldPop = await _onWillPop();
-        if (shouldPop && mounted) Navigator.pop(context);
+        if (shouldPop) {
+          if (context.mounted) {
+            Navigator.pop(context);
+          }
+        }
       },
       child: SafeArea(
         top: true,
