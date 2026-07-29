@@ -43,9 +43,19 @@
 *   **Safe Area Optimized**: Guaranteed UI stability on devices with notches or system bars.
 *   **Haptic Micro-Interactions**: Tactile feedback on toggles, button presses, and drag-and-drop actions.
 
+### 🏗 Architecture & Collaboration
+*   **Supabase Backend**: Integrated PostgreSQL database with Row Level Security (RLS) for secure, scalable data management.
+*   **Community Invite System**: Seamless joining experience via deep links (`helm://invite`) with intelligent auth-state guarding.
+*   **Repository Pattern**: Clean separation of concerns using `EventRepository`, `CategoryRepository`, and `SupabaseService`.
+*   **Centralized State**: Unified state management via `Provider` and a robust `ThemeProvider`.
+*   **Communities Tree**: Hierarchical organization using `ExpansionTile` for professional project mapping.
+*   **Advanced Undo System**: Robust restoration with deep-copy logic ensuring all categories and assignees are perfectly preserved.
+
 ## 🛠 Tech Stack
 *   **Framework**: Flutter (Material 3)
-*   **Database**: Isar (High-performance NoSQL)
+*   **Backend**: Supabase (PostgreSQL, Auth, RLS)
+*   **Database**: Isar (High-performance Local NoSQL)
+*   **Deep Linking**: app_links
 *   **State Management**: Provider (Centralized Theme & Settings)
 *   **Local Storage**: path_provider
 *   **Notifications**: flutter_local_notifications (Timezone-aware)
