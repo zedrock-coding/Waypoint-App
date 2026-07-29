@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:isar/isar.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'models/event.dart';
 import 'models/category.dart' as model;
 import 'models/settings.dart';
@@ -19,6 +20,7 @@ import 'theme_provider.dart';
 import 'theme/app_theme.dart';
 import 'repositories/event_repository.dart';
 import 'repositories/category_repository.dart';
+import 'services/invite_service.dart';
 import 'widgets/task_item_card.dart';
 import 'widgets/category_header.dart';
 import 'widgets/empty_states.dart';
@@ -28,6 +30,14 @@ import 'widgets/task_form_utils.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
+  await Supabase.initialize(
+    url: 'https://eknzdxexfcfdmqvbyvxt.supabase.co', 
+    anonKey: 'sb_publishable_fUoY96CXli7DwbZayu8pFQ_4yExvoJg',
+  );
+
+  // Initialize Deep Link/Invite Service
+  await InviteService().init();
+
   // Completely hide the status bar (Alternative approach)
   // SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
 
