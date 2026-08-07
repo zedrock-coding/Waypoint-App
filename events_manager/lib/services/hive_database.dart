@@ -1,4 +1,5 @@
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:uuid/uuid.dart';
 import '../models/hive_models.dart';
 
 class HiveDatabase {
@@ -10,11 +11,30 @@ class HiveDatabase {
     Hive.registerAdapter(CategoryAdapter());
     Hive.registerAdapter(CommunityAdapter());
     Hive.registerAdapter(CommunityMemberAdapter());
+    Hive.registerAdapter(TaskAdapter());
+    Hive.registerAdapter(SettingsAdapter());
 
     // Open Boxes
-    await Hive.openBox<Category>('categories');
+    final categoryBox = await Hive.openBox<Category>('categories');
     await Hive.openBox<Community>('communities');
     await Hive.openBox<CommunityMember>('community_members');
+    await Hive.openBox<Task>('tasks');
+    final settingsBox = await Hive.openBox<Settings>('settings');
+
+    // Seed default settings if empty
+    if (settingsBox.isEmpty) {
+      await settingsBox.put('app_settings', Settings());
+    }
+
+    // Seed default categories if empty
+    if (categoryBox.isEmpty) {
+      final uuid = Uuid();
+      await categoryBox.addAll([
+        Category(id: uuid.v4(), name: 'General'),
+        Category(id: uuid.v4(), name: 'Work'),
+        Category(id: uuid.v4(), name: 'Personal'),
+      ]);
+    }
   }
 
   /// Querying Roles in NoSQL

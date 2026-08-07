@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:isar/isar.dart';
-import '../models/event.dart';
 import '../add_event_page.dart';
+import '../models/unified_task.dart';
 
-void showAddTaskForm(BuildContext context, {required Isar isar, Event? eventToEdit, String? category}) {
+void showAddTaskForm(BuildContext context, {UnifiedTask? taskToEdit, String? initialCommunityId, String? category}) {
   final double width = MediaQuery.of(context).size.width;
 
   if (width < 800) {
@@ -11,8 +10,8 @@ void showAddTaskForm(BuildContext context, {required Isar isar, Event? eventToEd
       context,
       MaterialPageRoute(
         builder: (context) => AddEventPage(
-          isar: isar, 
-          eventToEdit: eventToEdit, 
+          taskToEdit: taskToEdit,
+          initialCommunityId: initialCommunityId, 
           initialCategory: category,
         ),
       ),
@@ -22,8 +21,8 @@ void showAddTaskForm(BuildContext context, {required Isar isar, Event? eventToEd
       context: context,
       builder: (context) => Center(
         child: AddEventPage(
-          isar: isar, 
-          eventToEdit: eventToEdit, 
+          taskToEdit: taskToEdit,
+          initialCommunityId: initialCommunityId, 
           initialCategory: category,
           isDialog: true,
         ),

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:app_links/app_links.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'supabase_service.dart';
@@ -39,7 +40,7 @@ class InviteService {
   }
 
   void _handleLink(Uri uri) {
-    print('Processing Deep Link: $uri');
+    debugPrint('Processing Deep Link: $uri');
     
     if (uri.scheme == 'helm' && uri.host == 'invite') {
       final communityId = uri.queryParameters['communityId'];
@@ -54,7 +55,7 @@ class InviteService {
 
     if (userId == null) {
       // User not logged in: Store ID and wait for auth
-      print('User not logged in. Storing pending invite for: $communityId');
+      debugPrint('User not logged in. Storing pending invite for: $communityId');
       _pendingCommunityId = communityId;
       // Note: You should trigger a navigation to login/onboarding here if not already there.
       return;
@@ -62,9 +63,9 @@ class InviteService {
 
     try {
       await _supabaseService.joinCommunity(communityId);
-      print('Successfully joined community: $communityId');
+      debugPrint('Successfully joined community: $communityId');
     } catch (e) {
-      print('Error joining community from link: $e');
+      debugPrint('Error joining community from link: $e');
     }
   }
 

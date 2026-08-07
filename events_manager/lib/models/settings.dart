@@ -4,23 +4,20 @@ part 'settings.g.dart';
 
 @collection
 class Settings {
-  Id id = 0; // Singleton settings
+  Id id = Isar.autoIncrement;
 
-  int fontSizeIndex = 2; // Default to 'Normal' (0: VS, 1: S, 2: N, 3: M, 4: L)
+  int themeMode = 1; // 0: light, 1: dark, 2: system
 
-  int themeMode = 0; // 0: Light, 1: Dark, 2: Custom
+  int fontSizeIndex = 2; // Default to medium
 
-  String? customThemeJson;
+  bool remindersEnabled = true;
 
-  // Essential Alerts
+  // New detailed notification settings
   bool taskAssignmentsEnabled = true;
   bool dueDateRemindersEnabled = true;
   bool communityMentionsEnabled = true;
-
-  // General & Promotional
   bool dailyBriefingEnabled = true;
   bool newsAndOffersEnabled = false;
 
-  // Legacy field - keeping for migration if needed, but will use dailyBriefingEnabled instead
-  bool remindersEnabled = false;
+  String? customThemeJson;
 }

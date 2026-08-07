@@ -1,73 +1,45 @@
-# Helm - Team Event & Task Management
+# Helm 2.1 - Collaborative Team Workspace
 
-**Helm** is a high-performance, team-oriented task management system optimized for **Android**, **Windows**, and **Linux**. Built with Flutter and the Isar Database, Helm provides a premium, reactive experience for tracking team progress and personal productivity.
+**Helm 2.1** is a high-performance, collaborative task management system. Optimized for **Android**, **Windows**, and **Web**, Helm provides a professional, reactive experience for real-time team orchestration and personal productivity.
 
 ![Aesthetic](https://img.shields.io/badge/Aesthetic-Slate%20%26%20Mint-88C0A4)
-![Platform](https://img.shields.io/badge/Platform-Android%20%7C%20Windows%20%7C%20Linux-blue)
+![Platform](https://img.shields.io/badge/Platform-Android%20%7C%20Windows%20%7C%20Web-blue)
+![Version](https://img.shields.io/badge/Version-2.1.0-green)
 
-## 🚀 Key Features
+## 🚀 What's New in v2.1
 
-### 📊 Optimized Velocity Dashboard
-*   **Master-Detail Desktop Layout**: A professional workspace for large screens with a sliding task detail panel.
-*   **Actionable Snapshots**: A responsive dual-card layout at the top of your dashboard.
-*   **Performance Tuning**: High-speed list rendering using in-memory grouping and optimized Isar queries.
-*   **Responsive Visibility**: Intelligent UI that hides "Quick Settings" on narrow mobile screens (<900px) to maximize task visibility.
-*   **Progress Gauges**: Compact Circular and Linear indicators showing real-time completion percentages.
-*   **Quick Controls**: Unified state-management for managing Reminders and global Font Size directly from the dashboard.
+### 👥 Advanced Community Management
+*   **Member Controls**: Admins can now promote users to Admin or remove members from workspaces.
+*   **Invite Link Hub**: A dedicated management interface to generate and share `helm://invite` deep links.
+*   **Role-Based Security**: Backend-enforced permissions ensuring team data is only accessible to authorized members.
 
-### 📝 Intelligent Task Management
-*   **Drag & Drop Reordering**: Intuitively prioritize your tasks using a reorderable list with custom drag handles.
-*   **Wobble Animation**: Visual feedback during drag-and-drop with a playful oscillation effect.
-*   **Hero Transitions**: Smooth, high-fidelity animations when navigating between the list and task details.
-*   **Nested Sub-Tasks**: Create hierarchical task trees with visual connectors.
+### ✏️ Task Evolution
+*   **Full CRUD Support**: Restored and improved task editing. Modify titles, descriptions, priorities, and categories on the fly.
+*   **Instant Sync**: Every edit is automatically synchronized between your local device and the cloud.
+*   **Smart Categorization**: Tags are now part of the global sync engine, keeping your organization consistent everywhere.
 
-### 🤖 Multi-Modal AI Assistant
-*   **Hands-Free Voice UI**: Modern pulsing microphone animation with real-time state feedback and smart transitions.
-*   **AI Text Chat**: A sliding end-drawer fallback for text-based task commands and assistant interactions.
-*   **Adaptive Trigger**: Seamlessly switches between BottomSheet (Mobile) and Dialog/Drawer (Desktop).
+### 🛡️ Core Stability & v2.0 Refinements
+*   **Cross-Platform Unity**: Resolved major compilation and runtime issues across Chrome, Windows, and Android.
+*   **Overflow Protection**: Fixed critical rendering issues (RenderFlex) in sidebars and task cards for a smooth responsive experience.
+*   **Resilient Startup**: Optimized app initialization to prevent hangs during database migration and connectivity checks.
 
-### 🔍 Global Search & Filtering
-*   **Deep Indexing**: Instantly find tasks by title or description using optimized database queries.
-*   **Custom Search UI**: A bespoke, themed search experience with mint-green accents and interactive community filters.
-*   **Recent Searches**: Quickly access common search terms and filter by communities via interactive chips.
-
-### 🔔 Performance-Optimized Notifications
-*   **Activity Feed**: A dedicated notification center for overdue tasks, assignments, and invites.
-*   **Windows Lag-Fix**: Custom state-based overlay system that eliminates UI jank on desktop platforms.
-*   **Granular Settings**: Dedicated controls for Task Alerts, Daily Briefings, and Promotional updates.
-
-### 🎨 Premium UI/UX & Onboarding
-*   **Slate & Mint Aesthetic**: A modern, deep-slate charcoal background with vibrant mint-green accents.
-*   **Interactive Onboarding**: A beautiful 3-page swipeable introduction for new users.
-*   **Account Management**: A dedicated Account Settings screen for profile and security management.
-*   **Safe Area Optimized**: Guaranteed UI stability on devices with notches or system bars.
-*   **Haptic Micro-Interactions**: Tactile feedback on toggles, button presses, and drag-and-drop actions.
-
-### 🏗 Architecture & Collaboration
-*   **Supabase Backend**: Integrated PostgreSQL database with Row Level Security (RLS) for secure, scalable data management.
-*   **Community Invite System**: Seamless joining experience via deep links (`helm://invite`) with intelligent auth-state guarding.
-*   **Repository Pattern**: Clean separation of concerns using `EventRepository`, `CategoryRepository`, and `SupabaseService`.
-*   **Centralized State**: Unified state management via `Provider` and a robust `ThemeProvider`.
-*   **Communities Tree**: Hierarchical organization using `ExpansionTile` for professional project mapping.
-*   **Advanced Undo System**: Robust restoration with deep-copy logic ensuring all categories and assignees are perfectly preserved.
+---
 
 ## 🛠 Tech Stack
 *   **Framework**: Flutter (Material 3)
-*   **Backend**: Supabase (PostgreSQL, Auth, RLS)
-*   **Database**: Isar (High-performance Local NoSQL)
-*   **Deep Linking**: app_links
-*   **State Management**: Provider (Centralized Theme & Settings)
-*   **Local Storage**: path_provider
-*   **Notifications**: flutter_local_notifications (Timezone-aware)
-*   **Versioning**: package_info_plus (Dynamic version tracking)
-*   **Localization/Formatting**: intl
+*   **Cloud Backend**: Supabase (PostgreSQL, Realtime, RLS)
+*   **Primary Storage**: Hive (High-speed NoSQL for seamless Web/Desktop/Mobile support)
+*   **Migration Bridge**: Isar (Legacy support for v1.x data)
+*   **Deep Linking**: app_links (Cross-platform invite routing)
+
+---
 
 ## ⚙️ Installation & Setup
 
 ### Prerequisites
-*   **Flutter SDK**: ^3.11.0
-*   **Windows Build Tools**: Visual Studio 2022 with "Desktop development with C++" workload.
-*   **Linux Build Tools**: `clang`, `cmake`, `pkg-config`, `ninja-build`, and GTK development headers.
+*   **Flutter SDK**: ^3.38.4
+*   **Android**: JDK 17 (LTS) and SDK 36.
+*   **Windows**: Visual Studio 2022.
 
 ### Steps
 1.  **Clone the Repo**:
@@ -79,16 +51,12 @@
     ```bash
     flutter pub get
     ```
-3.  **Generate Database Schemas**:
-    ```bash
-    dart run build_runner build --delete-conflicting-outputs
-    ```
-4.  **Run the App**:
+3.  **Run the App**:
     ```bash
     flutter run
     ```
 
 ---
 
-## 🔐 Generating a Signed APK for Android
-See the official [Flutter documentation](https://docs.flutter.dev/deployment/android) for details on setting up keystores and release properties.
+## 🔐 Security Note
+Helm 2.1 utilizes an isolated `internal` schema in Supabase for private logic, significantly hardening the database against unauthorized access while simplifying client-side membership checks.

@@ -1,23 +1,24 @@
 import 'package:flutter/material.dart';
-import 'package:isar/isar.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
-import 'models/event.dart';
-import 'models/category.dart';
-import 'repositories/event_repository.dart';
-import 'repositories/category_repository.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'models/unified_task.dart';
+import 'providers/task_provider.dart';
+import 'services/supabase_service.dart';
+import 'models/hive_models.dart' as hive_model;
+import 'package:hive_flutter/hive_flutter.dart';
 
 class AddEventPage extends StatefulWidget {
-  final Isar isar;
-  final Event? eventToEdit;
+  final UnifiedTask? taskToEdit;
   final String? initialCategory;
+  final String? initialCommunityId;
   final bool isDialog;
 
   const AddEventPage({
     super.key, 
-    required this.isar, 
-    this.eventToEdit, 
+    this.taskToEdit, 
     this.initialCategory,
+    this.initialCommunityId,
     this.isDialog = false,
   });
 
@@ -33,58 +34,70 @@ class _AddEventPageState extends State<AddEventPage> {
   final FocusNode _assigneeFocusNode = FocusNode();
   late DateTime _selectedDate;
   
-  late Status _selectedStatus;
   late Priority _selectedPriority;
+  late Status _selectedStatus;
   
-  List<Category> _availableCategories = [];
-  final List<Category> _selectedCategories = [];
+  List<hive_model.Category> _availableHiveCategories = [];
+  final List<String> _selectedHiveCategoryIds = [];
   final List<String> _assignees = [];
-  bool _allowMultiple = true;
   bool _hasUnsavedChanges = false;
+  
+  // Destination state
+  // null = Cloud Personal, "local" = Device Only, UUID = Community
+  String? _selectedDestination; 
+  List<Map<String, dynamic>> _userCommunities = [];
+  bool _isUserLoggedIn = false;
 
   @override
   void initState() {
     super.initState();
-    _titleController = TextEditingController(text: widget.eventToEdit?.title ?? '');
-    _descriptionController = TextEditingController(text: widget.eventToEdit?.description ?? '');
-    if (widget.eventToEdit != null) {
-      _assignees.addAll(widget.eventToEdit!.assignees);
-    }
-    _selectedDate = widget.eventToEdit?.dateTime ?? DateTime.now();
-    _selectedStatus = widget.eventToEdit?.status ?? Status.toDo;
-    _selectedPriority = widget.eventToEdit?.priority ?? Priority.medium;
+    _isUserLoggedIn = Supabase.instance.client.auth.currentUser != null;
     
-    _loadCategories();
+    // Set default destination
+    if (widget.initialCommunityId != null) {
+      _selectedDestination = widget.initialCommunityId;
+    } else {
+      _selectedDestination = _isUserLoggedIn ? null : 'local';
+    }
+    
+    _titleController = TextEditingController(text: widget.taskToEdit?.title ?? '');
+    _descriptionController = TextEditingController(text: widget.taskToEdit?.description ?? '');
+    if (widget.taskToEdit != null) {
+      _assignees.addAll(widget.taskToEdit!.assignees);
+    }
+    _selectedDate = widget.taskToEdit?.dateTime ?? DateTime.now();
+    _selectedPriority = widget.taskToEdit?.priority ?? Priority.medium;
+    _selectedStatus = widget.taskToEdit?.status ?? Status.toDo;
+
+    if (widget.taskToEdit?.categoryId != null) {
+      _selectedHiveCategoryIds.add(widget.taskToEdit!.categoryId!);
+    }
+    
+    _loadHiveCategories();
+    _loadSupabaseCommunities();
 
     _titleController.addListener(_markChanges);
     _descriptionController.addListener(_markChanges);
+  }
+
+  Future<void> _loadHiveCategories() async {
+    final box = Hive.box<hive_model.Category>('categories');
+    setState(() {
+      _availableHiveCategories = box.values.toList();
+    });
+  }
+
+  Future<void> _loadSupabaseCommunities() async {
+    final communities = await SupabaseService().fetchUserCommunities();
+    setState(() {
+      _userCommunities = communities;
+    });
   }
 
   void _markChanges() {
     if (!_hasUnsavedChanges) {
       setState(() => _hasUnsavedChanges = true);
     }
-  }
-
-  Future<void> _loadCategories() async {
-    final categoryRepo = context.read<CategoryRepository>();
-    final categories = await categoryRepo.getAllCategories();
-    setState(() {
-      _availableCategories = categories;
-      
-      if (widget.eventToEdit != null) {
-        widget.eventToEdit!.categories.loadSync();
-        _selectedCategories.addAll(widget.eventToEdit!.categories);
-        if (_selectedCategories.length > 1) {
-          _allowMultiple = true;
-        }
-      } else if (widget.initialCategory != null) {
-        final match = categories.where((c) => c.name == widget.initialCategory).firstOrNull;
-        if (match != null) {
-          _selectedCategories.add(match);
-        }
-      }
-    });
   }
 
   void _addAssignee(String name) {
@@ -102,29 +115,42 @@ class _AddEventPageState extends State<AddEventPage> {
     }
   }
 
-  Future<void> _saveEvent() async {
+  Future<void> _saveTask() async {
     if (_formKey.currentState!.validate()) {
       try {
-        final eventRepo = context.read<EventRepository>();
-        final categoryRepo = context.read<CategoryRepository>();
+        final taskProvider = context.read<TaskProvider>();
         
-        final event = widget.eventToEdit ?? Event();
-        event.title = _titleController.text.trim();
-        event.description = _descriptionController.text.trim();
-        event.dateTime = _selectedDate;
-        event.status = _selectedStatus;
-        event.priority = _selectedPriority;
-        event.assignees = List.from(_assignees);
+        if (widget.taskToEdit != null) {
+          // UPDATE PATH
+          await taskProvider.updateTask(
+            id: widget.taskToEdit!.id,
+            title: _titleController.text.trim(),
+            description: _descriptionController.text.trim(),
+            categoryId: _selectedHiveCategoryIds.firstOrNull,
+            priority: _selectedPriority,
+            status: _selectedStatus,
+          );
+        } else {
+          // ADD PATH
+          final String? communityId = (_selectedDestination != null && _selectedDestination != 'local') 
+              ? _selectedDestination 
+              : null;
+              
+          final bool isLocalOnly = _selectedDestination == 'local';
 
-        if (_selectedCategories.isEmpty) {
-          final generalCat = await categoryRepo.getCategoryByName('General');
-          if (generalCat != null) _selectedCategories.add(generalCat);
+          await taskProvider.addTask(
+            title: _titleController.text.trim(),
+            description: _descriptionController.text.trim(),
+            communityId: communityId,
+            categoryId: _selectedHiveCategoryIds.firstOrNull,
+            priority: _selectedPriority,
+            status: _selectedStatus,
+            isLocalOnly: isLocalOnly,
+          );
         }
 
-        await eventRepo.saveEvent(event, _selectedCategories);
-
         _hasUnsavedChanges = false;
-        if (mounted && context.mounted) Navigator.pop(context);
+        if (mounted) Navigator.pop(context);
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -137,7 +163,7 @@ class _AddEventPageState extends State<AddEventPage> {
 
   @override
   Widget build(BuildContext context) {
-    final isEditing = widget.eventToEdit != null;
+    final isEditing = widget.taskToEdit != null;
 
     Widget formContent = Form(
       key: _formKey,
@@ -154,12 +180,13 @@ class _AddEventPageState extends State<AddEventPage> {
           const SizedBox(height: 16),
           _buildDatePicker(),
           const Divider(height: 32),
-          _buildCategorySelection(),
-          if (isEditing) _buildSubtasksSection(),
+          _buildDestinationSelector(),
+          const SizedBox(height: 16),
+          if (_selectedDestination == null || _selectedDestination == 'local') _buildCategorySelection(),
           const SizedBox(height: 32),
           ElevatedButton(
             style: ElevatedButton.styleFrom(minimumSize: const Size.fromHeight(50)),
-            onPressed: _saveEvent,
+            onPressed: _saveTask,
             child: Text(isEditing ? 'Update Task' : 'Save Task'),
           ),
         ],
@@ -175,10 +202,8 @@ class _AddEventPageState extends State<AddEventPage> {
       onPopInvokedWithResult: (didPop, result) async {
         if (didPop) return;
         final shouldPop = await _onWillPop();
-        if (shouldPop) {
-          if (context.mounted) {
-            Navigator.pop(context);
-          }
+        if (shouldPop && context.mounted) {
+          Navigator.pop(context);
         }
       },
       child: SafeArea(
@@ -224,6 +249,11 @@ class _AddEventPageState extends State<AddEventPage> {
     );
   }
 
+  String _formatStatus(Status s) {
+    if (s == Status.inProgress) return 'In Progress';
+    return s.name;
+  }
+
   Widget _buildAssigneeInput() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -248,7 +278,7 @@ class _AddEventPageState extends State<AddEventPage> {
   Widget _buildDatePicker() {
     return ListTile(
       shape: RoundedRectangleBorder(side: BorderSide(color: Theme.of(context).dividerColor), borderRadius: BorderRadius.circular(4)),
-      title: Text("Date: ${DateFormat.yMMMd().format(_selectedDate)}"),
+      title: Text("Due Date: ${DateFormat.yMMMd().format(_selectedDate)}"),
       trailing: const Icon(Icons.calendar_today),
       onTap: () async {
         final picked = await showDatePicker(context: context, initialDate: _selectedDate, firstDate: DateTime(2000), lastDate: DateTime(2101));
@@ -257,73 +287,86 @@ class _AddEventPageState extends State<AddEventPage> {
     );
   }
 
+  Widget _buildDestinationSelector() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Destination:', style: TextStyle(fontWeight: FontWeight.bold)),
+        const SizedBox(height: 8),
+        DropdownButtonFormField<String?>(
+          value: _selectedDestination,
+          decoration: const InputDecoration(
+            border: OutlineInputBorder(),
+            contentPadding: EdgeInsets.symmetric(horizontal: 12),
+          ),
+          items: [
+            if (_isUserLoggedIn)
+              const DropdownMenuItem(
+                value: null, 
+                child: Row(
+                  children: [
+                    Icon(Icons.cloud_done_outlined, size: 18, color: Colors.blue),
+                    SizedBox(width: 8),
+                    Text('Personal (Cloud Sync)'),
+                  ],
+                )
+              ),
+            const DropdownMenuItem(
+              value: 'local', 
+              child: Row(
+                children: [
+                  Icon(Icons.smartphone_rounded, size: 18, color: Colors.grey),
+                  SizedBox(width: 8),
+                  Text('Device Only (Offline)'),
+                ],
+              )
+            ),
+            ..._userCommunities.map((comm) => DropdownMenuItem(
+              value: comm['id'].toString(),
+              child: Row(
+                children: [
+                  const Icon(Icons.hub_rounded, size: 18, color: Colors.teal),
+                  const SizedBox(width: 8),
+                  Text('Community: ${comm['name']}'),
+                ],
+              ),
+            )),
+          ],
+          onChanged: (val) {
+            setState(() {
+              _selectedDestination = val;
+              _hasUnsavedChanges = true;
+            });
+          },
+        ),
+      ],
+    );
+  }
+
   Widget _buildCategorySelection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SwitchListTile(
-          title: const Text('Allow Multiple Categories'),
-          contentPadding: EdgeInsets.zero,
-          value: _allowMultiple,
-          onChanged: (v) => setState(() {
-            _allowMultiple = v;
-            if (!v && _selectedCategories.length > 1) {
-              final first = _selectedCategories.first;
-              _selectedCategories.clear();
-              _selectedCategories.add(first);
-            }
-            _hasUnsavedChanges = true;
-          }),
-        ),
-        const Text('Select Categories:', style: TextStyle(fontWeight: FontWeight.bold)),
+        const Text('Apply Category (Tag):', style: TextStyle(fontWeight: FontWeight.bold)),
         const SizedBox(height: 8),
         Wrap(
           spacing: 8,
-          children: _availableCategories.map((cat) {
-            final isSelected = _selectedCategories.any((c) => c.id == cat.id);
+          children: _availableHiveCategories.map((cat) {
+            final isSelected = _selectedHiveCategoryIds.contains(cat.id);
             return FilterChip(
               label: Text(cat.name),
               selected: isSelected,
               onSelected: (selected) => setState(() {
                 _hasUnsavedChanges = true;
                 if (selected) {
-                  if (!_allowMultiple) _selectedCategories.clear();
-                  _selectedCategories.add(cat);
+                  _selectedHiveCategoryIds.clear(); 
+                  _selectedHiveCategoryIds.add(cat.id);
                 } else {
-                  _selectedCategories.removeWhere((c) => c.id == cat.id);
+                  _selectedHiveCategoryIds.remove(cat.id);
                 }
               }),
             );
           }).toList(),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSubtasksSection() {
-    final eventRepo = context.read<EventRepository>();
-    return Column(
-      children: [
-        const Divider(height: 48),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text('Sub-tasks', style: Theme.of(context).textTheme.titleLarge),
-            TextButton.icon(onPressed: _showAddSubtaskSheet, icon: const Icon(Icons.add), label: const Text('Add Sub-task')),
-          ],
-        ),
-        FutureBuilder<List<Event>>(
-          future: eventRepo.getSubtasks(widget.eventToEdit!.id),
-          builder: (context, snapshot) {
-            if (!snapshot.hasData || snapshot.data!.isEmpty) return const SizedBox.shrink();
-            return Column(
-              children: snapshot.data!.map((st) => ListTile(
-                dense: true,
-                title: Text(st.title),
-                leading: Icon(st.status == Status.done ? Icons.check_circle : Icons.radio_button_unchecked, color: st.status == Status.done ? Colors.green : Colors.grey),
-              )).toList(),
-            );
-          },
         ),
       ],
     );
@@ -357,37 +400,6 @@ class _AddEventPageState extends State<AddEventPage> {
     );
   }
 
-  void _showAddSubtaskSheet() {
-    final titleController = TextEditingController();
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      builder: (context) => Padding(
-        padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom, top: 20, left: 16, right: 16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(controller: titleController, decoration: const InputDecoration(labelText: 'Sub-task Title')),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () async {
-                if (titleController.text.isNotEmpty) {
-                  final st = Event()..title = titleController.text..dateTime = _selectedDate;
-                  st.parent.value = widget.eventToEdit;
-                  await context.read<EventRepository>().saveSubtask(st);
-                  if (context.mounted) Navigator.pop(context);
-                  setState(() {});
-                }
-              },
-              child: const Text('Add'),
-            ),
-            const SizedBox(height: 20),
-          ],
-        ),
-      ),
-    );
-  }
-
   Future<bool> _onWillPop() async {
     if (!_hasUnsavedChanges) return true;
     return await showDialog<bool>(
@@ -402,8 +414,6 @@ class _AddEventPageState extends State<AddEventPage> {
       )
     ) ?? false;
   }
-
-  String _formatStatus(Status status) => status == Status.inProgress ? 'In Progress' : status.name[0].toUpperCase() + status.name.substring(1);
 
   @override
   void dispose() {

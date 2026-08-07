@@ -26,21 +26,19 @@ class VelocityDashboardCard extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 8.0),
       child: isMobile
           ? _buildVelocityContent(context, progress, colorScheme)
-          : IntrinsicHeight(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Expanded(
-                    flex: 6,
-                    child: _buildVelocityContent(context, progress, colorScheme),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    flex: 4,
-                    child: _buildSettingsContent(context, themeProvider, colorScheme),
-                  ),
-                ],
-              ),
+          : Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  flex: 6,
+                  child: _buildVelocityContent(context, progress, colorScheme),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  flex: 4,
+                  child: _buildSettingsContent(context, themeProvider, colorScheme),
+                ),
+              ],
             ),
     );
   }
@@ -202,7 +200,7 @@ class VelocityDashboardCard extends StatelessWidget {
               'Reminders',
               style: TextStyle(fontSize: 11, color: colorScheme.onSurface.withOpacity(0.7)),
             ),
-            value: settings.dailyBriefingEnabled,
+            value: settings.dailyBriefingEnabled ?? true,
             activeColor: colorScheme.primary,
             onChanged: (enabled) => _toggleReminders(context, enabled, themeProvider),
           ),
@@ -229,10 +227,8 @@ class VelocityDashboardCard extends StatelessWidget {
                 ButtonSegment(value: 1, label: Text('M', style: TextStyle(fontSize: 9))),
                 ButtonSegment(value: 2, label: Text('L', style: TextStyle(fontSize: 9))),
               ],
-              selected: {
-                if (settings.fontSizeIndex == 1) 0, // Small
-                if (settings.fontSizeIndex == 3) 1, // Medium
-                if (settings.fontSizeIndex == 4) 2, // Large
+              selected: <int>{
+                (settings.fontSizeIndex ?? 2) <= 1 ? 0 : ((settings.fontSizeIndex ?? 2) >= 4 ? 2 : 1)
               },
               onSelectionChanged: (val) {
                 HapticFeedback.selectionClick();

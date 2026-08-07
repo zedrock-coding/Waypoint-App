@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:isar/isar.dart';
 import 'package:intl/intl.dart';
-import 'models/event.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import 'models/unified_task.dart';
+import 'models/hive_models.dart' as hive_model;
 import 'widgets/task_form_utils.dart';
 
 class TaskDetailScreen extends StatelessWidget {
-  final Event event;
-  final Isar isar;
+  final UnifiedTask task;
 
-  const TaskDetailScreen({super.key, required this.event, required this.isar});
+  const TaskDetailScreen({super.key, required this.task});
 
   @override
   Widget build(BuildContext context) {
@@ -19,21 +19,19 @@ class TaskDetailScreen extends StatelessWidget {
         backgroundColor: Colors.transparent,
         elevation: 0,
       ),
-      body: TaskDetailContent(event: event, isar: isar),
+      body: TaskDetailContent(task: task),
     );
   }
 }
 
 class TaskDetailContent extends StatelessWidget {
-  final Event event;
-  final Isar isar;
+  final UnifiedTask task;
   final VoidCallback? onClose;
   final bool useHero;
 
   const TaskDetailContent({
     super.key, 
-    required this.event, 
-    required this.isar,
+    required this.task, 
     this.onClose,
     this.useHero = true,
   });
@@ -50,15 +48,14 @@ class TaskDetailContent extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header Section
               Padding(
                 padding: const EdgeInsets.all(24.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    if (onClose != null) const SizedBox(height: 32), // Padding for close button
+                    if (onClose != null) const SizedBox(height: 32),
                     Text(
-                      event.title,
+                      task.title,
                       style: textTheme.headlineMedium?.copyWith(
                         fontWeight: FontWeight.bold,
                         color: colorScheme.onSurface,
@@ -70,7 +67,6 @@ class TaskDetailContent extends StatelessWidget {
                 ),
               ),
               
-              // Body Section
               Expanded(
                 child: Container(
                   width: double.infinity,
@@ -84,7 +80,7 @@ class TaskDetailContent extends StatelessWidget {
                       _buildSectionTitle(context, 'Description'),
                       const SizedBox(height: 8),
                       Text(
-                        event.description.isNotEmpty ? event.description : 'No description provided.',
+                        task.description.isNotEmpty ? task.description : 'No description provided.',
                         style: textTheme.bodyLarge?.copyWith(
                           color: colorScheme.onSurfaceVariant,
                         ),
@@ -93,22 +89,15 @@ class TaskDetailContent extends StatelessWidget {
                       
                       _buildInfoRow(
                         context, 
-                        icon: Icons.calendar_today, 
-                        label: 'Created On', 
-                        value: DateFormat.yMMMMd().format(event.dateTime),
-                      ),
-                      const SizedBox(height: 16),
-                      _buildInfoRow(
-                        context, 
                         icon: Icons.access_time, 
-                        label: 'Due Date', 
-                        value: DateFormat.yMMMMd().add_jm().format(event.dateTime),
+                        label: 'Date', 
+                        value: DateFormat.yMMMMd().add_jm().format(task.dateTime),
                       ),
                       
                       const SizedBox(height: 40),
                       _buildSectionTitle(context, 'Sub-tasks'),
                       const SizedBox(height: 16),
-                      _buildSubtasksMockup(context),
+                      const Center(child: Text('Coming Soon')),
                     ],
                   ),
                 ),
@@ -116,7 +105,6 @@ class TaskDetailContent extends StatelessWidget {
             ],
           ),
 
-          // Header Buttons (Edit and Close)
           Positioned(
             top: 12,
             right: 12,
@@ -124,8 +112,10 @@ class TaskDetailContent extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 IconButton(
-                  icon: Icon(Icons.edit, color: colorScheme.primary),
-                  onPressed: () => showAddTaskForm(context, isar: isar, eventToEdit: event),
+                  icon: const Icon(Icons.edit_outlined),
+                  onPressed: () {
+                    showAddTaskForm(context, taskToEdit: task);
+                  },
                   tooltip: 'Edit Task',
                 ),
                 if (onClose != null)
@@ -143,7 +133,7 @@ class TaskDetailContent extends StatelessWidget {
 
     if (useHero) {
       return Hero(
-        tag: 'task_card_${event.id}',
+        tag: 'task_card_${task.id}',
         child: content,
       );
     }
@@ -151,41 +141,20 @@ class TaskDetailContent extends StatelessWidget {
   }
 
   Widget _buildTags(BuildContext context) {
-    return FutureBuilder(
-      future: event.categories.load(),
-      builder: (context, snapshot) {
-        final categories = event.categories.toList();
-        return Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            _buildPill(context, event.priority.name.toUpperCase(), isPriority: true),
-            ...categories.map((c) => _buildPill(context, c.name)),
-          ],
-        );
-      },
-    );
-  }
+    String? categoryName;
+    if (task.categoryId != null) {
+      final box = Hive.box<hive_model.Category>('categories');
+      categoryName = box.get(task.categoryId)?.name;
+    }
 
-  Widget _buildPill(BuildContext context, String label, {bool isPriority = false}) {
-    final colorScheme = Theme.of(context).colorScheme;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-      decoration: BoxDecoration(
-        color: isPriority ? colorScheme.primary.withOpacity(0.1) : colorScheme.secondary.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: isPriority ? colorScheme.primary.withOpacity(0.2) : colorScheme.secondary.withOpacity(0.2),
-        ),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.bold,
-          color: isPriority ? colorScheme.primary : colorScheme.secondary,
-        ),
-      ),
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        _buildPill(context, task.priority.name.toUpperCase(), isPriority: true),
+        if (categoryName != null) _buildPill(context, categoryName.toUpperCase()),
+        if (!task.isLocal) _buildPill(context, 'CLOUD'),
+      ],
     );
   }
 
@@ -204,43 +173,42 @@ class TaskDetailContent extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
     return Row(
       children: [
-        Icon(icon, size: 20, color: colorScheme.onSurfaceVariant),
-        const SizedBox(width: 12),
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: colorScheme.primary.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(icon, size: 18, color: colorScheme.primary),
+        ),
+        const SizedBox(width: 16),
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(label, style: TextStyle(fontSize: 12, color: colorScheme.onSurfaceVariant.withOpacity(0.6))),
-            Text(value, style: const TextStyle(fontWeight: FontWeight.w500)),
+            Text(label, style: TextStyle(fontSize: 10, color: colorScheme.onSurface.withOpacity(0.5))),
+            Text(value, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
           ],
         ),
       ],
     );
   }
 
-  Widget _buildSubtasksMockup(BuildContext context) {
-    return Column(
-      children: [
-        _buildMockTask(context, 'Finalize project scope', true),
-        _buildMockTask(context, 'Review design assets', false),
-        _buildMockTask(context, 'Schedule team sync', false),
-      ],
-    );
-  }
-
-  Widget _buildMockTask(BuildContext context, String title, bool isDone) {
-    return CheckboxListTile(
-      value: isDone,
-      onChanged: null,
-      title: Text(
-        title,
+  Widget _buildPill(BuildContext context, String label, {bool isPriority = false}) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: isPriority ? colorScheme.primary : colorScheme.secondaryContainer,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        label,
         style: TextStyle(
-          decoration: isDone ? TextDecoration.lineThrough : null,
-          color: isDone ? Theme.of(context).colorScheme.onSurface.withOpacity(0.5) : null,
+          color: isPriority ? colorScheme.onPrimary : colorScheme.onSecondaryContainer,
+          fontSize: 10,
+          fontWeight: FontWeight.bold,
         ),
       ),
-      controlAffinity: ListTileControlAffinity.leading,
-      contentPadding: EdgeInsets.zero,
-      dense: true,
     );
   }
 }

@@ -10,8 +10,7 @@ class Category {
   late String name;
 
   bool isAdmin = false;
-  
-  // For the file tree structure
+
   final parent = IsarLink<Category>();
 
   @Backlink(to: 'parent')

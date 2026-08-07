@@ -1,39 +1,38 @@
-# Community Invite System Implementation Plan
+# Phase 3: Community Collaboration & Shared Invitations
 
-This plan outlines the steps to implement a deep-link-based community invite system for Helm, enabling users to join communities via `helm://invite?communityId=XYZ`.
+This plan implements the "Helm Communities" feature, allowing users to create shared workspaces and invite others via deep links.
+
+## User Review Required
+
+> [!IMPORTANT]
+> **Deep Link Configuration**: For `helm://invite` links to work on physical devices, you must configure your Android/iOS intent filters. I have already added the Android filter to your `AndroidManifest.xml`, but you will need to register the scheme in the Supabase Dashboard as a valid redirect URL if you plan to use it for Email Auth.
 
 ## Proposed Changes
 
-### 1. Native Configuration
-- **[Modify] [AndroidManifest.xml](file:///C:/Users/Lenovo/StudioProjects/EventsManager/events_manager/android/app/src/main/AndroidManifest.xml)**: Add an `<intent-filter>` to handle the `helm://` scheme.
-- **iOS (Manual)**: I will provide the XML snippet for `Info.plist` (since the `ios` directory is currently missing in your project root).
-
-### 2. Dependencies
-- **[Modify] [pubspec.yaml](file:///C:/Users/Lenovo/StudioProjects/EventsManager/events_manager/pubspec.yaml)**: Add `app_links` for deep link interception.
-
-### 3. Backend Logic (Supabase)
+### 1. Community Lifecycle (Backend & Service)
 - **[Modify] [supabase_service.dart](file:///C:/Users/Lenovo/StudioProjects/EventsManager/events_manager/lib/services/supabase_service.dart)**:
-    - Add `joinCommunity(String communityId)`:
-        - Checks if the user is authenticated.
-        - Safely inserts a record into `community_members`.
-        - Handles errors (already a member, invalid community).
+    - Add `createCommunity(String name)`: Creates a community and automatically adds the creator as an 'admin'.
+    - Add `getCommunityMembers(String communityId)`: Fetches the member list for the "Manage Members" view.
+- **[Modify] [SQL]**: Add a trigger to automatically add the creator of a community to `community_members`.
 
-### 4. Deep Link Service
-- **[NEW] [lib/services/invite_service.dart](file:///C:/Users/Lenovo/StudioProjects/EventsManager/events_manager/lib/services/invite_service.dart)**:
-    - Use `AppLinks` to listen for incoming URLs.
-    - Handle "cold starts" (initial link) and "background" events.
-    - Parse `communityId` from query parameters.
-    - Implement the "Auth State Guard": If not logged in, store the ID and redirect to onboarding/login.
+### 2. Community Hub UI
+- **[Modify] [community_list_view.dart](file:///C:/Users/Lenovo/StudioProjects/EventsManager/events_manager/lib/community_list_view.dart)**:
+    - Add a "Create Community" button/card.
+    - Implement a simple dialog to input the new community name.
 
-### 5. App Integration
+### 3. Sharing & Invitations
+- **[NEW] [community_manage_page.dart](file:///C:/Users/Lenovo/StudioProjects/EventsManager/events_manager/lib/community_manage_page.dart)**:
+    - A screen to view members and their roles.
+    - A prominent "Invite Member" button that generates a `helm://invite?communityId=...` link and copies it to the clipboard.
+
+### 4. Navigation Integration
 - **[Modify] [main.dart](file:///C:/Users/Lenovo/StudioProjects/EventsManager/events_manager/lib/main.dart)**:
-    - Initialize `InviteService` in `main()` after Supabase.
-    - Set up a listener to trigger the join logic once the user logs in.
+    - Add the `/manage-community` route.
 
 ## Verification Plan
 
 ### Manual Verification
-- **Cold Start**: Close the app completely, then run `adb shell am start -W -a android.intent.action.VIEW -d "helm://invite?communityId=TEST_ID" com.example.helm`.
-- **Background**: Open the app, then trigger the same `adb` command.
-- **Auth Guard**: Trigger the link while logged out, log in, and verify the user is automatically added to the community.
-- **Error Handling**: Test with an invalid `communityId` and verify the app displays a clear error message.
+- **Creation**: Create a community called "Team Alpha" and verify it appears in your sidebar.
+- **Invitations**: Go to "Manage Members", tap "Invite", and verify a link is copied to your clipboard.
+- **Joining**: Paste that link into a browser or another device's terminal (`adb shell am start -a android.intent.action.VIEW -d "helm://invite?communityId=..."`) and verify you are added to the group.
+- **Collaboration**: Create a task in the new community and verify it's tagged with the community name.

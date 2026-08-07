@@ -15,7 +15,7 @@ extension GetSettingsCollection on Isar {
 
 const SettingsSchema = CollectionSchema(
   name: r'Settings',
-  id: -8656046621518759136,
+  id: -8656046621518758912,
   properties: {
     r'communityMentionsEnabled': PropertySchema(
       id: 0,

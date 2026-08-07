@@ -1,15 +1,12 @@
-# Community Invite System Implementation Tasks
+# Phase 3: Community Collaboration progress
 
-- `[x]` **Phase 1: Configuration & Setup**
-    - `[x]` Add `app_links` to `pubspec.yaml`.
-    - `[x]` Configure `AndroidManifest.xml` for `helm://invite` deep links.
-    - `[x]` Provide `Info.plist` snippet for iOS.
-- `[x]` **Phase 2: Service Implementation**
-    - `[x]` Add `joinCommunity` to `lib/services/supabase_service.dart`.
-    - `[x]` Create `lib/services/invite_service.dart` to handle URL interception and auth-guarding.
-- `[x]` **Phase 3: Integration**
-    - `[x]` Initialize `InviteService` in `main.dart`.
-    - `[x]` Set up the global listener for post-login joins.
-- `[ ]` **Phase 4: Verification**
-    - `[ ]` Verify cold-start and background link handling.
-    - `[ ]` Update walkthrough with usage instructions.
+- `[ ]` **Phase 1: Backend Security & Automation (SQL)**
+    - `[ ]` Run "Creator to Admin" trigger script in Supabase.
+- `[ ]` **Phase 2: Core Services Update**
+    - `[ ]` Update `SupabaseService` with `createCommunity` and member management logic.
+- `[ ]` **Phase 3: UI Implementation**
+    - `[ ]` Update `CommunityListView` to support community creation.
+    - `[ ]` Create `CommunityManagePage` for member roles and invite sharing.
+    - `[ ]` Fix remaining Isar-related analysis errors in `CategoryPage` and `SettingsPage`.
+- `[ ]` **Phase 4: Navigation & Routes**
+    - `[ ]` Register the management route in `main.dart`.

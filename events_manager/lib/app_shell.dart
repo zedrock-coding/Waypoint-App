@@ -1,28 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:isar/isar.dart';
 import 'package:provider/provider.dart';
-import 'models/category.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'ai_voice_overlay.dart';
-import 'repositories/category_repository.dart';
 import 'widgets/task_search_delegate.dart';
 import 'widgets/app_intents.dart';
 import 'widgets/task_form_utils.dart';
 import 'widgets/ai_text_drawer.dart';
 import 'widgets/notification_feed.dart';
+import 'services/supabase_service.dart';
+import 'services/navigation_provider.dart';
 
 class AppShell extends StatefulWidget {
   final Widget child;
   final String title;
   final List<Widget>? actions;
   final Widget? floatingActionButton;
-  final Isar isar;
 
   const AppShell({
     super.key,
     required this.child,
     required this.title,
-    required this.isar,
     this.actions,
     this.floatingActionButton,
   });
@@ -37,31 +35,42 @@ class _AppShellState extends State<AppShell> {
 
   @override
   Widget build(BuildContext context) {
-    final categoryRepo = context.read<CategoryRepository>();
+    final supabaseService = SupabaseService();
+    final navProvider = context.watch<NavigationProvider>();
+    
     final double width = MediaQuery.of(context).size.width;
     final bool isDesktop = width >= 800;
-    final String currentRoute = ModalRoute.of(context)?.settings.name ?? '/';
     final ColorScheme colorScheme = Theme.of(context).colorScheme;
 
-    // Helper functions moved inside State
     Widget navItem({
       required IconData icon,
       required String label,
       required String route,
+      String? communityId,
       bool isSubItem = false,
     }) {
-      final bool isActive = currentRoute == route;
+      final bool isCurrentRoute = ModalRoute.of(context)?.settings.name == route;
+      final bool isActive = communityId != null 
+          ? navProvider.selectedCommunityId == communityId
+          : (navProvider.currentRoute == route || (route == '/' && isCurrentRoute));
       
       return Padding(
         padding: EdgeInsets.symmetric(horizontal: isSubItem ? 8 : 12, vertical: 4),
         child: InkWell(
           onTap: () {
-            if (isActive) {
-              if (!isDesktop) Navigator.pop(context);
-              return;
+            if (communityId != null) {
+              navProvider.selectCommunity(communityId, name: label);
+            } else {
+              navProvider.setRoute(route);
             }
+            
             if (!isDesktop) Navigator.pop(context);
-            Navigator.pushReplacementNamed(context, route);
+            
+            if (!isCurrentRoute) {
+              // If we are selecting a community, we must go back to the dashboard route ('/')
+              final String targetRoute = communityId != null ? '/' : route;
+              Navigator.pushReplacementNamed(context, targetRoute);
+            }
           },
           borderRadius: BorderRadius.circular(12),
           child: Container(
@@ -97,70 +106,87 @@ class _AppShellState extends State<AppShell> {
       );
     }
 
-    Widget sidebarContent = SingleChildScrollView(
-      child: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(24.0),
-            alignment: Alignment.centerLeft,
-            child: Row(
-              children: [
-                Image.asset(
-                  'assets/icon/icon.png',
-                  height: 32,
-                  errorBuilder: (context, error, stackTrace) => 
-                      Icon(Icons.shield, color: colorScheme.primary),
-                ),
-                const SizedBox(width: 12),
-                const Text(
+    Widget sidebarContent = Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(24.0),
+          alignment: Alignment.centerLeft,
+          child: Row(
+            children: [
+              Image.asset(
+                'assets/icon/icon.png',
+                height: 32,
+                errorBuilder: (context, error, stackTrace) => 
+                    Icon(Icons.shield, color: colorScheme.primary),
+              ),
+              const SizedBox(width: 12),
+              const Flexible(
+                child: Text(
                   'Helm',
                   style: TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.bold,
                     letterSpacing: 1,
                   ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: SingleChildScrollView(
+            child: Column(
+              children: [
+                const SizedBox(height: 8),
+                navItem(icon: Icons.dashboard_rounded, label: 'Dashboard', route: '/'),
+                
+                FutureBuilder<List<Map<String, dynamic>>>(
+                  future: supabaseService.fetchUserCommunities(),
+                  builder: (context, snapshot) {
+                    final communities = snapshot.data ?? [];
+                    return Theme(
+                      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+                      child: ExpansionTile(
+                        initiallyExpanded: true,
+                        shape: const Border(),
+                        collapsedShape: const Border(),
+                        iconColor: colorScheme.onSurface,
+                        collapsedIconColor: colorScheme.onSurface,
+                        leading: Icon(Icons.hub_rounded, color: colorScheme.onSurface.withOpacity(0.6), size: 22),
+                        title: Text('Communities', style: TextStyle(color: colorScheme.onSurface.withOpacity(0.6), fontSize: 15)),
+                        childrenPadding: const EdgeInsets.only(left: 24),
+                        children: communities.map((comm) {
+                          final members = comm['community_members'] as List?;
+                          final isMemberAdmin = members != null && 
+                                              members.isNotEmpty && 
+                                              members[0]['role'] == 'admin';
+                                              
+                          return navItem(
+                            icon: isMemberAdmin ? Icons.verified_user_rounded : Icons.label_outline_rounded, 
+                            label: comm['name'], 
+                            route: '/communities/${comm['id']}',
+                            communityId: comm['id'],
+                            isSubItem: true
+                          );
+                        }).toList(),
+                      ),
+                    );
+                  }
+                ),
+                
+                navItem(icon: Icons.category_rounded, label: 'Manage All', route: '/categories'),
+                navItem(icon: Icons.settings_rounded, label: 'Settings', route: '/settings'),
+                const SizedBox(height: 24),
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 24.0),
+                  child: Divider(color: Colors.white10),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 8),
-          navItem(icon: Icons.dashboard_rounded, label: 'Dashboard', route: '/'),
-          
-          StreamBuilder<List<Category>>(
-            stream: categoryRepo.watchRootCategories(),
-            builder: (context, snapshot) {
-              final rootCategories = snapshot.data ?? [];
-              return Theme(
-                data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-                child: ExpansionTile(
-                  initiallyExpanded: true,
-                  shape: const Border(),
-                  collapsedShape: const Border(),
-                  iconColor: colorScheme.onSurface,
-                  collapsedIconColor: colorScheme.onSurface,
-                  leading: Icon(Icons.hub_rounded, color: colorScheme.onSurface.withOpacity(0.6), size: 22),
-                  title: Text('Communities', style: TextStyle(color: colorScheme.onSurface.withOpacity(0.6), fontSize: 15)),
-                  childrenPadding: const EdgeInsets.only(left: 24),
-                  children: rootCategories.map((cat) => navItem(
-                    icon: cat.isAdmin ? Icons.verified_user_rounded : Icons.label_outline_rounded, 
-                    label: cat.name, 
-                    route: '/categories/${cat.id}', 
-                    isSubItem: true
-                  )).toList(),
-                ),
-              );
-            }
-          ),
-          
-          navItem(icon: Icons.category_rounded, label: 'Manage All', route: '/categories'),
-          navItem(icon: Icons.settings_rounded, label: 'Settings', route: '/settings'),
-          const SizedBox(height: 24),
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 24.0),
-            child: Divider(color: Colors.white10),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
 
     return Shortcuts(
@@ -175,7 +201,10 @@ class _AppShellState extends State<AppShell> {
       child: Actions(
         actions: <Type, Action<Intent>>{
           NewTaskIntent: CallbackAction<NewTaskIntent>(
-            onInvoke: (intent) => showAddTaskForm(context, isar: widget.isar),
+            onInvoke: (intent) => showAddTaskForm(
+              context,
+              initialCommunityId: Provider.of<NavigationProvider>(context, listen: false).selectedCommunityId,
+            ),
           ),
           SearchIntent: CallbackAction<SearchIntent>(
             onInvoke: (intent) => showSearch(
@@ -202,6 +231,24 @@ class _AppShellState extends State<AppShell> {
                 child: sidebarContent,
               ),
               endDrawer: const AITextDrawer(),
+              bottomNavigationBar: BottomNavigationBar(
+                currentIndex: navProvider.selectedIndex,
+                onTap: (index) => navProvider.setTab(index),
+                selectedItemColor: colorScheme.primary,
+                unselectedItemColor: colorScheme.onSurface.withOpacity(0.5),
+                items: const [
+                  BottomNavigationBarItem(
+                    icon: Icon(Icons.person_outline_rounded),
+                    activeIcon: Icon(Icons.person_rounded),
+                    label: 'Personal',
+                  ),
+                  BottomNavigationBarItem(
+                    icon: Icon(Icons.hub_outlined),
+                    activeIcon: Icon(Icons.hub_rounded),
+                    label: 'Communities',
+                  ),
+                ],
+              ),
               body: Stack(
                 children: [
                   Row(
@@ -231,13 +278,14 @@ class _AppShellState extends State<AppShell> {
                                     ),
                                   if (!isDesktop) const SizedBox(width: 8),
                                   Text(
-                                    widget.title,
+                                    navProvider.selectedIndex == 0 ? 'Personal Tasks' : 'Communities',
                                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                                       fontWeight: FontWeight.bold,
                                       color: colorScheme.onSurface,
                                     ),
                                   ),
                                   const Spacer(),
+                                  if (widget.actions != null) ...widget.actions!,
                                   IconButton(
                                     icon: Icon(Icons.search, color: colorScheme.onSurface.withOpacity(0.7)),
                                     onPressed: () => showSearch(
@@ -279,6 +327,10 @@ class _AppShellState extends State<AppShell> {
                                     onSelected: (value) {
                                       if (value == 'settings') {
                                         Navigator.pushNamed(context, '/account-settings');
+                                      } else if (value == 'communities') {
+                                        navProvider.setTab(1); // Switch to Communities tab
+                                      } else if (value == 'logout') {
+                                        Supabase.instance.client.auth.signOut();
                                       }
                                     },
                                     itemBuilder: (context) => [
@@ -298,10 +350,9 @@ class _AppShellState extends State<AppShell> {
                     ],
                   ),
                   
-                  // Desktop Notification Overlay ( Snappy alternative to showMenu )
                   if (isDesktop && _showDesktopNotifications)
                     Positioned(
-                      top: 60, // Positioned below header
+                      top: 60, 
                       right: 20,
                       child: CompositedTransformFollower(
                         link: _notificationLayerLink,
@@ -325,7 +376,7 @@ class _AppShellState extends State<AppShell> {
     if (!isDesktop) {
       showModalBottomSheet(
         context: context,
-        backgroundColor: Colors.transparent, // Let our widget handle colors
+        backgroundColor: Colors.transparent, 
         isScrollControlled: true,
         builder: (ctx) => const AIVoiceOverlay(),
       );
@@ -344,28 +395,5 @@ class _AppShellState extends State<AppShell> {
         ),
       );
     }
-  }
-
-  void _showNotificationMenu(BuildContext context) {
-    final RenderBox button = context.findRenderObject() as RenderBox;
-    final Offset position = button.localToGlobal(Offset(0, button.size.height));
-
-    showMenu(
-      context: context,
-      position: RelativeRect.fromLTRB(
-        position.dx - 300, // Offset to the left to align with right-hand button
-        position.dy + 10,
-        MediaQuery.of(context).size.width - position.dx,
-        0,
-      ),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      constraints: const BoxConstraints(maxWidth: 350, maxHeight: 500),
-      items: [
-        const PopupMenuItem(
-          enabled: false,
-          child: NotificationFeedUI(),
-        ),
-      ],
-    );
   }
 }

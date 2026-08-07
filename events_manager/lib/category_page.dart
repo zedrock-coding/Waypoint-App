@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:isar/isar.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import 'package:provider/provider.dart';
-import 'models/category.dart';
+import 'models/hive_models.dart' as hive_model;
+import 'providers/task_provider.dart';
 import 'app_shell.dart';
-import 'repositories/category_repository.dart';
 
 class CategoryPage extends StatefulWidget {
-  final Isar isar;
-  const CategoryPage({super.key, required this.isar});
+  const CategoryPage({super.key});
 
   @override
   State<CategoryPage> createState() => _CategoryPageState();
@@ -17,17 +16,18 @@ class _CategoryPageState extends State<CategoryPage> {
   final _categoryController = TextEditingController();
 
   Future<void> _addCategory() async {
-    if (_categoryController.text.isNotEmpty) {
-      final categoryRepo = context.read<CategoryRepository>();
-      final newCategory = Category()..name = _categoryController.text;
-      await categoryRepo.saveCategory(newCategory);
+    final name = _categoryController.text.trim();
+    if (name.isNotEmpty) {
+      await context.read<TaskProvider>().addCategory(name);
       _categoryController.clear();
     }
   }
 
-  Future<void> _deleteCategory(Id id) async {
-    final categoryRepo = context.read<CategoryRepository>();
-    final cat = await categoryRepo.getCategoryById(id);
+  Future<void> _deleteCategory(String id) async {
+    final taskProvider = context.read<TaskProvider>();
+    final box = Hive.box<hive_model.Category>('categories');
+    final cat = box.get(id);
+    
     if (cat != null && cat.name == 'General') {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -36,16 +36,15 @@ class _CategoryPageState extends State<CategoryPage> {
       }
       return;
     }
-    await categoryRepo.deleteCategory(id);
+    await taskProvider.deleteCategory(id);
   }
 
   @override
   Widget build(BuildContext context) {
-    final categoryRepo = context.read<CategoryRepository>();
+    final _categoryBox = Hive.box<hive_model.Category>('categories');
 
     return AppShell(
       title: 'Manage Categories',
-      isar: widget.isar,
       child: Column(
         children: [
           Padding(
@@ -59,6 +58,7 @@ class _CategoryPageState extends State<CategoryPage> {
                       labelText: 'New Category Name',
                       border: OutlineInputBorder(),
                     ),
+                    onSubmitted: (_) => _addCategory(),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -70,12 +70,13 @@ class _CategoryPageState extends State<CategoryPage> {
             ),
           ),
           Expanded(
-            child: StreamBuilder<List<Category>>(
-              stream: categoryRepo.watchCategories(),
-              builder: (context, snapshot) {
-                if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-                final categories = snapshot.data!;
-                if (categories.isEmpty) return const Center(child: Text('No categories found.'));
+            child: ValueListenableBuilder(
+              valueListenable: _categoryBox.listenable(),
+              builder: (context, Box<hive_model.Category> box, _) {
+                final categories = box.values.toList();
+                if (categories.isEmpty) {
+                  return const Center(child: Text('No categories found.'));
+                }
                 
                 return ListView.builder(
                   itemCount: categories.length,

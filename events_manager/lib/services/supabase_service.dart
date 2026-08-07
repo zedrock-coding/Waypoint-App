@@ -1,72 +1,63 @@
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class SupabaseService {
   static final client = Supabase.instance.client;
 
   /// Fetch all communities the current logged-in user is a member of.
-  /// Uses a join with community_members to filter results.
   Future<List<Map<String, dynamic>>> fetchUserCommunities() async {
     final userId = client.auth.currentUser?.id;
     if (userId == null) return [];
 
     try {
-      final response = await client
-          .from('communities')
-          .select('*, community_members!inner(role)')
-          .eq('community_members.user_id', userId);
-
-      return response as List<Map<String, dynamic>>;
+      return await _fetchCommunitiesWithRetry();
     } catch (e) {
-      print('Error fetching communities: $e');
+      debugPrint('Error fetching communities: $e');
       return [];
     }
   }
 
-  /// Add a new user to a community with a 'member' role.
-  /// Note: Admin check is handled on the server via RLS, 
-  /// but we could add a client-side check if needed.
-  Future<void> addUserToCommunity(String communityId, String userId) async {
+  Future<List<Map<String, dynamic>>> _fetchCommunitiesWithRetry({int retries = 2}) async {
     try {
-      await client.from('community_members').insert({
-        'community_id': communityId,
-        'user_id': userId,
-        'role': 'member',
-      });
+      final response = await client
+          .from('communities')
+          .select('*, community_members!inner(role)');
+      return response;
     } catch (e) {
-      print('Error adding user to community: $e');
+      if (e is PostgrestException && e.code == 'PGRST303' && retries > 0) {
+        debugPrint('Supabase: Clock skew detected (PGRST303). Retrying in 2 seconds...');
+        await Future.delayed(const Duration(seconds: 2));
+        return _fetchCommunitiesWithRetry(retries: retries - 1);
+      }
       rethrow;
     }
   }
 
-  /// Demote an 'admin' to a 'member'.
-  /// Checks if the current user is an admin before attempting the update.
-  Future<void> demoteAdminToMember(String communityId, String targetUserId) async {
-    final currentUserId = client.auth.currentUser?.id;
-    if (currentUserId == null) return;
-
+  /// Create a new community. 
+  /// Note: The 'admin' role assignment is handled automatically by the DB trigger.
+  Future<void> createCommunity(String name) async {
     try {
-      // 1. Client-side check for Admin role in this community
-      final currentMemberResponse = await client
-          .from('community_members')
-          .select('role')
-          .eq('community_id', communityId)
-          .eq('user_id', currentUserId)
-          .single();
-
-      if (currentMemberResponse['role'] != 'admin') {
-        throw Exception('Access Denied: Only admins can demote members.');
-      }
-
-      // 2. Perform the demotion
-      await client
-          .from('community_members')
-          .update({'role': 'member'})
-          .eq('community_id', communityId)
-          .eq('user_id', targetUserId);
-          
+      await client.from('communities').insert({
+        'name': name,
+      });
     } catch (e) {
-      print('Error demoting member: $e');
+      debugPrint('Error creating community: $e');
       rethrow;
+    }
+  }
+
+  /// Fetch all members of a specific community.
+  Future<List<Map<String, dynamic>>> getCommunityMembers(String communityId) async {
+    try {
+      // Note: We'd typically join with a profiles table here to get names/avatars.
+      // For now, we return the IDs and roles.
+      return await client
+          .from('community_members')
+          .select('*')
+          .eq('community_id', communityId);
+    } catch (e) {
+      debugPrint('Error fetching members: $e');
+      return [];
     }
   }
 
@@ -85,19 +76,52 @@ class SupabaseService {
           .maybeSingle();
 
       if (existing != null) {
-        print('User is already a member of this community.');
+        debugPrint('User is already a member of this community.');
         return;
       }
 
-      // Add to community
+      // Add to community as 'member'
       await client.from('community_members').insert({
         'community_id': communityId,
         'user_id': userId,
         'role': 'member',
       });
     } catch (e) {
-      print('Failed to join community: $e');
+      debugPrint('Failed to join community: $e');
       rethrow;
     }
+  }
+
+  /// Update a member's role (Admins only).
+  Future<void> updateMemberRole(String communityId, String targetUserId, String newRole) async {
+    try {
+      await client
+          .from('community_members')
+          .update({'role': newRole})
+          .eq('community_id', communityId)
+          .eq('user_id', targetUserId);
+    } catch (e) {
+      debugPrint('Error updating member role: $e');
+      rethrow;
+    }
+  }
+
+  /// Remove a member from a community (Admins only).
+  Future<void> removeMember(String communityId, String targetUserId) async {
+    try {
+      await client
+          .from('community_members')
+          .delete()
+          .eq('community_id', communityId)
+          .eq('user_id', targetUserId);
+    } catch (e) {
+      debugPrint('Error removing member: $e');
+      rethrow;
+    }
+  }
+
+  /// Sign out.
+  Future<void> signOut() async {
+    await client.auth.signOut();
   }
 }

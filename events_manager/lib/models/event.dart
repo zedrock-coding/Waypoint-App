@@ -36,7 +36,6 @@ class Event {
 
   final categories = IsarLinks<Category>();
 
-  // Sub-task support
   final parent = IsarLink<Event>();
 
   @Backlink(to: 'parent')

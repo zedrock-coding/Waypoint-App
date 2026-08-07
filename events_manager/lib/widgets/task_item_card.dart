@@ -1,39 +1,41 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
-import '../models/event.dart';
+import '../models/unified_task.dart';
 
 class TaskItemCard extends StatelessWidget {
-  final Event event;
+  final UnifiedTask task;
   final int index;
   final Function() onTap;
+  final Function() onToggle;
   final Function(DismissDirection) onDismiss;
 
   const TaskItemCard({
     super.key,
-    required this.event,
+    required this.task,
     required this.index,
     required this.onTap,
+    required this.onToggle,
     required this.onDismiss,
   });
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final isDone = event.status == Status.done;
-    final isOverdue = !isDone && event.dateTime.isBefore(DateTime.now());
+    final isDone = task.status == Status.done;
+    final isOverdue = !isDone && task.dateTime.isBefore(DateTime.now());
 
     Color cardColor;
-    if (event.priority == Priority.high) {
-      cardColor = Color.lerp(Theme.of(context).cardColor, Colors.red, 0.1)!;
-    } else if (event.priority == Priority.low) {
-      cardColor = Color.lerp(Theme.of(context).cardColor, Colors.blueGrey, 0.1)!;
+    if (task.priority == Priority.high) {
+      cardColor = Color.lerp(Theme.of(context).cardColor, Colors.red, 0.05)!;
+    } else if (task.priority == Priority.low) {
+      cardColor = Color.lerp(Theme.of(context).cardColor, Colors.blueGrey, 0.05)!;
     } else {
       cardColor = Theme.of(context).cardColor;
     }
 
     return Dismissible(
-      key: ValueKey('dismiss_${event.id}'),
+      key: ValueKey('dismiss_${task.isLocal ? 'l' : 'r'}_${task.id}'),
       background: _buildDismissBackground(colorScheme, Icons.check, colorScheme.primary, Alignment.centerLeft),
       secondaryBackground: _buildDismissBackground(colorScheme, Icons.delete_outline, Colors.red.shade400, Alignment.centerRight),
       onDismissed: (direction) {
@@ -41,7 +43,7 @@ class TaskItemCard extends StatelessWidget {
         onDismiss(direction);
       },
       child: Hero(
-        tag: 'task_card_${event.id}',
+        tag: 'task_card_${task.id}',
         child: Card(
           elevation: 0,
           color: cardColor,
@@ -60,19 +62,10 @@ class TaskItemCard extends StatelessWidget {
               padding: const EdgeInsets.all(16.0),
               child: Row(
                 children: [
-                  // DRAG HANDLE
-                  ReorderableDragStartListener(
-                    index: index,
-                    child: Padding(
-                      padding: const EdgeInsets.only(right: 8.0),
-                      child: Icon(
-                        Icons.drag_indicator,
-                        color: colorScheme.onSurface.withOpacity(0.3),
-                        size: 20,
-                      ),
-                    ),
+                  GestureDetector(
+                    onTap: onToggle,
+                    child: _buildStatusIcon(task.status, colorScheme),
                   ),
-                  _buildStatusIcon(isDone, colorScheme),
                   const SizedBox(width: 16),
                   _buildTaskContent(context, isDone, colorScheme),
                   const SizedBox(width: 16),
@@ -99,55 +92,85 @@ class TaskItemCard extends StatelessWidget {
     );
   }
 
-  Widget _buildStatusIcon(bool isDone, ColorScheme colorScheme) {
-    return Container(
-      width: 24,
-      height: 24,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        border: Border.all(
-          color: isDone ? Colors.green : colorScheme.outline,
-          width: 2,
-        ),
-      ),
-      child: isDone ? const Icon(Icons.check, size: 14, color: Colors.green) : null,
-    );
+  Widget _buildStatusIcon(Status status, ColorScheme colorScheme) {
+    switch (status) {
+      case Status.done:
+        return Container(
+          width: 24,
+          height: 24,
+          decoration: const BoxDecoration(shape: BoxShape.circle, color: Colors.green),
+          child: const Icon(Icons.check, size: 16, color: Colors.white),
+        );
+      case Status.inProgress:
+        return Container(
+          width: 24,
+          height: 24,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(color: colorScheme.primary, width: 2),
+          ),
+          child: Center(
+            child: Container(
+              width: 12,
+              height: 12,
+              decoration: BoxDecoration(shape: BoxShape.circle, color: colorScheme.primary),
+            ),
+          ),
+        );
+      default:
+        return Container(
+          width: 24,
+          height: 24,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(color: colorScheme.outline, width: 2),
+          ),
+        );
+    }
   }
 
   Widget _buildTaskContent(BuildContext context, bool isDone, ColorScheme colorScheme) {
     return Expanded(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min, // Added
         children: [
           Text(
-            event.title,
+            task.title,
+            maxLines: 2, // Added
+            overflow: TextOverflow.ellipsis, // Added
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.bold,
               decoration: isDone ? TextDecoration.lineThrough : null,
               color: isDone ? colorScheme.onSurface.withOpacity(0.5) : colorScheme.onSurface,
             ),
           ),
-          if (event.description.isNotEmpty)
-            Text(
-              event.description,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: colorScheme.onSurfaceVariant,
-              ),
+          const SizedBox(height: 4),
+          SingleChildScrollView( // Wrap tags in a small horizontal scroll if they overflow
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                _buildPillTag(colorScheme, task.status.name.toUpperCase(), _getStatusColor(task.status)),
+                const SizedBox(width: 4),
+                _buildPillTag(colorScheme, task.priority.name.toUpperCase(), colorScheme.primary),
+                if (!task.isLocal) ...[
+                  const SizedBox(width: 4),
+                  _buildPillTag(colorScheme, 'CLOUD', Colors.blue, isAssignee: false),
+                ],
+              ],
             ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 4,
-            runSpacing: 4,
-            children: [
-              _buildPillTag(colorScheme, event.priority.name.toUpperCase(), colorScheme.primary),
-              ...event.assignees.take(2).map((a) => _buildPillTag(colorScheme, a, colorScheme.tertiary, isAssignee: true)),
-            ],
           ),
         ],
       ),
     );
+  }
+
+  Color _getStatusColor(Status s) {
+    switch (s) {
+      case Status.done: return Colors.green;
+      case Status.inProgress: return Colors.orange;
+      default: return Colors.grey;
+    }
   }
 
   Widget _buildTrailingInfo(bool isOverdue, ColorScheme colorScheme) {
@@ -155,20 +178,13 @@ class TaskItemCard extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
         Text(
-          DateFormat.yMMMd().format(event.dateTime),
+          DateFormat.yMMMd().format(task.dateTime),
           style: TextStyle(fontSize: 11, color: colorScheme.onSurfaceVariant),
         ),
         if (isOverdue)
           Padding(
             padding: const EdgeInsets.only(top: 4),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.flag, color: Colors.red, size: 12),
-                const SizedBox(width: 2),
-                const Text('Overdue', style: TextStyle(color: Colors.red, fontSize: 10, fontWeight: FontWeight.bold)),
-              ],
-            ),
+            child: const Icon(Icons.error_outline, color: Colors.red, size: 14),
           ),
       ],
     );
@@ -184,7 +200,7 @@ class TaskItemCard extends StatelessWidget {
       child: Text(
         label,
         style: TextStyle(
-          fontSize: 9,
+          fontSize: 8,
           fontWeight: FontWeight.bold,
           color: color,
         ),

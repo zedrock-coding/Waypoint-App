@@ -1,57 +1,57 @@
 import 'package:flutter/material.dart';
-import 'package:isar/isar.dart';
-import 'models/settings.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import 'models/hive_models.dart';
 import 'theme/app_theme.dart';
 
 class ThemeProvider with ChangeNotifier {
-  final Isar isar;
+  final Box<Settings> _settingsBox = Hive.box<Settings>('settings');
   Settings _settings = Settings();
 
-  ThemeProvider(this.isar) {
+  ThemeProvider() {
     _init();
   }
 
   Settings get settings => _settings;
 
-  Future<void> _init() async {
-    final s = await isar.settings.get(0);
+  void _init() {
+    final s = _settingsBox.get('app_settings');
     if (s != null) {
       _settings = s;
-      notifyListeners();
     }
     
-    isar.settings.watchObject(0).listen((newSettings) {
-      if (newSettings != null) {
-        _settings = newSettings;
+    // Listen for changes
+    _settingsBox.watch(key: 'app_settings').listen((event) {
+      if (event.value != null) {
+        _settings = event.value;
         notifyListeners();
       }
     });
   }
 
   ThemeMode get themeMode {
-    return _settings.themeMode == 1 ? ThemeMode.dark : ThemeMode.light;
+    return (_settings.themeMode ?? 1) == 1 ? ThemeMode.dark : ThemeMode.light;
   }
 
   double get textScaleFactor {
-    return AppTheme.fontScales[_settings.fontSizeIndex.clamp(0, 4)];
+    return AppTheme.fontScales[(_settings.fontSizeIndex ?? 2).clamp(0, 4)];
   }
 
   Future<void> updateThemeMode(int mode) async {
     _settings.themeMode = mode;
+    await _settings.save();
     notifyListeners();
-    await isar.writeTxn(() => isar.settings.put(_settings));
   }
   
   Future<void> updateFontSize(int index) async {
     _settings.fontSizeIndex = index;
+    await _settings.save();
     notifyListeners();
-    await isar.writeTxn(() => isar.settings.put(_settings));
   }
 
   Future<void> toggleReminders(bool enabled) async {
     _settings.dailyBriefingEnabled = enabled;
+    await _settings.save();
     notifyListeners();
-    await isar.writeTxn(() => isar.settings.put(_settings));
   }
 
   Future<void> updateNotificationSetting(String key, bool value) async {
@@ -72,8 +72,8 @@ class ThemeProvider with ChangeNotifier {
         _settings.newsAndOffersEnabled = value;
         break;
     }
+    await _settings.save();
     notifyListeners();
-    await isar.writeTxn(() => isar.settings.put(_settings));
   }
 
   void refresh() {
