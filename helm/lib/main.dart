@@ -50,36 +50,30 @@ void main() async {
   );
 
   debugPrint('INIT: Starting InviteService...');
-  // Initialize Deep Link/Invite Service (Non-blocking if possible)
   unawaited(InviteService().init());
   
   debugPrint('INIT: Starting Hive...');
   await HiveDatabase.init();
 
   try {
-    debugPrint('INIT: Starting Notifications...');
     await NotificationService().init();
     
-    // Initialize Isar for one-time migration (NOT supported on Web)
     Isar? isar;
     if (!kIsWeb) {
       try {
-        debugPrint('INIT: Opening Isar...');
         final dir = await getApplicationDocumentsDirectory();
         isar = await Isar.open(
           [EventSchema, model.CategorySchema, SettingsSchema],
           directory: dir.path,
         );
       } catch (e) {
-        debugPrint('TaskProvider: Skipping migration because old database is incompatible: $e');
+        debugPrint('TaskProvider: Skipping Isar migration: $e');
       }
     }
 
     final TaskRepository taskRepo = TaskRepository();
-    // Pass Isar (if available) to TaskProvider for migration
     final TaskProvider taskProvider = TaskProvider(isar: isar);
 
-    debugPrint('INIT: Running App...');
     runApp(
       MultiProvider(
         providers: [
@@ -113,7 +107,6 @@ class _MyAppState extends State<MyApp> {
   @override
   void initState() {
     super.initState();
-    // Listen for auth state changes and redirect accordingly
     Supabase.instance.client.auth.onAuthStateChange.listen((data) {
       final session = data.session;
       if (session == null) {
@@ -273,7 +266,6 @@ class _MyHomePageState extends State<MyHomePage> {
     final tasks = taskProvider.personalTasks;
     return Column(
       children: [
-        // Wrap the non-scrollable top part in a way that it won't overflow
         _buildVelocityDashboard(),
         CategoryChipBar(
           selectedCategoryId: taskProvider.selectedCategoryId,
