@@ -11,3 +11,15 @@ class SearchIntent extends Intent {
 class AIVoiceIntent extends Intent {
   const AIVoiceIntent();
 }
+
+class CycleTabIntent extends Intent {
+  const CycleTabIntent();
+}
+
+class EscapeIntent extends Intent {
+  const EscapeIntent();
+}
+
+class EnterIntent extends Intent {
+  const EnterIntent();
+}

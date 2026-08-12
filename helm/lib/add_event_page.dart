@@ -30,21 +30,21 @@ class _AddEventPageState extends State<AddEventPage> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _titleController;
   late TextEditingController _descriptionController;
-  final TextEditingController _assigneeInputController = TextEditingController();
-  final FocusNode _assigneeFocusNode = FocusNode();
   late DateTime _selectedDate;
   
   late Priority _selectedPriority;
   late Status _selectedStatus;
   
   List<hive_model.Category> _availableHiveCategories = [];
-  final List<String> _selectedHiveCategoryIds = [];
-  final List<String> _assignees = [];
+  final List<String> _selectedCategoryIds = [];
+  final List<String> _selectedAssigneeIds = [];
   bool _hasUnsavedChanges = false;
   
   String? _selectedDestination; 
   List<Map<String, dynamic>> _userCommunities = [];
+  List<Map<String, dynamic>> _communityMembers = [];
   bool _isUserLoggedIn = false;
+  bool _isLoadingMembers = false;
 
   @override
   void initState() {
@@ -53,25 +53,27 @@ class _AddEventPageState extends State<AddEventPage> {
     
     if (widget.initialCommunityId != null) {
       _selectedDestination = widget.initialCommunityId;
+    } else if (widget.taskToEdit != null) {
+      _selectedDestination = widget.taskToEdit!.communityId ?? (_isUserLoggedIn ? null : 'local');
     } else {
       _selectedDestination = _isUserLoggedIn ? null : 'local';
     }
     
     _titleController = TextEditingController(text: widget.taskToEdit?.title ?? '');
     _descriptionController = TextEditingController(text: widget.taskToEdit?.description ?? '');
+    
     if (widget.taskToEdit != null) {
-      _assignees.addAll(widget.taskToEdit!.assignees);
+      _selectedAssigneeIds.addAll(widget.taskToEdit!.assignees);
+      _selectedCategoryIds.addAll(widget.taskToEdit!.categoryIds);
     }
+    
     _selectedDate = widget.taskToEdit?.dateTime ?? DateTime.now();
     _selectedPriority = widget.taskToEdit?.priority ?? Priority.medium;
     _selectedStatus = widget.taskToEdit?.status ?? Status.toDo;
-
-    if (widget.taskToEdit?.categoryId != null) {
-      _selectedHiveCategoryIds.add(widget.taskToEdit!.categoryId!);
-    }
     
     _loadHiveCategories();
     _loadSupabaseCommunities();
+    _loadCommunityMembers();
 
     _titleController.addListener(_markChanges);
     _descriptionController.addListener(_markChanges);
@@ -91,24 +93,31 @@ class _AddEventPageState extends State<AddEventPage> {
     });
   }
 
-  void _markChanges() {
-    if (!_hasUnsavedChanges) {
-      setState(() => _hasUnsavedChanges = true);
+  Future<void> _loadCommunityMembers() async {
+    if (_selectedDestination == null || _selectedDestination == 'local') {
+      setState(() {
+        _communityMembers = [];
+        _selectedAssigneeIds.clear();
+      });
+      return;
+    }
+
+    setState(() => _isLoadingMembers = true);
+    try {
+      final members = await SupabaseService().getCommunityMembers(_selectedDestination!);
+      setState(() {
+        _communityMembers = members;
+      });
+    } catch (e) {
+      debugPrint('Error loading members: $e');
+    } finally {
+      setState(() => _isLoadingMembers = false);
     }
   }
 
-  void _addAssignee(String name) {
-    final cleanName = name.trim().replaceAll(',', '');
-    if (cleanName.isNotEmpty && !_assignees.contains(cleanName)) {
-      setState(() {
-        _assignees.add(cleanName);
-        _assigneeInputController.clear();
-        _hasUnsavedChanges = true;
-      });
-      _assigneeFocusNode.requestFocus();
-    } else {
-      _assigneeInputController.clear();
-      _assigneeFocusNode.requestFocus();
+  void _markChanges() {
+    if (!_hasUnsavedChanges) {
+      setState(() => _hasUnsavedChanges = true);
     }
   }
 
@@ -122,7 +131,8 @@ class _AddEventPageState extends State<AddEventPage> {
             id: widget.taskToEdit!.id,
             title: _titleController.text.trim(),
             description: _descriptionController.text.trim(),
-            categoryId: _selectedHiveCategoryIds.firstOrNull,
+            categoryIds: _selectedCategoryIds,
+            assignees: _selectedAssigneeIds,
             priority: _selectedPriority,
             status: _selectedStatus,
           );
@@ -137,7 +147,8 @@ class _AddEventPageState extends State<AddEventPage> {
             title: _titleController.text.trim(),
             description: _descriptionController.text.trim(),
             communityId: communityId,
-            categoryId: _selectedHiveCategoryIds.firstOrNull,
+            categoryIds: _selectedCategoryIds,
+            assignees: _selectedAssigneeIds,
             priority: _selectedPriority,
             status: _selectedStatus,
             isLocalOnly: isLocalOnly,
@@ -171,13 +182,13 @@ class _AddEventPageState extends State<AddEventPage> {
           const SizedBox(height: 16),
           _buildStatusPriorityRow(),
           const SizedBox(height: 16),
-          _buildAssigneeInput(),
+          _buildDestinationSelector(),
+          const SizedBox(height: 16),
+          if (_selectedDestination != null && _selectedDestination != 'local') _buildAssigneeSelector(),
           const SizedBox(height: 16),
           _buildDatePicker(),
           const Divider(height: 32),
-          _buildDestinationSelector(),
-          const SizedBox(height: 16),
-          if (_selectedDestination == null || _selectedDestination == 'local') _buildCategorySelection(),
+          _buildCategorySelection(),
           const SizedBox(height: 32),
           ElevatedButton(
             style: ElevatedButton.styleFrom(minimumSize: const Size.fromHeight(50)),
@@ -249,23 +260,38 @@ class _AddEventPageState extends State<AddEventPage> {
     return s.name;
   }
 
-  Widget _buildAssigneeInput() {
+  Widget _buildAssigneeSelector() {
+    if (_isLoadingMembers) return const Center(child: LinearProgressIndicator());
+    if (_communityMembers.isEmpty) return const SizedBox.shrink();
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        TextField(
-          controller: _assigneeInputController,
-          focusNode: _assigneeFocusNode,
-          decoration: const InputDecoration(labelText: 'Add Assignee', hintText: 'Type and press Enter', border: OutlineInputBorder()),
-          onSubmitted: _addAssignee,
+        const Text('Assign to Members:', style: TextStyle(fontWeight: FontWeight.bold)),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          children: _communityMembers.map((member) {
+            final String id = member['user_id'];
+            final String name = member['full_name'] ?? 'User ${id.substring(0, 4)}';
+            final isSelected = _selectedAssigneeIds.contains(id);
+
+            return FilterChip(
+              label: Text(name),
+              selected: isSelected,
+              onSelected: (selected) {
+                setState(() {
+                  _hasUnsavedChanges = true;
+                  if (selected) {
+                    _selectedAssigneeIds.add(id);
+                  } else {
+                    _selectedAssigneeIds.remove(id);
+                  }
+                });
+              },
+            );
+          }).toList(),
         ),
-        if (_assignees.isNotEmpty) ...[
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            children: _assignees.map((a) => InputChip(label: Text(a), onDeleted: () => setState(() { _assignees.remove(a); _hasUnsavedChanges = true; }))).toList(),
-          ),
-        ],
       ],
     );
   }
@@ -283,13 +309,17 @@ class _AddEventPageState extends State<AddEventPage> {
   }
 
   Widget _buildDestinationSelector() {
+    // Safety check: ensure selected destination exists in the items list to prevent crash
+    final List<String?> validIds = [null, 'local', ..._userCommunities.map((c) => c['id'].toString())];
+    final String? effectiveValue = validIds.contains(_selectedDestination) ? _selectedDestination : 'local';
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text('Destination:', style: TextStyle(fontWeight: FontWeight.bold)),
         const SizedBox(height: 8),
         DropdownButtonFormField<String?>(
-          value: _selectedDestination,
+          value: effectiveValue,
           decoration: const InputDecoration(
             border: OutlineInputBorder(),
             contentPadding: EdgeInsets.symmetric(horizontal: 12),
@@ -332,6 +362,7 @@ class _AddEventPageState extends State<AddEventPage> {
               _selectedDestination = val;
               _hasUnsavedChanges = true;
             });
+            _loadCommunityMembers();
           },
         ),
       ],
@@ -342,23 +373,22 @@ class _AddEventPageState extends State<AddEventPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Apply Category (Tag):', style: TextStyle(fontWeight: FontWeight.bold)),
+        const Text('Apply Categories (Tags):', style: TextStyle(fontWeight: FontWeight.bold)),
         const SizedBox(height: 8),
         Wrap(
           spacing: 8,
           children: _availableHiveCategories.map((cat) {
             final String catId = cat.id ?? '';
-            final isSelected = _selectedHiveCategoryIds.contains(catId);
+            final isSelected = _selectedCategoryIds.contains(catId);
             return FilterChip(
               label: Text(cat.name ?? 'Unnamed'),
               selected: isSelected,
               onSelected: (selected) => setState(() {
                 _hasUnsavedChanges = true;
                 if (selected) {
-                  _selectedHiveCategoryIds.clear(); 
-                  _selectedHiveCategoryIds.add(catId);
+                  _selectedCategoryIds.add(catId);
                 } else {
-                  _selectedHiveCategoryIds.remove(catId);
+                  _selectedCategoryIds.remove(catId);
                 }
               }),
             );
@@ -415,8 +445,6 @@ class _AddEventPageState extends State<AddEventPage> {
   void dispose() {
     _titleController.dispose();
     _descriptionController.dispose();
-    _assigneeInputController.dispose();
-    _assigneeFocusNode.dispose();
     super.dispose();
   }
 }

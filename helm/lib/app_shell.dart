@@ -8,6 +8,7 @@ import 'widgets/app_intents.dart';
 import 'widgets/task_form_utils.dart';
 import 'widgets/ai_text_drawer.dart';
 import 'widgets/notification_feed.dart';
+import 'widgets/notification_bell.dart';
 import 'services/supabase_service.dart';
 import 'services/navigation_provider.dart';
 
@@ -32,6 +33,7 @@ class AppShell extends StatefulWidget {
 class _AppShellState extends State<AppShell> {
   bool _showDesktopNotifications = false;
   final LayerLink _notificationLayerLink = LayerLink();
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   @override
   Widget build(BuildContext context) {
@@ -197,6 +199,11 @@ class _AppShellState extends State<AppShell> {
         const SingleActivator(LogicalKeyboardKey.keyN, meta: true): const NewTaskIntent(),
         const SingleActivator(LogicalKeyboardKey.keyF, meta: true): const SearchIntent(),
         const SingleActivator(LogicalKeyboardKey.space, meta: true): const AIVoiceIntent(),
+        
+        // UX Enhancement: Tab control
+        const SingleActivator(LogicalKeyboardKey.tab, control: true): const CycleTabIntent(),
+        const SingleActivator(LogicalKeyboardKey.escape): const EscapeIntent(),
+        const SingleActivator(LogicalKeyboardKey.enter, alt: true): const EnterIntent(),
       },
       child: Actions(
         actions: <Type, Action<Intent>>{
@@ -215,6 +222,36 @@ class _AppShellState extends State<AppShell> {
           AIVoiceIntent: CallbackAction<AIVoiceIntent>(
             onInvoke: (intent) => _showAIVoiceOverlay(context, isDesktop),
           ),
+          CycleTabIntent: CallbackAction<CycleTabIntent>(
+            onInvoke: (intent) {
+              final nav = Provider.of<NavigationProvider>(context, listen: false);
+              nav.setTab((nav.selectedIndex + 1) % 2);
+              return null;
+            },
+          ),
+          EscapeIntent: CallbackAction<EscapeIntent>(
+            onInvoke: (intent) {
+              if (_showDesktopNotifications) {
+                setState(() => _showDesktopNotifications = false);
+              } else if (_scaffoldKey.currentState?.isDrawerOpen ?? false) {
+                Navigator.pop(context);
+              } else if (_scaffoldKey.currentState?.isEndDrawerOpen ?? false) {
+                Navigator.pop(context);
+              } else if (navProvider.selectedCommunityId != null) {
+                navProvider.selectCommunity(null);
+              }
+              return null;
+            },
+          ),
+          EnterIntent: CallbackAction<EnterIntent>(
+            onInvoke: (intent) {
+              showAddTaskForm(
+                context,
+                initialCommunityId: Provider.of<NavigationProvider>(context, listen: false).selectedCommunityId,
+              );
+              return null;
+            },
+          ),
         },
         child: Focus(
           autofocus: true,
@@ -225,6 +262,7 @@ class _AppShellState extends State<AppShell> {
                 if (_showDesktopNotifications) setState(() => _showDesktopNotifications = false);
               },
               child: Scaffold(
+              key: _scaffoldKey,
               backgroundColor: Theme.of(context).scaffoldBackgroundColor,
               drawer: isDesktop ? null : Drawer(
                 backgroundColor: colorScheme.surface,
@@ -270,75 +308,79 @@ class _AppShellState extends State<AppShell> {
                               child: Row(
                                 children: [
                                   if (!isDesktop)
-                                    Builder(
-                                      builder: (context) => IconButton(
-                                        icon: Icon(Icons.menu, color: colorScheme.onSurface),
-                                        onPressed: () => Scaffold.of(context).openDrawer(),
-                                      ),
+                                    IconButton(
+                                      icon: Icon(Icons.menu, color: colorScheme.onSurface),
+                                      onPressed: () => _scaffoldKey.currentState?.openDrawer(),
                                     ),
                                   if (!isDesktop) const SizedBox(width: 8),
-                                  Text(
-                                    navProvider.selectedIndex == 0 ? 'Personal Tasks' : 'Communities',
-                                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                      fontWeight: FontWeight.bold,
-                                      color: colorScheme.onSurface,
+                                  Expanded(
+                                    child: Text(
+                                      navProvider.selectedIndex == 0 ? 'Personal Tasks' : 'Communities',
+                                      overflow: TextOverflow.ellipsis,
+                                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                        fontWeight: FontWeight.bold,
+                                        color: colorScheme.onSurface,
+                                      ),
                                     ),
                                   ),
-                                  const Spacer(),
-                                  if (widget.actions != null) ...widget.actions!,
-                                  IconButton(
-                                    icon: Icon(Icons.search, color: colorScheme.onSurface.withOpacity(0.7)),
-                                    onPressed: () => showSearch(
-                                      context: context,
-                                      delegate: CustomTaskSearchDelegate(),
-                                    ),
-                                  ),
-                                  IconButton(
-                                    icon: Icon(Icons.auto_awesome_rounded, color: colorScheme.primary),
-                                    onPressed: () => _showAIVoiceOverlay(context, isDesktop),
-                                  ),
-                                  Builder(
-                                    builder: (context) => IconButton(
-                                      icon: Icon(Icons.keyboard_alt_outlined, color: colorScheme.onSurface.withOpacity(0.7)),
-                                      onPressed: () => Scaffold.of(context).openEndDrawer(),
-                                    ),
-                                  ),
-                                  CompositedTransformTarget(
-                                    link: _notificationLayerLink,
-                                    child: IconButton(
-                                      icon: Icon(Icons.notifications_none_rounded, color: colorScheme.onSurface.withOpacity(0.7)),
-                                      onPressed: () {
-                                        if (isDesktop) {
-                                          setState(() => _showDesktopNotifications = !_showDesktopNotifications);
-                                        } else {
-                                          showModalBottomSheet(
+                                  const SizedBox(width: 4),
+                                  // Action group
+                                  Flexible(
+                                    flex: 0,
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        if (widget.actions != null) ...widget.actions!,
+                                        IconButton(
+                                          visualDensity: VisualDensity.compact,
+                                          icon: Icon(Icons.search, color: colorScheme.onSurface.withOpacity(0.7)),
+                                          onPressed: () => showSearch(
                                             context: context,
-                                            backgroundColor: Colors.transparent,
-                                            builder: (context) => const NotificationFeedUI(),
-                                          );
-                                        }
-                                      },
+                                            delegate: CustomTaskSearchDelegate(),
+                                          ),
+                                        ),
+                                        IconButton(
+                                          visualDensity: VisualDensity.compact,
+                                          icon: Icon(Icons.auto_awesome_rounded, color: colorScheme.primary),
+                                          onPressed: () => _showAIVoiceOverlay(context, isDesktop),
+                                        ),
+                                        if (isDesktop) // Hide keyboard icon on mobile to save space
+                                          IconButton(
+                                            visualDensity: VisualDensity.compact,
+                                            icon: Icon(Icons.keyboard_alt_outlined, color: colorScheme.onSurface.withOpacity(0.7)),
+                                            onPressed: () => _scaffoldKey.currentState?.openEndDrawer(),
+                                          ),
+                                        CompositedTransformTarget(
+                                          link: _notificationLayerLink,
+                                          child: NotificationBellWidget(
+                                            isDesktop: isDesktop,
+                                            layerLink: _notificationLayerLink,
+                                            onToggle: () => setState(() => _showDesktopNotifications = !_showDesktopNotifications),
+                                          ),
+                                        ),
+                                        PopupMenuButton<String>(
+                                          padding: EdgeInsets.zero,
+                                          icon: Icon(Icons.account_circle_outlined, color: colorScheme.onSurface.withOpacity(0.7)),
+                                          offset: const Offset(0, 45),
+                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                          onSelected: (value) {
+                                            if (value == 'settings') {
+                                              Navigator.pushNamed(context, '/account-settings');
+                                            } else if (value == 'communities') {
+                                              navProvider.setTab(1); 
+                                            } else if (value == 'logout') {
+                                              Supabase.instance.client.auth.signOut();
+                                            }
+                                          },
+                                          itemBuilder: (context) => [
+                                            const PopupMenuItem(value: 'settings', child: ListTile(dense: true, leading: Icon(Icons.manage_accounts), title: Text('Account Settings'))),
+                                            const PopupMenuItem(value: 'communities', child: ListTile(dense: true, leading: Icon(Icons.hub), title: Text('Manage Communities'))),
+                                            const PopupMenuDivider(),
+                                            const PopupMenuItem(value: 'logout', child: ListTile(dense: true, leading: Icon(Icons.logout, color: Colors.red), title: Text('Log Out', style: TextStyle(color: Colors.red)))),
+                                          ],
+                                        ),
+                                      ],
                                     ),
-                                  ),
-                                  PopupMenuButton<String>(
-                                    icon: Icon(Icons.account_circle_outlined, color: colorScheme.onSurface.withOpacity(0.7)),
-                                    offset: const Offset(0, 45),
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                                    onSelected: (value) {
-                                      if (value == 'settings') {
-                                        Navigator.pushNamed(context, '/account-settings');
-                                      } else if (value == 'communities') {
-                                        navProvider.setTab(1); // Switch to Communities tab
-                                      } else if (value == 'logout') {
-                                        Supabase.instance.client.auth.signOut();
-                                      }
-                                    },
-                                    itemBuilder: (context) => [
-                                      const PopupMenuItem(value: 'settings', child: ListTile(dense: true, leading: Icon(Icons.manage_accounts), title: Text('Account Settings'))),
-                                      const PopupMenuItem(value: 'communities', child: ListTile(dense: true, leading: Icon(Icons.hub), title: Text('Manage Communities'))),
-                                      const PopupMenuDivider(),
-                                      const PopupMenuItem(value: 'logout', child: ListTile(dense: true, leading: Icon(Icons.logout, color: Colors.red), title: Text('Log Out', style: TextStyle(color: Colors.red)))),
-                                    ],
                                   ),
                                 ],
                               ),
@@ -358,7 +400,7 @@ class _AppShellState extends State<AppShell> {
                         link: _notificationLayerLink,
                         showWhenUnlinked: false,
                         offset: const Offset(-310, 45),
-                        child: const NotificationFeedUI(),
+                        child: NotificationFeedUI(),
                       ),
                     ),
                 ],

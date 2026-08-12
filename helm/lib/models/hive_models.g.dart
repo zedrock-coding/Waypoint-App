@@ -19,17 +19,20 @@ class CategoryAdapter extends TypeAdapter<Category> {
     return Category(
       id: fields[0] as String?,
       name: fields[1] as String?,
+      userId: fields[2] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, Category obj) {
     writer
-      ..writeByte(2)
+      ..writeByte(3)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
-      ..write(obj.name);
+      ..write(obj.name)
+      ..writeByte(2)
+      ..write(obj.userId);
   }
 
   @override
@@ -100,19 +103,22 @@ class CommunityMemberAdapter extends TypeAdapter<CommunityMember> {
       communityId: fields[0] as String?,
       userId: fields[1] as String?,
       role: fields[2] as String?,
+      fullName: fields[3] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, CommunityMember obj) {
     writer
-      ..writeByte(3)
+      ..writeByte(4)
       ..writeByte(0)
       ..write(obj.communityId)
       ..writeByte(1)
       ..write(obj.userId)
       ..writeByte(2)
-      ..write(obj.role);
+      ..write(obj.role)
+      ..writeByte(3)
+      ..write(obj.fullName);
   }
 
   @override
@@ -149,13 +155,15 @@ class TaskAdapter extends TypeAdapter<Task> {
       priority: fields[9] as String?,
       assignees: (fields[10] as List?)?.cast<String>(),
       status: fields[11] as String?,
+      order: fields[12] as int?,
+      categoryIds: (fields[13] as List?)?.cast<String>(),
     );
   }
 
   @override
   void write(BinaryWriter writer, Task obj) {
     writer
-      ..writeByte(12)
+      ..writeByte(14)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -179,7 +187,11 @@ class TaskAdapter extends TypeAdapter<Task> {
       ..writeByte(10)
       ..write(obj.assignees)
       ..writeByte(11)
-      ..write(obj.status);
+      ..write(obj.status)
+      ..writeByte(12)
+      ..write(obj.order)
+      ..writeByte(13)
+      ..write(obj.categoryIds);
   }
 
   @override
@@ -211,13 +223,14 @@ class SettingsAdapter extends TypeAdapter<Settings> {
       dueDateRemindersEnabled: fields[4] as bool?,
       communityMentionsEnabled: fields[5] as bool?,
       newsAndOffersEnabled: fields[6] as bool?,
+      legalAccepted: fields[7] as bool?,
     );
   }
 
   @override
   void write(BinaryWriter writer, Settings obj) {
     writer
-      ..writeByte(7)
+      ..writeByte(8)
       ..writeByte(0)
       ..write(obj.themeMode)
       ..writeByte(1)
@@ -231,7 +244,9 @@ class SettingsAdapter extends TypeAdapter<Settings> {
       ..writeByte(5)
       ..write(obj.communityMentionsEnabled)
       ..writeByte(6)
-      ..write(obj.newsAndOffersEnabled);
+      ..write(obj.newsAndOffersEnabled)
+      ..writeByte(7)
+      ..write(obj.legalAccepted);
   }
 
   @override

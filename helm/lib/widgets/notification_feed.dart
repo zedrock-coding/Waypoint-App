@@ -1,133 +1,231 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:intl/intl.dart';
 
-class NotificationFeedUI extends StatelessWidget {
+class NotificationFeedUI extends StatefulWidget {
   const NotificationFeedUI({super.key});
+
+  @override
+  State<NotificationFeedUI> createState() => _NotificationFeedUIState();
+}
+
+class _NotificationFeedUIState extends State<NotificationFeedUI> {
+  final _supabase = Supabase.instance.client;
+
+  Future<void> _markAllAsRead() async {
+    final userId = _supabase.auth.currentUser?.id;
+    if (userId == null) return;
+
+    try {
+      await _supabase
+          .from('notifications')
+          .update({'is_read': true})
+          .eq('user_id', userId)
+          .eq('is_read', false);
+      if (mounted) setState(() {});
+    } catch (e) {
+      debugPrint('Error marking notifications as read: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
-    final List<Map<String, dynamic>> mockNotifications = [
-      {
-        'type': 'overdue',
-        'title': 'Task Overdue',
-        'subtitle': 'Your task "Random things" was due yesterday.',
-        'isUnread': true,
-      },
-      {
-        'type': 'assignment',
-        'title': 'New Assignment',
-        'subtitle': 'Lakshya assigned you a task in E-Cell SMM Event.',
-        'isUnread': true,
-      },
-      {
-        'type': 'invite',
-        'title': 'Community Invite',
-        'subtitle': 'You have been invited to join "App Development".',
-        'isUnread': false,
-      },
-    ];
-
-    return RepaintBoundary(
-      child: Container(
-        constraints: const BoxConstraints(maxHeight: 450, maxWidth: 350),
-        decoration: BoxDecoration(
-          color: colorScheme.surface,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: colorScheme.outlineVariant, width: 0.5),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.2),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
+    return Container(
+      constraints: const BoxConstraints(maxHeight: 500, maxWidth: 380),
+      decoration: BoxDecoration(
+        color: colorScheme.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 20,
+            offset: const Offset(0, -5),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Drag handle for mobile
+          Container(
+            width: 40,
+            height: 4,
+            margin: const EdgeInsets.symmetric(vertical: 12),
+            decoration: BoxDecoration(
+              color: colorScheme.onSurface.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(2),
             ),
-          ],
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Header
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 8, 8),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      'Notifications',
-                      style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-                      overflow: TextOverflow.ellipsis,
-                    ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 12, 8),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Notifications',
+                    style: textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
                   ),
-                  TextButton(
-                    onPressed: () {},
-                    child: Text(
-                      'Mark all as read',
-                      style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 12),
-                    ),
-                  ),
-                ],
-              ),
+                ),
+                TextButton(
+                  onPressed: _markAllAsRead,
+                  child: const Text('Mark all as read'),
+                ),
+              ],
             ),
-            const Divider(height: 1),
-            // List
-            Flexible(
-              child: ListView.builder(
-                padding: EdgeInsets.zero,
-                shrinkWrap: true, // Safe here because parent Container has constraints
-                itemCount: mockNotifications.length,
-                itemBuilder: (context, index) {
-                  final notification = mockNotifications[index];
-                  final isUnread = notification['isUnread'] as bool;
-
-                  return Container(
-                    color: isUnread ? colorScheme.primary.withOpacity(0.05) : null,
-                    child: ListTile(
-                      dense: true,
-                      leading: _buildLeadingIcon(context, notification['type']),
-                      title: Text(
-                        notification['title'],
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: isUnread ? FontWeight.bold : FontWeight.normal,
-                        ),
+          ),
+          const Divider(height: 1),
+          Flexible(
+            child: StreamBuilder<List<Map<String, dynamic>>>(
+              stream: _supabase
+                  .from('notifications')
+                  .stream(primaryKey: ['id'])
+                  .order('created_at', ascending: false)
+                  .limit(20),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: Padding(
+                    padding: EdgeInsets.all(40.0),
+                    child: CircularProgressIndicator(),
+                  ));
+                }
+                
+                final notifications = snapshot.data ?? [];
+                if (notifications.isEmpty) {
+                  return Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(48.0),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.notifications_none_rounded, size: 48, color: colorScheme.onSurface.withOpacity(0.2)),
+                          const SizedBox(height: 16),
+                          Text('All caught up!', style: TextStyle(color: colorScheme.onSurface.withOpacity(0.5))),
+                        ],
                       ),
-                      subtitle: Text(
-                        notification['subtitle'],
-                        style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 12),
-                      ),
-                      trailing: isUnread
-                          ? Container(
-                              width: 6,
-                              height: 6,
-                              decoration: BoxDecoration(
-                                color: colorScheme.primary,
-                                shape: BoxShape.circle,
-                              ),
-                            )
-                          : null,
                     ),
                   );
-                },
-              ),
+                }
+
+                return ListView.builder(
+                  padding: EdgeInsets.zero,
+                  itemCount: notifications.length,
+                  itemBuilder: (context, index) {
+                    final item = notifications[index];
+                    final isRead = item['is_read'] as bool;
+                    final date = DateTime.parse(item['created_at']);
+
+                    return Material(
+                      color: isRead ? Colors.transparent : colorScheme.primary.withOpacity(0.03),
+                      child: InkWell(
+                        onTap: () async {
+                          if (!isRead) {
+                            await _supabase
+                                .from('notifications')
+                                .update({'is_read': true})
+                                .eq('id', item['id']);
+                          }
+                          // Handle navigation based on related_id/type
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildIcon(context, item['type']),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: Text(
+                                            item['title'],
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: isRead ? FontWeight.normal : FontWeight.bold,
+                                            ),
+                                          ),
+                                        ),
+                                        Text(
+                                          DateFormat.jm().format(date),
+                                          style: TextStyle(fontSize: 11, color: colorScheme.onSurface.withOpacity(0.4)),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      item['body'],
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        color: colorScheme.onSurface.withOpacity(0.7),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              if (!isRead)
+                                Padding(
+                                  padding: const EdgeInsets.only(left: 8, top: 4),
+                                  child: Container(
+                                    width: 6,
+                                    height: 6,
+                                    decoration: BoxDecoration(color: colorScheme.primary, shape: BoxShape.circle),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                );
+              },
             ),
-            const SizedBox(height: 8),
-          ],
-        ),
+          ),
+          const SizedBox(height: 12),
+        ],
       ),
     );
   }
 
-  Widget _buildLeadingIcon(BuildContext context, String type) {
+  Widget _buildIcon(BuildContext context, String type) {
+    IconData iconData;
+    Color iconColor;
+
     switch (type) {
-      case 'overdue':
-        return const Icon(Icons.flag, color: Colors.redAccent, size: 20);
-      case 'assignment':
-        return Icon(Icons.assignment_ind, color: Theme.of(context).colorScheme.primary, size: 20);
-      case 'invite':
-        return const Icon(Icons.group_add, color: Colors.blueAccent, size: 20);
+      case 'task_assignment':
+        iconData = Icons.assignment_ind_rounded;
+        iconColor = Theme.of(context).colorScheme.primary;
+        break;
+      case 'due_reminder':
+        iconData = Icons.alarm_rounded;
+        iconColor = Colors.orange;
+        break;
+      case 'task_overdue':
+        iconData = Icons.error_outline_rounded;
+        iconColor = Colors.redAccent;
+        break;
+      case 'community_mention':
+        iconData = Icons.alternate_email_rounded;
+        iconColor = Colors.blue;
+        break;
       default:
-        return const Icon(Icons.notifications, size: 20);
+        iconData = Icons.notifications_rounded;
+        iconColor = Colors.grey;
     }
+
+    return Container(
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: iconColor.withOpacity(0.1),
+        shape: BoxShape.circle,
+      ),
+      child: Icon(iconData, size: 18, color: iconColor),
+    );
   }
 }

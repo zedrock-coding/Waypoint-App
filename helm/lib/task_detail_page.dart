@@ -141,18 +141,18 @@ class TaskDetailContent extends StatelessWidget {
   }
 
   Widget _buildTags(BuildContext context) {
-    String? categoryName;
-    if (task.categoryId != null) {
-      final box = Hive.box<hive_model.Category>('categories');
-      categoryName = box.get(task.categoryId)?.name;
-    }
+    final box = Hive.box<hive_model.Category>('categories');
+    final categoryNames = task.categoryIds
+        .map((id) => box.get(id)?.name)
+        .whereType<String>()
+        .toList();
 
     return Wrap(
       spacing: 8,
       runSpacing: 8,
       children: [
         _buildPill(context, task.priority.name.toUpperCase(), isPriority: true),
-        if (categoryName != null) _buildPill(context, categoryName.toUpperCase()),
+        for (var name in categoryNames) _buildPill(context, name.toUpperCase()),
         if (!task.isLocal) _buildPill(context, 'CLOUD'),
       ],
     );
@@ -171,25 +171,32 @@ class TaskDetailContent extends StatelessWidget {
 
   Widget _buildInfoRow(BuildContext context, {required IconData icon, required String label, required String value}) {
     final colorScheme = Theme.of(context).colorScheme;
-    return Row(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: colorScheme.primary.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(8),
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: colorScheme.primary.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, size: 18, color: colorScheme.primary),
           ),
-          child: Icon(icon, size: 18, color: colorScheme.primary),
-        ),
-        const SizedBox(width: 16),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(label, style: TextStyle(fontSize: 10, color: colorScheme.onSurface.withOpacity(0.5))),
-            Text(value, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
-          ],
-        ),
-      ],
+          const SizedBox(width: 16),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label, style: TextStyle(fontSize: 10, color: colorScheme.onSurface.withOpacity(0.5))),
+              Text(
+                value, 
+                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 

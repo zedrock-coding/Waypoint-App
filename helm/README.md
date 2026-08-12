@@ -1,12 +1,17 @@
-# Helm 2.1 - Collaborative Team Workspace
+# Helm 2.2 - AI-Powered Team Workspace
 
-**Helm 2.1** is a high-performance, collaborative task management system. Optimized for **Android**, **Windows**, and **Web**, Helm provides a professional, reactive experience for real-time team orchestration and personal productivity.
+**Helm 2.2** is a next-generation, collaborative task management system. Optimized for **Android**, **Windows**, and **Web**, Helm provides a professional, reactive experience for real-time team orchestration and personal productivity, now supercharged with Artificial Intelligence.
 
 ![Aesthetic](https://img.shields.io/badge/Aesthetic-Slate%20%26%20Mint-88C0A4)
 ![Platform](https://img.shields.io/badge/Platform-Android%20%7C%20Windows%20%7C%20Web-blue)
-![Version](https://img.shields.io/badge/Version-2.1.0-green)
+![Version](https://img.shields.io/badge/Version-2.2.0-green)
 
-## 🚀 What's New in v2.1
+## 🚀 What's New in v2.2
+
+### 🤖 Generative AI Commands
+*   **Voice & Text Orchestration**: Create complex tasks using natural language. Powered by **Gemini 1.5 Flash**.
+*   **Context-Aware Parsing**: The AI understands your communities and team members, allowing commands like *"Assign a high priority bug fix to Lakshya in Team Alpha by Friday"*.
+*   **Smart Scheduling**: Automatically parses relative dates (tomorrow, next week) into precise ISO timestamps.
 
 ### 👥 Advanced Community Management
 *   **Member Controls**: Admins can now promote users to Admin or remove members from workspaces.
@@ -15,10 +20,10 @@
 
 ### ✏️ Task Evolution
 *   **Full CRUD Support**: Restored and improved task editing. Modify titles, descriptions, priorities, and categories on the fly.
-*   **Instant Sync**: Every edit is automatically synchronized between your local device and the cloud.
+*   **Instant Sync**: Every edit is automatically synchronized between your local device and the cloud via Supabase.
 *   **Smart Categorization**: Tags are now part of the global sync engine, keeping your organization consistent everywhere.
 
-### 🛡️ Core Stability & v2.0 Refinements
+### 🛡️ Core Stability & v2.1 Refinements
 *   **Cross-Platform Unity**: Resolved major compilation and runtime issues across Chrome, Windows, and Android.
 *   **Overflow Protection**: Fixed critical rendering issues (RenderFlex) in sidebars and task cards for a smooth responsive experience.
 *   **Resilient Startup**: Optimized app initialization to prevent hangs during database migration and connectivity checks.
@@ -27,9 +32,9 @@
 
 ## 🛠 Tech Stack
 *   **Framework**: Flutter (Material 3)
+*   **AI Engine**: Google Generative AI (Gemini 1.5 Flash)
 *   **Cloud Backend**: Supabase (PostgreSQL, Realtime, RLS)
 *   **Primary Storage**: Hive (High-speed NoSQL for seamless Web/Desktop/Mobile support)
-*   **Migration Bridge**: Isar (Legacy support for v1.x data)
 *   **Deep Linking**: app_links (Cross-platform invite routing)
 
 ---
@@ -51,7 +56,12 @@
     ```bash
     flutter pub get
     ```
-3.  **Run the App**:
+3.  **Environment Setup**:
+    Create a `.env` file in the root directory and add your Gemini API key:
+    ```text
+    GEMINI_API_KEY=your_key_here
+    ```
+4.  **Run the App**:
     ```bash
     flutter run
     ```
@@ -59,4 +69,4 @@
 ---
 
 ## 🔐 Security Note
-Helm 2.1 utilizes an isolated `internal` schema in Supabase for private logic, significantly hardening the database against unauthorized access while simplifying client-side membership checks.
+Helm 2.2 utilizes an isolated `internal` schema in Supabase for private logic, significantly hardening the database against unauthorized access while simplifying client-side membership checks.

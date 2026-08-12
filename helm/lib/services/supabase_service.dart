@@ -46,18 +46,42 @@ class SupabaseService {
     }
   }
 
-  /// Fetch all members of a specific community.
+  /// Fetch all members of a specific community, including their full names.
   Future<List<Map<String, dynamic>>> getCommunityMembers(String communityId) async {
     try {
-      // Note: We'd typically join with a profiles table here to get names/avatars.
-      // For now, we return the IDs and roles.
+      final response = await client.rpc('get_community_member_names', params: {
+        'p_community_id': communityId,
+      });
+      return List<Map<String, dynamic>>.from(response);
+    } catch (e) {
+      debugPrint('Error fetching members with names: $e. Falling back to IDs.');
       return await client
           .from('community_members')
           .select('*')
           .eq('community_id', communityId);
+    }
+  }
+
+  /// Fetch all members across all communities the user belongs to.
+  Future<List<Map<String, dynamic>>> fetchAllAccessibleMembers() async {
+    try {
+      final communities = await fetchUserCommunities().timeout(const Duration(seconds: 5));
+      final List<Map<String, dynamic>> allMembers = [];
+      final Set<String> seenUserIds = {};
+
+      for (var community in communities) {
+        final members = await getCommunityMembers(community['id']).timeout(const Duration(seconds: 3));
+        for (var member in members) {
+          if (!seenUserIds.contains(member['user_id'])) {
+            allMembers.add(member);
+            seenUserIds.add(member['user_id']);
+          }
+        }
+      }
+      return allMembers;
     } catch (e) {
-      debugPrint('Error fetching members: $e');
-      return [];
+      debugPrint('SupabaseService: Context fetch timed out or failed: $e');
+      return []; // Return empty context rather than hanging
     }
   }
 

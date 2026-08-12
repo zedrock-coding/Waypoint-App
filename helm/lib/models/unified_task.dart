@@ -11,10 +11,11 @@ class UnifiedTask {
   final bool isCompleted;
   final Status status;
   final String? communityId;
-  final String? categoryId;
+  final List<String> categoryIds;
   final Priority priority;
   final List<String> assignees;
   final bool isLocal; 
+  final int order; 
 
   UnifiedTask({
     required this.id,
@@ -24,10 +25,11 @@ class UnifiedTask {
     required this.isCompleted,
     required this.status,
     this.communityId,
-    this.categoryId,
+    required this.categoryIds,
     required this.priority,
     required this.assignees,
     required this.isLocal,
+    required this.order,
   });
 
   factory UnifiedTask.fromHive(hive_model.Task task) {
@@ -39,10 +41,11 @@ class UnifiedTask {
       isCompleted: task.isCompleted ?? false,
       status: _parseStatus(task.status ?? 'toDo'),
       communityId: task.communityId,
-      categoryId: task.categoryId,
+      categoryIds: List.from(task.categoryIds ?? (task.categoryId != null ? [task.categoryId!] : [])),
       priority: _parsePriority(task.priority ?? 'medium'),
       assignees: List.from(task.assignees ?? []),
       isLocal: task.communityId == null, 
+      order: task.order ?? 0,
     );
   }
 
@@ -55,10 +58,11 @@ class UnifiedTask {
       isCompleted: data['is_completed'] ?? false,
       status: _parseStatus(data['status'] ?? 'toDo'),
       communityId: data['community_id'],
-      categoryId: data['category_id'],
+      categoryIds: (data['category_ids'] as List?)?.cast<String>() ?? (data['category_id'] != null ? [data['category_id'].toString()] : []),
       priority: _parsePriority(data['priority'] ?? 'medium'),
-      assignees: [], 
+      assignees: (data['assignees'] as List?)?.cast<String>() ?? [], 
       isLocal: false,
+      order: data['order'] ?? 0,
     );
   }
 

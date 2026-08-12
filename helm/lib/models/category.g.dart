@@ -15,7 +15,7 @@ extension GetCategoryCollection on Isar {
 
 const CategorySchema = CollectionSchema(
   name: r'Category',
-  id: 5751694338128944171,
+  id: 5751694338128944128,
   properties: {
     r'isAdmin': PropertySchema(
       id: 0,
@@ -35,7 +35,7 @@ const CategorySchema = CollectionSchema(
   idName: r'id',
   indexes: {
     r'name': IndexSchema(
-      id: 879695947855722453,
+      id: 879695947855722496,
       name: r'name',
       unique: true,
       replace: true,
@@ -50,13 +50,13 @@ const CategorySchema = CollectionSchema(
   },
   links: {
     r'parent': LinkSchema(
-      id: -2512975869131360965,
+      id: -2512975869131360768,
       name: r'parent',
       target: r'Category',
       single: true,
     ),
     r'subCategories': LinkSchema(
-      id: -1061364544542625407,
+      id: -1061364544542625408,
       name: r'subCategories',
       target: r'Category',
       single: false,

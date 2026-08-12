@@ -28,12 +28,14 @@ class _CommunityListViewState extends State<CommunityListView> {
               if (name.isNotEmpty) {
                 try {
                   await _supabaseService.createCommunity(name);
-                  if (mounted) {
+                  if (ctx.mounted) {
                     Navigator.pop(ctx);
+                  }
+                  if (mounted) {
                     setState(() {});
                   }
                 } catch (e) {
-                  if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+                  if (ctx.mounted) ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text('Error: $e')));
                 }
               }
             },
@@ -67,12 +69,14 @@ class _CommunityListViewState extends State<CommunityListView> {
                 }
                 try {
                   await _supabaseService.joinCommunity(communityId);
-                  if (mounted) {
+                  if (ctx.mounted) {
                     Navigator.pop(ctx);
+                  }
+                  if (mounted) {
                     setState(() {});
                   }
                 } catch (e) {
-                  if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error joining: $e')));
+                  if (ctx.mounted) ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text('Error joining: $e')));
                 }
               }
             },

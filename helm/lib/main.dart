@@ -6,6 +6,7 @@ import 'package:isar/isar.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import 'models/event.dart';
 import 'models/category.dart' as model;
@@ -17,6 +18,7 @@ import 'services/invite_service.dart';
 import 'services/task_service.dart';
 import 'services/navigation_provider.dart';
 import 'services/hive_database.dart';
+import 'services/ai_service.dart';
 import 'providers/task_provider.dart';
 
 import 'widgets/task_item_card.dart';
@@ -24,6 +26,8 @@ import 'widgets/empty_states.dart';
 import 'widgets/velocity_dashboard.dart';
 import 'widgets/task_form_utils.dart';
 import 'widgets/category_chip_bar.dart';
+import 'widgets/legal_dialog.dart';
+import 'widgets/command_bar.dart';
 
 import 'auth_screen.dart';
 import 'settings_page.dart';
@@ -43,6 +47,8 @@ import 'theme/app_theme.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
+  await dotenv.load(fileName: ".env");
+
   debugPrint('INIT: Starting Supabase...');
   await Supabase.initialize(
     url: 'https://eknzdxexfcfdmqvbyvxt.supabase.co', 
@@ -54,20 +60,25 @@ void main() async {
   
   debugPrint('INIT: Starting Hive...');
   await HiveDatabase.init();
+  debugPrint('INIT: Hive Started.');
 
   try {
+    debugPrint('INIT: Starting Notifications...');
     await NotificationService().init();
+    debugPrint('INIT: Notifications Started.');
     
     Isar? isar;
     if (!kIsWeb) {
       try {
+        debugPrint('INIT: Opening Isar migration bridge...');
         final dir = await getApplicationDocumentsDirectory();
         isar = await Isar.open(
           [EventSchema, model.CategorySchema, SettingsSchema],
           directory: dir.path,
         );
+        debugPrint('INIT: Isar bridge opened.');
       } catch (e) {
-        debugPrint('TaskProvider: Skipping Isar migration: $e');
+        debugPrint('INIT: Skipping Isar bridge (Incompatible/Missing): $e');
       }
     }
 
@@ -79,6 +90,7 @@ void main() async {
         providers: [
           Provider<TaskRepository>.value(value: taskRepo),
           Provider<TaskService>(create: (context) => TaskService()),
+          Provider<AiService>(create: (context) => AiService()),
           ChangeNotifierProvider<ThemeProvider>(create: (context) => ThemeProvider()),
           ChangeNotifierProvider<NavigationProvider>(create: (context) => NavigationProvider()),
           ChangeNotifierProvider<TaskProvider>.value(value: taskProvider),
@@ -115,6 +127,27 @@ class _MyAppState extends State<MyApp> {
         _navigatorKey.currentState?.pushNamedAndRemoveUntil('/', (route) => false);
       }
     });
+
+    // Check for legal consent on boot
+    WidgetsBinding.instance.addPostFrameCallback((_) => _checkLegal());
+  }
+
+  Future<void> _checkLegal() async {
+    final tp = Provider.of<ThemeProvider>(context, listen: false);
+    if (tp.settings.legalAccepted != true) {
+      final bool? accepted = await showDialog<bool>(
+        context: _navigatorKey.currentContext!,
+        barrierDismissible: false,
+        builder: (context) => const LegalDialog(),
+      );
+
+      if (accepted == true) {
+        await tp.acceptLegal();
+      } else {
+        // Exit app if declined
+        await SystemNavigator.pop();
+      }
+    }
   }
 
   @override
@@ -274,10 +307,14 @@ class _MyHomePageState extends State<MyHomePage> {
         Expanded(
           child: tasks.isEmpty 
           ? const DashboardEmptyState()
-          : ListView.builder(
-            physics: const AlwaysScrollableScrollPhysics(),
+          : ReorderableListView.builder(
             padding: const EdgeInsets.only(bottom: 24),
             itemCount: tasks.length,
+            onReorder: (oldIndex, newIndex) {
+              taskProvider.reorderTasks(oldIndex, newIndex);
+            },
+            proxyDecorator: (child, index, animation) => WobbleDecorator(child: child),
+            buildDefaultDragHandles: false, // We will provide our own handle
             itemBuilder: (context, index) {
               final unifiedTask = tasks[index];
               return TaskItemCard(
@@ -297,10 +334,31 @@ class _MyHomePageState extends State<MyHomePage> {
                   }
                 },
                 onToggle: () => taskProvider.toggleTask(unifiedTask),
-                onDismiss: (direction) => taskProvider.deleteTask(unifiedTask.id),
+                onDismiss: (direction) async {
+                  final String id = unifiedTask.id;
+                  await taskProvider.deleteTask(id);
+                  
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: const Text('Task deleted'),
+                        action: SnackBarAction(
+                          label: 'UNDO',
+                          onPressed: () => taskProvider.undoDelete(),
+                        ),
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  }
+                },
               );
             },
           ),
+        ),
+        const Padding(
+          padding: EdgeInsets.fromLTRB(24, 8, 24, 16),
+          child: CommandBarWidget(),
         ),
       ],
     );
@@ -340,7 +398,22 @@ class _MyHomePageState extends State<MyHomePage> {
               },
               onToggle: () => taskProvider.toggleTask(unifiedTask),
               onDismiss: (direction) async {
-                await taskProvider.deleteTask(unifiedTask.id);
+                final String id = unifiedTask.id;
+                await taskProvider.deleteTask(id);
+                
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: const Text('Task deleted'),
+                      action: SnackBarAction(
+                        label: 'UNDO',
+                        onPressed: () => taskProvider.undoDelete(),
+                      ),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                }
               },
             );
           },

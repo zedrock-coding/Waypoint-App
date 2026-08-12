@@ -10,7 +10,10 @@ class Category extends HiveObject {
   @HiveField(1)
   String? name;
 
-  Category({this.id, this.name});
+  @HiveField(2)
+  String? userId;
+
+  Category({this.id, this.name, this.userId});
 }
 
 @HiveType(typeId: 1)
@@ -46,10 +49,14 @@ class CommunityMember extends HiveObject {
   @HiveField(2)
   String? role; // 'admin' or 'member'
 
+  @HiveField(3)
+  String? fullName;
+
   CommunityMember({
     this.communityId,
     this.userId,
     this.role,
+    this.fullName,
   });
 }
 
@@ -91,6 +98,12 @@ class Task extends HiveObject {
   @HiveField(11)
   String? status; 
 
+  @HiveField(12)
+  int? order; 
+
+  @HiveField(13)
+  List<String>? categoryIds;
+
   Task({
     this.id,
     this.title,
@@ -104,6 +117,8 @@ class Task extends HiveObject {
     this.priority = 'medium',
     this.assignees = const [],
     this.status = 'toDo',
+    this.order,
+    this.categoryIds = const [],
   });
 }
 
@@ -130,6 +145,9 @@ class Settings extends HiveObject {
   @HiveField(6)
   bool? newsAndOffersEnabled;
 
+  @HiveField(7)
+  bool? legalAccepted;
+
   Settings({
     this.themeMode = 1,
     this.fontSizeIndex = 2,
@@ -138,5 +156,6 @@ class Settings extends HiveObject {
     this.dueDateRemindersEnabled = true,
     this.communityMentionsEnabled = true,
     this.newsAndOffersEnabled = false,
+    this.legalAccepted = false,
   });
 }

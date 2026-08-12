@@ -73,7 +73,8 @@ class TaskProvider with ChangeNotifier {
 
     debugPrint('TaskProvider: Migrating ${events.length} tasks from Isar to Hive...');
     
-    for (var event in events) {
+    for (int i = 0; i < events.length; i++) {
+      final event = events[i];
       final id = const Uuid().v4();
       final task = hive_model.Task(
         id: id,
@@ -84,6 +85,9 @@ class TaskProvider with ChangeNotifier {
         createdAt: event.dateTime,
         priority: event.priority.name,
         status: _isarStatusToString(event.status),
+        order: i,
+        assignees: List.from(event.assignees),
+        categoryIds: [], // Isar didn't store raw IDs easily joinable
       );
       
       await _taskBox.put(id, task);
@@ -99,6 +103,8 @@ class TaskProvider with ChangeNotifier {
             'status': task.status,
             'is_completed': task.isCompleted,
             'created_at': task.createdAt?.toIso8601String() ?? DateTime.now().toIso8601String(),
+            'order': i,
+            'assignees': task.assignees,
           });
         } catch (e) {
           debugPrint('Migration Sync Error: $e');
@@ -125,13 +131,21 @@ class TaskProvider with ChangeNotifier {
       final allLocal = _taskBox.values
           .where((t) => t.communityId == null)
           .where((t) => t.userId == null || (userId != null && t.userId == userId)) 
-          .where((t) => _selectedCategoryId == null || t.categoryId == _selectedCategoryId)
+          .where((t) {
+            if (_selectedCategoryId == null) return true;
+            final ids = t.categoryIds ?? (t.categoryId != null ? [t.categoryId!] : []);
+            return ids.contains(_selectedCategoryId);
+          })
           .map((t) => UnifiedTask.fromHive(t))
           .toList();
 
+      allLocal.sort((a, b) {
+        int cmp = a.order.compareTo(b.order);
+        if (cmp != 0) return cmp;
+        return b.dateTime.compareTo(a.dateTime);
+      });
+
       _personalTasks = allLocal;
-      _personalTasks.sort((a, b) => b.dateTime.compareTo(a.dateTime));
-      
       notifyListeners();
     } catch (e) {
       debugPrint('TaskProvider Error: $e');
@@ -155,15 +169,17 @@ class TaskProvider with ChangeNotifier {
               isCompleted: d['is_completed'] ?? false,
               userId: d['user_id'],
               communityId: d['community_id'],
-              categoryId: d['category_id'],
+              categoryIds: (d['category_ids'] as List?)?.cast<String>() ?? (d['category_id'] != null ? [d['category_id'].toString()] : []),
               createdAt: DateTime.parse(d['created_at']),
               priority: d['priority'] ?? 'medium',
               status: d['status'] ?? 'toDo',
+              order: d['order'] ?? 0,
+              assignees: (d['assignees'] as List?)?.cast<String>() ?? [],
             );
             
             final existing = _taskBox.get(t.id);
-            if (existing == null || existing.status != t.status || existing.title != t.title) {
-              await _taskBox.put(t.id, t);
+            if (existing == null || existing.status != t.status || existing.title != t.title || existing.order != t.order) {
+              await _taskBox.put(t.id!, t);
             }
           }
         });
@@ -182,11 +198,12 @@ class TaskProvider with ChangeNotifier {
             final c = hive_model.Category(
               id: d['id'].toString(),
               name: d['name'],
+              userId: d['user_id'],
             );
             
             final existing = _categoryBox.get(c.id);
             if (existing == null || existing.name != c.name) {
-              await _categoryBox.put(c.id, c);
+              await _categoryBox.put(c.id!, c);
             }
           }
         });
@@ -206,13 +223,15 @@ class TaskProvider with ChangeNotifier {
               isCompleted: d['is_completed'] ?? false,
               userId: d['user_id'],
               communityId: d['community_id'],
-              categoryId: d['category_id'],
+              categoryIds: (d['category_ids'] as List?)?.cast<String>() ?? (d['category_id'] != null ? [d['category_id'].toString()] : []),
               createdAt: DateTime.parse(d['created_at']),
               priority: d['priority'] ?? 'medium',
               status: d['status'] ?? 'toDo',
+              order: d['order'] ?? 0,
+              assignees: (d['assignees'] as List?)?.cast<String>() ?? [],
             );
             return UnifiedTask.fromHive(t);
-          }).toList()..sort((a, b) => b.dateTime.compareTo(a.dateTime));
+          }).toList()..sort((a, b) => a.order.compareTo(b.order));
         });
   }
 
@@ -220,14 +239,18 @@ class TaskProvider with ChangeNotifier {
     required String title,
     String? description,
     String? communityId,
-    String? categoryId,
+    List<String> categoryIds = const [],
+    List<String> assignees = const [],
     Priority priority = Priority.medium,
     Status status = Status.toDo,
     bool isLocalOnly = false,
+    DateTime? dueAt,
   }) async {
     final userId = isLocalOnly ? null : _supabase.auth.currentUser?.id;
     final id = const Uuid().v4();
     
+    final int newOrder = _personalTasks.isEmpty ? 0 : _personalTasks.first.order - 1;
+
     final localTask = hive_model.Task(
       id: id,
       title: title,
@@ -235,10 +258,13 @@ class TaskProvider with ChangeNotifier {
       isCompleted: status == Status.done,
       userId: userId,
       communityId: communityId,
-      categoryId: categoryId,
+      categoryIds: categoryIds,
+      assignees: assignees,
       createdAt: DateTime.now(),
+      dueAt: dueAt,
       priority: priority.name,
       status: _statusToString(status),
+      order: newOrder,
     );
     await _taskBox.put(id, localTask);
 
@@ -249,11 +275,14 @@ class TaskProvider with ChangeNotifier {
           'title': title,
           'description': description,
           'community_id': communityId,
-          'category_id': categoryId,
+          'category_ids': categoryIds,
+          'assignees': assignees,
           'user_id': userId,
           'priority': priority.name,
           'status': _statusToString(status),
           'is_completed': status == Status.done,
+          'order': newOrder,
+          'due_at': dueAt?.toIso8601String(),
         });
       } catch (e) {
         debugPrint('Supabase Sync Error: $e');
@@ -261,11 +290,35 @@ class TaskProvider with ChangeNotifier {
     }
   }
 
+  Future<void> reorderTasks(int oldIndex, int newIndex) async {
+    if (newIndex > oldIndex) newIndex -= 1;
+    
+    final List<UnifiedTask> updatedList = List.from(_personalTasks);
+    final task = updatedList.removeAt(oldIndex);
+    updatedList.insert(newIndex, task);
+
+    for (int i = 0; i < updatedList.length; i++) {
+      final t = updatedList[i];
+      final hiveTask = _taskBox.get(t.id);
+      if (hiveTask != null && hiveTask.order != i) {
+        hiveTask.order = i;
+        await hiveTask.save();
+
+        if (hiveTask.userId != null || hiveTask.communityId != null) {
+          unawaited(_supabase.from('tasks').update({'order': i}).eq('id', t.id));
+        }
+      }
+    }
+    
+    _personalTasks = updatedList;
+    notifyListeners();
+  }
+
   Future<void> addCategory(String name) async {
     final userId = _supabase.auth.currentUser?.id;
     final id = const Uuid().v4();
     
-    final localCategory = hive_model.Category(id: id, name: name);
+    final localCategory = hive_model.Category(id: id, name: name, userId: userId);
     await _categoryBox.put(id, localCategory);
 
     if (userId != null) {
@@ -298,7 +351,8 @@ class TaskProvider with ChangeNotifier {
     required String id,
     required String title,
     String? description,
-    String? categoryId,
+    List<String> categoryIds = const [],
+    List<String> assignees = const [],
     Priority? priority,
     Status? status,
   }) async {
@@ -307,7 +361,8 @@ class TaskProvider with ChangeNotifier {
 
     hiveTask.title = title;
     hiveTask.description = description;
-    hiveTask.categoryId = categoryId;
+    hiveTask.categoryIds = categoryIds;
+    hiveTask.assignees = assignees;
     if (priority != null) hiveTask.priority = priority.name;
     if (status != null) {
       hiveTask.status = _statusToString(status);
@@ -322,7 +377,8 @@ class TaskProvider with ChangeNotifier {
         final Map<String, dynamic> updates = {
           'title': title,
           'description': description,
-          'category_id': categoryId,
+          'category_ids': categoryIds,
+          'assignees': assignees,
         };
         if (priority != null) updates['priority'] = priority.name;
         if (status != null) {
@@ -367,9 +423,30 @@ class TaskProvider with ChangeNotifier {
     await updateTaskStatus(task, newStatus);
   }
 
+  hive_model.Task? _lastDeletedHiveTask;
+
   Future<void> deleteTask(String id) async {
     final hiveTask = _taskBox.get(id);
-    final bool shouldSyncDelete = hiveTask?.userId != null || hiveTask?.communityId != null;
+    if (hiveTask == null) return;
+
+    _lastDeletedHiveTask = hive_model.Task(
+      id: hiveTask.id,
+      title: hiveTask.title,
+      description: hiveTask.description,
+      isCompleted: hiveTask.isCompleted,
+      userId: hiveTask.userId,
+      communityId: hiveTask.communityId,
+      categoryId: hiveTask.categoryId,
+      categoryIds: hiveTask.categoryIds,
+      createdAt: hiveTask.createdAt ?? DateTime.now(),
+      dueAt: hiveTask.dueAt,
+      priority: hiveTask.priority,
+      assignees: hiveTask.assignees,
+      status: hiveTask.status,
+      order: hiveTask.order,
+    );
+
+    final bool shouldSyncDelete = hiveTask.userId != null || hiveTask.communityId != null;
 
     await _taskBox.delete(id);
     
@@ -380,6 +457,38 @@ class TaskProvider with ChangeNotifier {
         debugPrint('Delete Sync Error: $e');
       }
     }
+    notifyListeners();
+  }
+
+  Future<void> undoDelete() async {
+    if (_lastDeletedHiveTask == null) return;
+    
+    final task = _lastDeletedHiveTask!;
+    await _taskBox.put(task.id!, task);
+
+    final bool shouldSync = task.userId != null || task.communityId != null;
+    if (shouldSync) {
+      try {
+        await _supabase.from('tasks').insert({
+          'id': task.id,
+          'title': task.title,
+          'description': task.description,
+          'community_id': task.communityId,
+          'category_ids': task.categoryIds,
+          'assignees': task.assignees,
+          'user_id': task.userId,
+          'priority': task.priority,
+          'status': task.status,
+          'is_completed': task.isCompleted,
+          'created_at': task.createdAt?.toIso8601String(),
+          'order': task.order,
+        });
+      } catch (e) {
+        debugPrint('Undo Sync Error: $e');
+      }
+    }
+
+    _lastDeletedHiveTask = null;
     notifyListeners();
   }
 

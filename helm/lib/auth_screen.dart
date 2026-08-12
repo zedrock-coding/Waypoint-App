@@ -11,6 +11,7 @@ class AuthScreen extends StatefulWidget {
 class _AuthScreenState extends State<AuthScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _fullNameController = TextEditingController();
   bool _isSignUp = false;
   bool _isLoading = false;
 
@@ -18,16 +19,21 @@ class _AuthScreenState extends State<AuthScreen> {
     setState(() => _isLoading = true);
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
+    final fullName = _fullNameController.text.trim();
 
     try {
       if (_isSignUp) {
+        if (fullName.isEmpty) {
+          throw Exception('Please enter your full name.');
+        }
         await Supabase.instance.client.auth.signUp(
           email: email,
           password: password,
+          data: {'full_name': fullName},
         );
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Verification email sent (if enabled).')),
+            const SnackBar(content: Text('Account created! Verification email sent (if enabled).')),
           );
         }
       } else {
@@ -47,7 +53,7 @@ class _AuthScreenState extends State<AuthScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Unexpected error: $e'), backgroundColor: Colors.redAccent),
+          SnackBar(content: Text('Error: ${e.toString().replaceAll('Exception: ', '')}'), backgroundColor: Colors.redAccent),
         );
       }
     } finally {
@@ -87,6 +93,18 @@ class _AuthScreenState extends State<AuthScreen> {
                   style: textTheme.bodyMedium?.copyWith(color: colorScheme.onSurfaceVariant),
                 ),
                 const SizedBox(height: 32),
+                if (_isSignUp) ...[
+                  TextField(
+                    controller: _fullNameController,
+                    decoration: const InputDecoration(
+                      labelText: 'Full Name',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.person_outline),
+                    ),
+                    textCapitalization: TextCapitalization.words,
+                  ),
+                  const SizedBox(height: 16),
+                ],
                 TextField(
                   controller: _emailController,
                   decoration: const InputDecoration(
@@ -117,7 +135,11 @@ class _AuthScreenState extends State<AuthScreen> {
                       foregroundColor: colorScheme.onPrimary,
                     ),
                     child: _isLoading
-                        ? const CircularProgressIndicator(color: Colors.white)
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                          )
                         : Text(_isSignUp ? 'Sign Up' : 'Sign In'),
                   ),
                 ),
@@ -138,6 +160,7 @@ class _AuthScreenState extends State<AuthScreen> {
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
+    _fullNameController.dispose();
     super.dispose();
   }
 }

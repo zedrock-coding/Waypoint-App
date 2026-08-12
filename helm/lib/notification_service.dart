@@ -1,7 +1,11 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest_all.dart' as tz;
+import 'package:hive/hive.dart';
+import 'models/hive_models.dart';
 
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
@@ -9,15 +13,17 @@ class NotificationService {
   NotificationService._internal();
 
   final FlutterLocalNotificationsPlugin _notificationsPlugin = FlutterLocalNotificationsPlugin();
+  final _supabase = Supabase.instance.client;
+  RealtimeChannel? _notificationChannel;
 
   Future<void> init() async {
     tz.initializeTimeZones();
     
     const AndroidInitializationSettings androidSettings = AndroidInitializationSettings('@mipmap/launcher_icon');
     const DarwinInitializationSettings iosSettings = DarwinInitializationSettings(
-      requestAlertPermission: false,
-      requestBadgePermission: false,
-      requestSoundPermission: false,
+      requestAlertPermission: true,
+      requestBadgePermission: true,
+      requestSoundPermission: true,
     );
 
     const InitializationSettings initSettings = InitializationSettings(
@@ -27,21 +33,116 @@ class NotificationService {
 
     await _notificationsPlugin.initialize(
       initSettings,
-      onDidReceiveNotificationResponse: (NotificationResponse details) {},
+      onDidReceiveNotificationResponse: (NotificationResponse details) {
+        // Handle notification click: Navigate to specific task/community if needed
+      },
     );
+
+    // Initial setup for logged in user
+    if (_supabase.auth.currentUser != null) {
+      listenToSupabaseNotifications();
+    }
+
+    // Listen for auth changes
+    _supabase.auth.onAuthStateChange.listen((data) {
+      if (data.event == AuthChangeEvent.signedIn) {
+        listenToSupabaseNotifications();
+      } else if (data.event == AuthChangeEvent.signedOut) {
+        stopListening();
+      }
+    });
+  }
+
+  void listenToSupabaseNotifications() {
+    final userId = _supabase.auth.currentUser?.id;
+    if (userId == null) return;
+
+    _notificationChannel?.unsubscribe();
+    _notificationChannel = _supabase
+        .channel('public:notifications')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.insert,
+          schema: 'public',
+          table: 'notifications',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'user_id',
+            value: userId,
+          ),
+          callback: (payload) {
+            _handleNewNotification(payload.newRecord);
+          },
+        )
+        .subscribe();
+  }
+
+  void stopListening() {
+    _notificationChannel?.unsubscribe();
+    _notificationChannel = null;
+  }
+
+  void _handleNewNotification(Map<String, dynamic> data) {
+    final type = data['type'] as String;
+    final title = data['title'] as String;
+    final body = data['body'] as String;
+
+    // Check user preferences from Hive
+    final settings = Hive.box<Settings>('settings').get('app_settings');
+    if (settings != null) {
+      bool isEnabled = true;
+      switch (type) {
+        case 'task_assignment':
+          isEnabled = settings.taskAssignmentsEnabled ?? true;
+          break;
+        case 'due_reminder':
+        case 'task_overdue':
+          isEnabled = settings.dueDateRemindersEnabled ?? true;
+          break;
+        case 'community_mention':
+          isEnabled = settings.communityMentionsEnabled ?? true;
+          break;
+      }
+      
+      if (!isEnabled) {
+        debugPrint('Notification suppressed by user settings: $type');
+        return;
+      }
+    }
+
+    _showLocalNotification(
+      id: data['id'].hashCode,
+      title: title,
+      body: body,
+      payload: data['related_id']?.toString(),
+    );
+  }
+
+  Future<void> _showLocalNotification({
+    required int id,
+    required String title,
+    required String body,
+    String? payload,
+  }) async {
+    const androidDetails = AndroidNotificationDetails(
+      'helm_notifications',
+      'Helm Notifications',
+      channelDescription: 'Real-time task and community updates',
+      importance: Importance.max,
+      priority: Priority.high,
+      showWhen: true,
+    );
+
+    const notificationDetails = NotificationDetails(
+      android: androidDetails,
+      iOS: DarwinNotificationDetails(presentAlert: true, presentBadge: true, presentSound: true),
+    );
+
+    await _notificationsPlugin.show(id, title, body, notificationDetails, payload: payload);
   }
 
   Future<bool> requestPermissions() async {
     final androidPlugin = _notificationsPlugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
-    
-    // Request notification permission (Android 13+)
     final bool? androidGranted = await androidPlugin?.requestNotificationsPermission();
-    
-    // Request exact alarm permission (Android 12+)
-    if (androidPlugin != null) {
-      final bool? exactAlarmsGranted = await androidPlugin.requestExactAlarmsPermission();
-      debugPrint('Exact Alarms Permission: $exactAlarmsGranted');
-    }
     
     final bool? iosGranted = await _notificationsPlugin
         .resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>()

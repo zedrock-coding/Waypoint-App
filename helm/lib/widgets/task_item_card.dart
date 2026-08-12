@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import '../models/unified_task.dart';
+import '../models/hive_models.dart' as hive_model;
 
 class TaskItemCard extends StatelessWidget {
   final UnifiedTask task;
@@ -36,11 +38,31 @@ class TaskItemCard extends StatelessWidget {
 
     return Dismissible(
       key: ValueKey('dismiss_${task.isLocal ? 'l' : 'r'}_${task.id}'),
-      background: _buildDismissBackground(colorScheme, Icons.check, colorScheme.primary, Alignment.centerLeft),
-      secondaryBackground: _buildDismissBackground(colorScheme, Icons.delete_outline, Colors.red.shade400, Alignment.centerRight),
+      background: _buildDismissBackground(
+        colorScheme, 
+        isDone ? Icons.undo : Icons.check, 
+        isDone ? Colors.orange : colorScheme.primary, 
+        Alignment.centerLeft
+      ),
+      secondaryBackground: _buildDismissBackground(
+        colorScheme, 
+        Icons.delete_outline, 
+        Colors.red.shade400, 
+        Alignment.centerRight
+      ),
+      confirmDismiss: (direction) async {
+        if (direction == DismissDirection.startToEnd) {
+          HapticFeedback.mediumImpact();
+          onToggle();
+          return false; 
+        }
+        return true; 
+      },
       onDismissed: (direction) {
-        HapticFeedback.mediumImpact();
-        onDismiss(direction);
+        if (direction == DismissDirection.endToStart) {
+          HapticFeedback.mediumImpact();
+          onDismiss(direction);
+        }
       },
       child: Hero(
         tag: 'task_card_${task.id}',
@@ -70,6 +92,15 @@ class TaskItemCard extends StatelessWidget {
                   _buildTaskContent(context, isDone, colorScheme),
                   const SizedBox(width: 16),
                   _buildTrailingInfo(isOverdue, colorScheme),
+                  const SizedBox(width: 8),
+                  ReorderableDragStartListener(
+                    index: index,
+                    child: Icon(
+                      Icons.drag_indicator_rounded,
+                      color: colorScheme.onSurface.withOpacity(0.2),
+                      size: 20,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -130,15 +161,22 @@ class TaskItemCard extends StatelessWidget {
   }
 
   Widget _buildTaskContent(BuildContext context, bool isDone, ColorScheme colorScheme) {
+    // Fetch category names from IDs
+    final categoryBox = Hive.box<hive_model.Category>('categories');
+    final names = task.categoryIds
+        .map((id) => categoryBox.get(id)?.name)
+        .whereType<String>()
+        .toList();
+
     return Expanded(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min, // Added
+        mainAxisSize: MainAxisSize.min, 
         children: [
           Text(
             task.title,
-            maxLines: 2, // Added
-            overflow: TextOverflow.ellipsis, // Added
+            maxLines: 2, 
+            overflow: TextOverflow.ellipsis, 
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.bold,
               decoration: isDone ? TextDecoration.lineThrough : null,
@@ -146,13 +184,17 @@ class TaskItemCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 4),
-          SingleChildScrollView( // Wrap tags in a small horizontal scroll if they overflow
+          SingleChildScrollView( 
             scrollDirection: Axis.horizontal,
             child: Row(
               children: [
                 _buildPillTag(colorScheme, task.status.name.toUpperCase(), _getStatusColor(task.status)),
                 const SizedBox(width: 4),
                 _buildPillTag(colorScheme, task.priority.name.toUpperCase(), colorScheme.primary),
+                for (var name in names) ...[
+                   const SizedBox(width: 4),
+                   _buildPillTag(colorScheme, name.toUpperCase(), colorScheme.secondary),
+                ],
                 if (!task.isLocal) ...[
                   const SizedBox(width: 4),
                   _buildPillTag(colorScheme, 'CLOUD', Colors.blue, isAssignee: false),
@@ -184,7 +226,7 @@ class TaskItemCard extends StatelessWidget {
         if (isOverdue)
           Padding(
             padding: const EdgeInsets.only(top: 4),
-            child: const Icon(Icons.error_outline, color: Colors.red, size: 14),
+            child: Icon(Icons.error_outline, color: Colors.red, size: 14),
           ),
       ],
     );

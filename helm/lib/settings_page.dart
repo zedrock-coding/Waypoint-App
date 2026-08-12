@@ -27,6 +27,7 @@ class _SettingPageState extends State<SettingPage> {
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
     final settings = themeProvider.settings;
+    final fontSizeNames = ['Extra Small', 'Small', 'Medium', 'Large', 'Extra Large'];
 
     return AppShell(
       title: 'Settings',
@@ -51,7 +52,10 @@ class _SettingPageState extends State<SettingPage> {
             subtitle: const Text('Adjust app-wide text scale'),
             trailing: DropdownButton<int>(
               value: settings.fontSizeIndex ?? 2,
-              items: List.generate(5, (index) => DropdownMenuItem(value: index, child: Text('Level ${index + 1}'))),
+              items: List.generate(
+                fontSizeNames.length, 
+                (index) => DropdownMenuItem(value: index, child: Text(fontSizeNames[index]))
+              ),
               onChanged: (v) => themeProvider.updateFontSize(v!),
             ),
           ),
@@ -77,11 +81,16 @@ class _SettingPageState extends State<SettingPage> {
             onChanged: (v) => _handleNotificationToggle('communityMentions', v, themeProvider),
           ),
           const Divider(height: 40),
-          Text('App Info', style: Theme.of(context).textTheme.titleLarge),
-          const ListTile(
-            title: Text('Version'),
-            trailing: Text('2.1.0+2'),
+          Text('System', style: Theme.of(context).textTheme.titleLarge),
+          const SizedBox(height: 16),
+          ListTile(
+            leading: const Icon(Icons.info_outline_rounded),
+            title: const Text('About Helm'),
+            subtitle: const Text('Version, Licenses, and Legal'),
+            trailing: const Icon(Icons.chevron_right_rounded),
+            onTap: () => Navigator.pushNamed(context, '/about'),
           ),
+          const SizedBox(height: 24),
         ],
       ),
     );

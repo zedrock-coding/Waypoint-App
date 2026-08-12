@@ -79,4 +79,10 @@ class ThemeProvider with ChangeNotifier {
   void refresh() {
     notifyListeners();
   }
+
+  Future<void> acceptLegal() async {
+    _settings.legalAccepted = true;
+    await _settings.save();
+    notifyListeners();
+  }
 }

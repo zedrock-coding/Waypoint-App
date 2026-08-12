@@ -19,67 +19,76 @@ class VelocityDashboardCard extends StatelessWidget {
     final themeProvider = context.watch<ThemeProvider>();
     final double progress = totalTasksToday == 0 ? 0 : completedTasksToday / totalTasksToday;
     final ColorScheme colorScheme = Theme.of(context).colorScheme;
-    final double width = MediaQuery.of(context).size.width;
-    final bool isMobile = width < 900;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 8.0),
-      child: isMobile
-          ? _buildVelocityContent(context, progress, colorScheme)
-          : Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          // Decision based on ACTUAL available width, not global screen width
+          final bool useVerticalLayout = constraints.maxWidth < 550;
+
+          if (useVerticalLayout) {
+            return _buildVelocityContent(context, progress, colorScheme, isCramped: true);
+          }
+
+          return IntrinsicHeight( // Re-adding with safer child constraints
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Expanded(
                   flex: 6,
-                  child: _buildVelocityContent(context, progress, colorScheme),
+                  child: _buildVelocityContent(context, progress, colorScheme, isCramped: false),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
                   flex: 4,
-                  child: _buildSettingsContent(context, themeProvider, colorScheme),
+                  child: _buildSettingsContent(context, themeProvider, colorScheme, isCramped: false),
                 ),
               ],
             ),
+          );
+        },
+      ),
     );
   }
 
-  Widget _buildVelocityContent(BuildContext context, double progress, ColorScheme colorScheme) {
+  Widget _buildVelocityContent(BuildContext context, double progress, ColorScheme colorScheme, {required bool isCramped}) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 16.0),
+      padding: const EdgeInsets.all(16.0),
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: colorScheme.outlineVariant.withOpacity(0.5), width: 1),
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
+              const Text(
                 "Today's Velocity",
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  color: colorScheme.onSurface,
-                ),
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
               ),
               IconButton(
                 visualDensity: VisualDensity.compact,
-                icon: Icon(Icons.edit_note, color: colorScheme.onSurface.withOpacity(0.4), size: 18),
+                icon: const Icon(Icons.edit_note, size: 18),
                 onPressed: () => _showAdjustGoalDialog(context),
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          const SizedBox(height: 8),
+          // Use Wrap if cramped to prevent horizontal overflow
+          Wrap(
+            spacing: 16,
+            runSpacing: 12,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            alignment: WrapAlignment.start,
             children: [
               _buildProgressIndicator(progress, colorScheme),
-              const SizedBox(width: 16),
-              _buildTaskStats(colorScheme),
-              const SizedBox(width: 12),
-              _buildStreakInfo(colorScheme),
+              _buildTaskStats(colorScheme, isCramped),
+              if (!isCramped) _buildStreakInfo(colorScheme),
             ],
           ),
         ],
@@ -92,8 +101,8 @@ class VelocityDashboardCard extends StatelessWidget {
       alignment: Alignment.center,
       children: [
         SizedBox(
-          height: 60,
-          width: 60,
+          height: 54,
+          width: 54,
           child: CircularProgressIndicator(
             value: progress,
             strokeWidth: 6,
@@ -103,79 +112,59 @@ class VelocityDashboardCard extends StatelessWidget {
         ),
         Text(
           "${(progress * 100).toInt()}%",
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.bold,
-            color: colorScheme.onSurface,
-          ),
+          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
         ),
       ],
     );
   }
 
-  Widget _buildTaskStats(ColorScheme colorScheme) {
-    return Expanded(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          RichText(
-            overflow: TextOverflow.ellipsis,
-            text: TextSpan(
-              style: TextStyle(color: colorScheme.onSurface),
-              children: [
-                TextSpan(
-                  text: '$completedTasksToday',
-                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                ),
-                TextSpan(
-                  text: ' of ',
-                  style: TextStyle(fontSize: 12, color: colorScheme.onSurface.withOpacity(0.5)),
-                ),
-                TextSpan(
-                  text: '$totalTasksToday',
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-              ],
+  Widget _buildTaskStats(ColorScheme colorScheme, bool isCramped) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.baseline,
+          textBaseline: TextBaseline.alphabetic,
+          children: [
+            Text(
+              '$completedTasksToday',
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
-          ),
-          Text(
-            'Tasks Completed',
-            style: TextStyle(
-              fontSize: 10,
-              color: colorScheme.onSurface.withOpacity(0.5),
+            Text(
+              ' / $totalTasksToday',
+              style: TextStyle(fontSize: 12, color: colorScheme.onSurface.withOpacity(0.5), fontWeight: FontWeight.bold),
             ),
-          ),
-        ],
-      ),
+          ],
+        ),
+        Text(
+          'Tasks Done',
+          style: TextStyle(fontSize: 10, color: colorScheme.onSurface.withOpacity(0.5)),
+        ),
+      ],
     );
   }
 
   Widget _buildStreakInfo(ColorScheme colorScheme) {
-    return Flexible(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.local_fire_department_rounded, color: Colors.orange, size: 24),
-          const SizedBox(height: 4),
-          Text(
-            '3-Day Streak',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 8,
-              fontWeight: FontWeight.bold,
-              color: colorScheme.onSurface.withOpacity(0.6),
-            ),
-          ),
-        ],
-      ),
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const Icon(Icons.local_fire_department_rounded, color: Colors.orange, size: 20),
+        const SizedBox(width: 4),
+        Text(
+          '3-Day Streak',
+          style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: colorScheme.onSurface.withOpacity(0.6)),
+        ),
+      ],
     );
   }
 
-  Widget _buildSettingsContent(BuildContext context, ThemeProvider themeProvider, ColorScheme colorScheme) {
+  Widget _buildSettingsContent(BuildContext context, ThemeProvider themeProvider, ColorScheme colorScheme, {required bool isCramped}) {
     final settings = themeProvider.settings;
 
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 16.0),
+      padding: const EdgeInsets.all(16.0),
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(16),
@@ -183,21 +172,23 @@ class VelocityDashboardCard extends StatelessWidget {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text(
-            "Quick Settings",
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
-              color: colorScheme.onSurface,
-            ),
+          Row(
+            children: [
+              Icon(Icons.settings_suggest_rounded, size: 14, color: colorScheme.primary),
+              const SizedBox(width: 8),
+              const Text("Quick Settings", style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+            ],
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 8),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
             visualDensity: VisualDensity.compact,
             title: Text(
               'Reminders',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: TextStyle(fontSize: 11, color: colorScheme.onSurface.withOpacity(0.7)),
             ),
             value: settings.dailyBriefingEnabled ?? true,
@@ -205,44 +196,31 @@ class VelocityDashboardCard extends StatelessWidget {
             onChanged: (enabled) => _toggleReminders(context, enabled, themeProvider),
           ),
           const SizedBox(height: 4),
-          Text(
-            'Font Size',
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.bold,
-              color: colorScheme.onSurface.withOpacity(0.5),
-            ),
-          ),
-          const SizedBox(height: 4),
+          const Text('Font Size', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 6),
           SizedBox(
             width: double.infinity,
-            child: SegmentedButton<int>(
-              style: SegmentedButton.styleFrom(
-                visualDensity: VisualDensity.compact,
-                selectedBackgroundColor: colorScheme.primary,
-                selectedForegroundColor: colorScheme.onPrimary,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: SegmentedButton<int>(
+                style: SegmentedButton.styleFrom(
+                  visualDensity: VisualDensity.compact,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                segments: const [
+                  ButtonSegment(value: 0, label: Text('S', style: TextStyle(fontSize: 10))),
+                  ButtonSegment(value: 1, label: Text('M', style: TextStyle(fontSize: 10))),
+                  ButtonSegment(value: 2, label: Text('L', style: TextStyle(fontSize: 10))),
+                ],
+                selected: <int>{
+                  (settings.fontSizeIndex ?? 2) <= 1 ? 0 : ((settings.fontSizeIndex ?? 2) >= 4 ? 2 : 1)
+                },
+                onSelectionChanged: (val) {
+                  HapticFeedback.selectionClick();
+                  final quickIndex = val.first;
+                  themeProvider.updateFontSize(quickIndex == 0 ? 1 : (quickIndex == 1 ? 3 : 4));
+                },
               ),
-              segments: const [
-                ButtonSegment(value: 0, label: Text('S', style: TextStyle(fontSize: 9))),
-                ButtonSegment(value: 1, label: Text('M', style: TextStyle(fontSize: 9))),
-                ButtonSegment(value: 2, label: Text('L', style: TextStyle(fontSize: 9))),
-              ],
-              selected: <int>{
-                (settings.fontSizeIndex ?? 2) <= 1 ? 0 : ((settings.fontSizeIndex ?? 2) >= 4 ? 2 : 1)
-              },
-              onSelectionChanged: (val) {
-                HapticFeedback.selectionClick();
-                final quickIndex = val.first;
-                int modelIndex;
-                if (quickIndex == 0) {
-                  modelIndex = 1; // Small
-                } else if (quickIndex == 1) {
-                  modelIndex = 3; // Medium
-                } else {
-                  modelIndex = 4; // Large
-                }
-                themeProvider.updateFontSize(modelIndex);
-              },
             ),
           ),
         ],
@@ -263,7 +241,7 @@ class VelocityDashboardCard extends StatelessWidget {
           time: const TimeOfDay(hour: 9, minute: 0),
         );
       } else {
-        return; // Permission denied
+        return;
       }
     } else {
       await ns.cancelAllNotifications();
@@ -276,20 +254,9 @@ class VelocityDashboardCard extends StatelessWidget {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text("Adjust Daily Goal"),
-        content: const Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text("Set your daily task target to help calculate velocity snapshots."),
-            SizedBox(height: 16),
-            TextField(
-              decoration: InputDecoration(
-                labelText: "Daily Target",
-                hintText: "e.g. 10",
-                border: OutlineInputBorder(),
-              ),
-              keyboardType: TextInputType.number,
-            ),
-          ],
+        content: const TextField(
+          decoration: InputDecoration(labelText: "Daily Target", border: OutlineInputBorder()),
+          keyboardType: TextInputType.number,
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("CANCEL")),
