@@ -1,0 +1,14 @@
+# Ignore everything except the web build
+*
+!build/web
+!vercel.json
+
+# Platform folders
+android/
+ios/
+windows/
+linux/
+macos/
+.dart_tool/
+.gradle/
+build/
