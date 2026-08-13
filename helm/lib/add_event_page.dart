@@ -38,6 +38,7 @@ class _AddEventPageState extends State<AddEventPage> {
   List<hive_model.Category> _availableHiveCategories = [];
   final List<String> _selectedCategoryIds = [];
   final List<String> _selectedAssigneeIds = [];
+  final List<TextEditingController> _subtaskControllers = [];
   bool _hasUnsavedChanges = false;
   
   String? _selectedDestination; 
@@ -65,6 +66,9 @@ class _AddEventPageState extends State<AddEventPage> {
     if (widget.taskToEdit != null) {
       _selectedAssigneeIds.addAll(widget.taskToEdit!.assignees);
       _selectedCategoryIds.addAll(widget.taskToEdit!.categoryIds);
+      for (var sub in widget.taskToEdit!.subtasks) {
+        _subtaskControllers.add(TextEditingController(text: sub['title']));
+      }
     }
     
     _selectedDate = widget.taskToEdit?.dateTime ?? DateTime.now();
@@ -121,18 +125,40 @@ class _AddEventPageState extends State<AddEventPage> {
     }
   }
 
+  void _addSubtask() {
+    setState(() {
+      _subtaskControllers.add(TextEditingController());
+      _hasUnsavedChanges = true;
+    });
+  }
+
+  void _removeSubtask(int index) {
+    setState(() {
+      _subtaskControllers[index].dispose();
+      _subtaskControllers.removeAt(index);
+      _hasUnsavedChanges = true;
+    });
+  }
+
   Future<void> _saveTask() async {
     if (_formKey.currentState!.validate()) {
       try {
         final taskProvider = context.read<TaskProvider>();
-        
+        final List<Map<String, dynamic>> subtasks = _subtaskControllers
+            .where((c) => c.text.trim().isNotEmpty)
+            .map((c) => {'title': c.text.trim(), 'is_completed': false})
+            .toList();
+
         if (widget.taskToEdit != null) {
+          // Preserve completion status for existing subtasks if possible
+          // In a real app we'd map old to new, for now we just take the text
           await taskProvider.updateTask(
             id: widget.taskToEdit!.id,
             title: _titleController.text.trim(),
             description: _descriptionController.text.trim(),
             categoryIds: _selectedCategoryIds,
             assignees: _selectedAssigneeIds,
+            subtasks: subtasks,
             priority: _selectedPriority,
             status: _selectedStatus,
           );
@@ -149,6 +175,7 @@ class _AddEventPageState extends State<AddEventPage> {
             communityId: communityId,
             categoryIds: _selectedCategoryIds,
             assignees: _selectedAssigneeIds,
+            subtasks: subtasks,
             priority: _selectedPriority,
             status: _selectedStatus,
             isLocalOnly: isLocalOnly,
@@ -175,6 +202,7 @@ class _AddEventPageState extends State<AddEventPage> {
       key: _formKey,
       child: ListView(
         shrinkWrap: widget.isDialog,
+        padding: const EdgeInsets.only(bottom: 100), // Clear FAB and buttons
         children: [
           _buildTextField(controller: _titleController, label: 'Title', validator: (v) => v?.isEmpty ?? true ? 'Enter title' : null),
           const SizedBox(height: 16),
@@ -189,6 +217,8 @@ class _AddEventPageState extends State<AddEventPage> {
           _buildDatePicker(),
           const Divider(height: 32),
           _buildCategorySelection(),
+          const Divider(height: 32),
+          _buildSubtaskSection(),
           const SizedBox(height: 32),
           ElevatedButton(
             style: ElevatedButton.styleFrom(minimumSize: const Size.fromHeight(50)),
@@ -309,7 +339,6 @@ class _AddEventPageState extends State<AddEventPage> {
   }
 
   Widget _buildDestinationSelector() {
-    // Safety check: ensure selected destination exists in the items list to prevent crash
     final List<String?> validIds = [null, 'local', ..._userCommunities.map((c) => c['id'].toString())];
     final String? effectiveValue = validIds.contains(_selectedDestination) ? _selectedDestination : 'local';
 
@@ -398,6 +427,41 @@ class _AddEventPageState extends State<AddEventPage> {
     );
   }
 
+  Widget _buildSubtaskSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Text('Sub-tasks', style: TextStyle(fontWeight: FontWeight.bold)),
+            const Spacer(),
+            IconButton(onPressed: _addSubtask, icon: const Icon(Icons.add_circle_outline, color: Colors.teal)),
+          ],
+        ),
+        ...List.generate(_subtaskControllers.length, (index) {
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 8.0),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _subtaskControllers[index],
+                    decoration: InputDecoration(
+                      hintText: 'Task ${index + 1}',
+                      border: const OutlineInputBorder(),
+                      isDense: true,
+                    ),
+                  ),
+                ),
+                IconButton(onPressed: () => _removeSubtask(index), icon: const Icon(Icons.remove_circle_outline, color: Colors.redAccent)),
+              ],
+            ),
+          );
+        }),
+      ],
+    );
+  }
+
   Widget _buildDialogWrapper(bool isEditing, Widget content) {
     return Dialog(
       backgroundColor: Colors.transparent,
@@ -445,6 +509,9 @@ class _AddEventPageState extends State<AddEventPage> {
   void dispose() {
     _titleController.dispose();
     _descriptionController.dispose();
+    for (var c in _subtaskControllers) {
+      c.dispose();
+    }
     super.dispose();
   }
 }

@@ -87,7 +87,8 @@ class TaskProvider with ChangeNotifier {
         status: _isarStatusToString(event.status),
         order: i,
         assignees: List.from(event.assignees),
-        categoryIds: [], // Isar didn't store raw IDs easily joinable
+        categoryIds: [], 
+        subtasks: [],
       );
       
       await _taskBox.put(id, task);
@@ -105,6 +106,7 @@ class TaskProvider with ChangeNotifier {
             'created_at': task.createdAt?.toIso8601String() ?? DateTime.now().toIso8601String(),
             'order': i,
             'assignees': task.assignees,
+            'subtasks': [],
           });
         } catch (e) {
           debugPrint('Migration Sync Error: $e');
@@ -175,6 +177,7 @@ class TaskProvider with ChangeNotifier {
               status: d['status'] ?? 'toDo',
               order: d['order'] ?? 0,
               assignees: (d['assignees'] as List?)?.cast<String>() ?? [],
+              subtasks: (d['subtasks'] as List?)?.map((e) => Map<dynamic, dynamic>.from(e)).toList() ?? [],
             );
             
             final existing = _taskBox.get(t.id);
@@ -229,6 +232,7 @@ class TaskProvider with ChangeNotifier {
               status: d['status'] ?? 'toDo',
               order: d['order'] ?? 0,
               assignees: (d['assignees'] as List?)?.cast<String>() ?? [],
+              subtasks: (d['subtasks'] as List?)?.map((e) => Map<dynamic, dynamic>.from(e)).toList() ?? [],
             );
             return UnifiedTask.fromHive(t);
           }).toList()..sort((a, b) => a.order.compareTo(b.order));
@@ -241,6 +245,7 @@ class TaskProvider with ChangeNotifier {
     String? communityId,
     List<String> categoryIds = const [],
     List<String> assignees = const [],
+    List<Map<String, dynamic>> subtasks = const [],
     Priority priority = Priority.medium,
     Status status = Status.toDo,
     bool isLocalOnly = false,
@@ -260,6 +265,7 @@ class TaskProvider with ChangeNotifier {
       communityId: communityId,
       categoryIds: categoryIds,
       assignees: assignees,
+      subtasks: subtasks.map((e) => Map<dynamic, dynamic>.from(e)).toList(),
       createdAt: DateTime.now(),
       dueAt: dueAt,
       priority: priority.name,
@@ -277,6 +283,7 @@ class TaskProvider with ChangeNotifier {
           'community_id': communityId,
           'category_ids': categoryIds,
           'assignees': assignees,
+          'subtasks': subtasks,
           'user_id': userId,
           'priority': priority.name,
           'status': _statusToString(status),
@@ -353,6 +360,7 @@ class TaskProvider with ChangeNotifier {
     String? description,
     List<String> categoryIds = const [],
     List<String> assignees = const [],
+    List<Map<String, dynamic>> subtasks = const [],
     Priority? priority,
     Status? status,
   }) async {
@@ -363,6 +371,9 @@ class TaskProvider with ChangeNotifier {
     hiveTask.description = description;
     hiveTask.categoryIds = categoryIds;
     hiveTask.assignees = assignees;
+    hiveTask.subtasks = subtasks.map((e) => Map<dynamic, dynamic>.from(e)).toList();
+    hiveTask.updatedAt = DateTime.now();
+
     if (priority != null) hiveTask.priority = priority.name;
     if (status != null) {
       hiveTask.status = _statusToString(status);
@@ -379,6 +390,8 @@ class TaskProvider with ChangeNotifier {
           'description': description,
           'category_ids': categoryIds,
           'assignees': assignees,
+          'subtasks': subtasks,
+          'updated_at': DateTime.now().toIso8601String(),
         };
         if (priority != null) updates['priority'] = priority.name;
         if (status != null) {
@@ -392,6 +405,72 @@ class TaskProvider with ChangeNotifier {
       }
     }
     notifyListeners();
+  }
+
+  Future<void> toggleSubtask(String taskId, int index) async {
+    final hiveTask = _taskBox.get(taskId);
+    if (hiveTask == null || hiveTask.subtasks == null || index >= hiveTask.subtasks!.length) return;
+
+    final List<Map<dynamic, dynamic>> subs = List.from(hiveTask.subtasks!);
+    final Map<dynamic, dynamic> target = Map.from(subs[index]);
+    target['is_completed'] = !(target['is_completed'] ?? false);
+    subs[index] = target;
+    
+    hiveTask.subtasks = subs;
+    hiveTask.updatedAt = DateTime.now();
+    await hiveTask.save();
+
+    final bool shouldSync = hiveTask.userId != null || hiveTask.communityId != null;
+    if (shouldSync) {
+      try {
+        await _supabase.from('tasks').update({
+          'subtasks': subs,
+          'updated_at': DateTime.now().toIso8601String(),
+        }).eq('id', taskId);
+      } catch (e) {
+        debugPrint('Subtask Sync Error: $e');
+      }
+    }
+    notifyListeners();
+  }
+
+  // --- COMMENTING FEATURE ---
+
+  Stream<List<Map<String, dynamic>>> streamTaskComments(String taskId) {
+    return _supabase
+        .from('task_comments')
+        .stream(primaryKey: ['id'])
+        .eq('task_id', taskId)
+        .order('created_at', ascending: true);
+  }
+
+  Future<void> addComment(String taskId, String text) async {
+    final user = _supabase.auth.currentUser;
+    if (user == null) return;
+
+    final String name = user.userMetadata?['full_name'] ?? 'User';
+
+    try {
+      await _supabase.from('task_comments').insert({
+        'task_id': taskId,
+        'user_id': user.id,
+        'user_name': name,
+        'comment_text': text,
+      });
+    } catch (e) {
+      debugPrint('Error adding comment: $e');
+      rethrow;
+    }
+  }
+
+  // --- CALENDAR FEATURE ---
+  
+  List<UnifiedTask> get allTasksWithDueDates {
+    final List<UnifiedTask> tasks = _taskBox.values
+        .where((t) => t.dueAt != null)
+        .map((t) => UnifiedTask.fromHive(t))
+        .toList();
+    return tasks;
   }
 
   Future<void> updateTaskStatus(UnifiedTask task, Status newStatus) async {
@@ -444,6 +523,7 @@ class TaskProvider with ChangeNotifier {
       assignees: hiveTask.assignees,
       status: hiveTask.status,
       order: hiveTask.order,
+      subtasks: hiveTask.subtasks,
     );
 
     final bool shouldSyncDelete = hiveTask.userId != null || hiveTask.communityId != null;
@@ -476,6 +556,7 @@ class TaskProvider with ChangeNotifier {
           'community_id': task.communityId,
           'category_ids': task.categoryIds,
           'assignees': task.assignees,
+          'subtasks': task.subtasks,
           'user_id': task.userId,
           'priority': task.priority,
           'status': task.status,

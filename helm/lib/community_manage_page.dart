@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'widgets/user_avatar.dart';
 import 'services/supabase_service.dart';
 import 'app_shell.dart';
 
@@ -20,14 +21,15 @@ class CommunityManagePage extends StatefulWidget {
 class _CommunityManagePageState extends State<CommunityManagePage> {
   final _supabaseService = SupabaseService();
   bool _isAdmin = false;
+  bool _isOwner = false;
 
   @override
   void initState() {
     super.initState();
-    _checkAdminStatus();
+    _checkPermissions();
   }
 
-  Future<void> _checkAdminStatus() async {
+  Future<void> _checkPermissions() async {
     final userId = SupabaseService.client.auth.currentUser?.id;
     if (userId == null) return;
 
@@ -39,7 +41,9 @@ class _CommunityManagePageState extends State<CommunityManagePage> {
 
     if (mounted) {
       setState(() {
-        _isAdmin = currentMember['role'] == 'admin';
+        final String role = currentMember['role'] ?? 'member';
+        _isOwner = role == 'owner';
+        _isAdmin = role == 'admin' || _isOwner;
       });
     }
   }
@@ -78,6 +82,40 @@ class _CommunityManagePageState extends State<CommunityManagePage> {
     }
   }
 
+  Future<void> _leaveCommunity() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Leave Community?'),
+        content: const Text('You will lose access to all shared tasks and chat in this workspace.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('CANCEL')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('LEAVE'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      final userId = SupabaseService.client.auth.currentUser?.id;
+      if (userId == null) return;
+      await _supabaseService.removeMember(widget.communityId, userId);
+      if (mounted) {
+        Navigator.pop(context); // Close manage page
+        // The dashboard will refresh via the stream/provider
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error leaving: $e')));
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -85,6 +123,13 @@ class _CommunityManagePageState extends State<CommunityManagePage> {
 
     return AppShell(
       title: 'Manage ${widget.communityName}',
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.close),
+          onPressed: () => Navigator.pop(context),
+          tooltip: 'Back to Tasks',
+        ),
+      ],
       child: Column(
         children: [
           Container(
@@ -152,6 +197,13 @@ class _CommunityManagePageState extends State<CommunityManagePage> {
             child: Row(
               children: [
                 Text('Member Directory', style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold, letterSpacing: 1.1)),
+                const Spacer(),
+                if (!_isOwner) 
+                  TextButton.icon(
+                    onPressed: _leaveCommunity, 
+                    icon: const Icon(Icons.exit_to_app_rounded, size: 16, color: Colors.red),
+                    label: const Text('LEAVE', style: TextStyle(color: Colors.red, fontSize: 12, fontWeight: FontWeight.bold)),
+                  ),
               ],
             ),
           ),
@@ -170,18 +222,20 @@ class _CommunityManagePageState extends State<CommunityManagePage> {
                   itemBuilder: (context, index) {
                     final member = members[index];
                     final String userId = member['user_id'].toString();
+                    final String role = member['role'] ?? 'member';
                     final bool isSelf = userId == SupabaseService.client.auth.currentUser?.id;
-                    final bool memberIsAdmin = member['role'] == 'admin';
+                    
+                    final bool memberIsOwner = role == 'owner';
 
                     return ListTile(
-                      leading: CircleAvatar(
-                        backgroundColor: memberIsAdmin ? colorScheme.primary : colorScheme.surfaceVariant,
-                        child: Icon(memberIsAdmin ? Icons.shield_rounded : Icons.person_outline_rounded,
-                            color: memberIsAdmin ? colorScheme.onPrimary : colorScheme.onSurfaceVariant, size: 20),
+                      leading: UserAvatar(
+                        fullName: member['full_name'] ?? 'User',
+                        avatarUrl: member['avatar_url'],
+                        radius: 20,
                       ),
-                      title: Text('${userId.substring(0, 8)}... ${isSelf ? "(You)" : ""}'),
-                      subtitle: Text(memberIsAdmin ? 'Administrator' : 'Member'),
-                      trailing: (_isAdmin && !isSelf) 
+                      title: Text('${member['full_name'] ?? userId.substring(0, 8)} ${isSelf ? "(You)" : ""}'),
+                      subtitle: Text(role.toUpperCase()),
+                      trailing: (_isAdmin && !isSelf && !memberIsOwner) 
                         ? PopupMenuButton<String>(
                             onSelected: (val) {
                               if (val == 'remove') _removeMember(userId);
@@ -189,9 +243,17 @@ class _CommunityManagePageState extends State<CommunityManagePage> {
                               if (val == 'member') _changeRole(userId, 'member');
                             },
                             itemBuilder: (ctx) => [
-                              if (!memberIsAdmin) const PopupMenuItem(value: 'admin', child: Text('Make Admin')),
-                              if (memberIsAdmin) const PopupMenuItem(value: 'member', child: Text('Make Member')),
-                              const PopupMenuItem(value: 'remove', child: Text('Remove Member', style: TextStyle(color: Colors.red))),
+                              // Admins can see "Make Admin" for members
+                              if (role == 'member') 
+                                const PopupMenuItem(value: 'admin', child: Text('Make Admin')),
+                              
+                              // ONLY Owners can see "Make Member" for Admins
+                              if (role == 'admin' && _isOwner) 
+                                const PopupMenuItem(value: 'member', child: Text('Make Member')),
+                              
+                              // Admins can remove members. Owners can remove both.
+                              if (role == 'member' || (role == 'admin' && _isOwner))
+                                const PopupMenuItem(value: 'remove', child: Text('Remove Member', style: TextStyle(color: Colors.red))),
                             ],
                           )
                         : null,

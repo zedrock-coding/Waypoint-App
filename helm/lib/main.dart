@@ -28,6 +28,7 @@ import 'widgets/task_form_utils.dart';
 import 'widgets/category_chip_bar.dart';
 import 'widgets/legal_dialog.dart';
 import 'widgets/command_bar.dart';
+import 'calendar_page.dart';
 
 import 'auth_screen.dart';
 import 'settings_page.dart';
@@ -128,25 +129,28 @@ class _MyAppState extends State<MyApp> {
       }
     });
 
-    // Check for legal consent on boot
     WidgetsBinding.instance.addPostFrameCallback((_) => _checkLegal());
   }
 
   Future<void> _checkLegal() async {
-    final tp = Provider.of<ThemeProvider>(context, listen: false);
-    if (tp.settings.legalAccepted != true) {
-      final bool? accepted = await showDialog<bool>(
-        context: _navigatorKey.currentContext!,
-        barrierDismissible: false,
-        builder: (context) => const LegalDialog(),
-      );
+    if (!mounted) return;
+    try {
+      final tp = Provider.of<ThemeProvider>(context, listen: false);
+      if (tp.settings.legalAccepted != true) {
+        final bool? accepted = await showDialog<bool>(
+          context: _navigatorKey.currentContext!,
+          barrierDismissible: false,
+          builder: (context) => const LegalDialog(isFirstLaunch: true),
+        );
 
-      if (accepted == true) {
-        await tp.acceptLegal();
-      } else {
-        // Exit app if declined
-        await SystemNavigator.pop();
+        if (accepted == true) {
+          await tp.acceptLegal();
+        } else {
+          await SystemNavigator.pop();
+        }
       }
+    } catch (e) {
+      debugPrint('Legal check error: $e');
     }
   }
 
@@ -186,6 +190,7 @@ class _MyAppState extends State<MyApp> {
         '/': (context) => const MyHomePage(title: 'Helm'),
         '/auth': (context) => const AuthScreen(),
         '/settings': (context) => const SettingPage(),
+        '/calendar': (context) => const CalendarPage(),
         '/add-event': (context) => const AddEventPage(),
         '/categories': (context) => const CategoryPage(),
         '/about': (context) => const AboutScreen(),
@@ -266,6 +271,10 @@ class _MyHomePageState extends State<MyHomePage> {
         },
         child: const Icon(Icons.add),
       ) : null,
+      bottomWidget: const Padding(
+        padding: EdgeInsets.fromLTRB(24, 0, 24, 8),
+        child: CommandBarWidget(),
+      ),
       child: Row(
         children: [
           Expanded(
@@ -308,13 +317,13 @@ class _MyHomePageState extends State<MyHomePage> {
           child: tasks.isEmpty 
           ? const DashboardEmptyState()
           : ReorderableListView.builder(
-            padding: const EdgeInsets.only(bottom: 24),
+            padding: const EdgeInsets.only(bottom: 100),
             itemCount: tasks.length,
             onReorder: (oldIndex, newIndex) {
               taskProvider.reorderTasks(oldIndex, newIndex);
             },
             proxyDecorator: (child, index, animation) => WobbleDecorator(child: child),
-            buildDefaultDragHandles: false, // We will provide our own handle
+            buildDefaultDragHandles: false,
             itemBuilder: (context, index) {
               final unifiedTask = tasks[index];
               return TaskItemCard(
@@ -356,10 +365,6 @@ class _MyHomePageState extends State<MyHomePage> {
             },
           ),
         ),
-        const Padding(
-          padding: EdgeInsets.fromLTRB(24, 8, 24, 16),
-          child: CommandBarWidget(),
-        ),
       ],
     );
   }
@@ -373,10 +378,10 @@ class _MyHomePageState extends State<MyHomePage> {
         }
         
         final tasks = snapshot.data ?? [];
-        if (tasks.isEmpty) return const CommunityEmptyState();
+        if (tasks.isEmpty) return CommunityEmptyState(communityId: communityId);
 
         return ListView.builder(
-          padding: const EdgeInsets.only(bottom: 24),
+          padding: const EdgeInsets.only(bottom: 100),
           itemCount: tasks.length,
           itemBuilder: (context, index) {
             final unifiedTask = tasks[index];

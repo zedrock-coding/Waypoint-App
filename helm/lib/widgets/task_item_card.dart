@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'user_avatar.dart';
 import '../models/unified_task.dart';
 import '../models/hive_models.dart' as hive_model;
 
@@ -21,20 +22,28 @@ class TaskItemCard extends StatelessWidget {
     required this.onDismiss,
   });
 
+  Color _getPriorityColor(Priority p) {
+    switch (p) {
+      case Priority.high: return Colors.redAccent;
+      case Priority.medium: return Colors.amber;
+      case Priority.low: return Colors.blueGrey;
+    }
+  }
+
+  IconData _getPriorityIcon(Priority p) {
+    switch (p) {
+      case Priority.high: return Icons.keyboard_double_arrow_up_rounded;
+      case Priority.medium: return Icons.remove_rounded;
+      case Priority.low: return Icons.keyboard_arrow_down_rounded;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final isDone = task.status == Status.done;
     final isOverdue = !isDone && task.dateTime.isBefore(DateTime.now());
-
-    Color cardColor;
-    if (task.priority == Priority.high) {
-      cardColor = Color.lerp(Theme.of(context).cardColor, Colors.red, 0.05)!;
-    } else if (task.priority == Priority.low) {
-      cardColor = Color.lerp(Theme.of(context).cardColor, Colors.blueGrey, 0.05)!;
-    } else {
-      cardColor = Theme.of(context).cardColor;
-    }
+    final priorityColor = _getPriorityColor(task.priority);
 
     return Dismissible(
       key: ValueKey('dismiss_${task.isLocal ? 'l' : 'r'}_${task.id}'),
@@ -68,41 +77,59 @@ class TaskItemCard extends StatelessWidget {
         tag: 'task_card_${task.id}',
         child: Card(
           elevation: 0,
-          color: cardColor,
+          color: Theme.of(context).cardColor,
           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
             side: BorderSide(color: colorScheme.outlineVariant.withOpacity(0.5)),
           ),
-          clipBehavior: Clip.hardEdge,
+          clipBehavior: Clip.antiAlias, // Important for the left border line
           child: InkWell(
             onTap: () {
               HapticFeedback.selectionClick();
               onTap();
             },
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Row(
-                children: [
-                  GestureDetector(
-                    onTap: onToggle,
-                    child: _buildStatusIcon(task.status, colorScheme),
-                  ),
-                  const SizedBox(width: 16),
-                  _buildTaskContent(context, isDone, colorScheme),
-                  const SizedBox(width: 16),
-                  _buildTrailingInfo(isOverdue, colorScheme),
-                  const SizedBox(width: 8),
-                  ReorderableDragStartListener(
-                    index: index,
-                    child: Icon(
-                      Icons.drag_indicator_rounded,
-                      color: colorScheme.onSurface.withOpacity(0.2),
-                      size: 20,
+            child: Row(
+              children: [
+                // 1. Priority Left Accent Line
+                Container(
+                  width: 4,
+                  height: 70, // Matches approximate tile height
+                  color: priorityColor,
+                ),
+                const SizedBox(width: 12),
+                
+                // 2. Main Content
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 12.0),
+                    child: Row(
+                      children: [
+                        GestureDetector(
+                          onTap: onToggle,
+                          child: _buildStatusIcon(task.status, colorScheme),
+                        ),
+                        const SizedBox(width: 12),
+                        _buildAssigneeAvatar(colorScheme),
+                        const SizedBox(width: 12),
+                        _buildTaskContent(context, isDone, colorScheme, priorityColor),
+                        const SizedBox(width: 16),
+                        _buildTrailingInfo(isOverdue, colorScheme),
+                        const SizedBox(width: 8),
+                        ReorderableDragStartListener(
+                          index: index,
+                          child: Icon(
+                            Icons.drag_indicator_rounded,
+                            color: colorScheme.onSurface.withOpacity(0.2),
+                            size: 20,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                      ],
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ),
@@ -160,8 +187,16 @@ class TaskItemCard extends StatelessWidget {
     }
   }
 
-  Widget _buildTaskContent(BuildContext context, bool isDone, ColorScheme colorScheme) {
-    // Fetch category names from IDs
+  Widget _buildAssigneeAvatar(ColorScheme colorScheme) {
+    if (task.assignees.isEmpty) return const SizedBox.shrink();
+    
+    return UserAvatar(
+      fullName: 'Assignee', // Fallback since we only have ID here
+      radius: 12,
+    );
+  }
+
+  Widget _buildTaskContent(BuildContext context, bool isDone, ColorScheme colorScheme, Color priorityColor) {
     final categoryBox = Hive.box<hive_model.Category>('categories');
     final names = task.categoryIds
         .map((id) => categoryBox.get(id)?.name)
@@ -171,11 +206,12 @@ class TaskItemCard extends StatelessWidget {
     return Expanded(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
         mainAxisSize: MainAxisSize.min, 
         children: [
           Text(
             task.title,
-            maxLines: 2, 
+            maxLines: 1, 
             overflow: TextOverflow.ellipsis, 
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.bold,
@@ -190,14 +226,15 @@ class TaskItemCard extends StatelessWidget {
               children: [
                 _buildPillTag(colorScheme, task.status.name.toUpperCase(), _getStatusColor(task.status)),
                 const SizedBox(width: 4),
-                _buildPillTag(colorScheme, task.priority.name.toUpperCase(), colorScheme.primary),
+                _buildPillTag(
+                  colorScheme, 
+                  task.priority.name.toUpperCase(), 
+                  priorityColor, 
+                  icon: _getPriorityIcon(task.priority)
+                ),
                 for (var name in names) ...[
                    const SizedBox(width: 4),
                    _buildPillTag(colorScheme, name.toUpperCase(), colorScheme.secondary),
-                ],
-                if (!task.isLocal) ...[
-                  const SizedBox(width: 4),
-                  _buildPillTag(colorScheme, 'CLOUD', Colors.blue, isAssignee: false),
                 ],
               ],
             ),
@@ -232,20 +269,29 @@ class TaskItemCard extends StatelessWidget {
     );
   }
 
-  Widget _buildPillTag(ColorScheme colorScheme, String label, Color color, {bool isAssignee = false}) {
+  Widget _buildPillTag(ColorScheme colorScheme, String label, Color color, {IconData? icon}) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
         color: color.withOpacity(0.1),
         borderRadius: BorderRadius.circular(16),
       ),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontSize: 8,
-          fontWeight: FontWeight.bold,
-          color: color,
-        ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (icon != null) ...[
+            Icon(icon, size: 10, color: color),
+            const SizedBox(width: 4),
+          ],
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 8,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+          ),
+        ],
       ),
     );
   }

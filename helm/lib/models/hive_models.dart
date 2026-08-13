@@ -104,6 +104,12 @@ class Task extends HiveObject {
   @HiveField(13)
   List<String>? categoryIds;
 
+  @HiveField(14)
+  List<Map<dynamic, dynamic>>? subtasks; 
+
+  @HiveField(15)
+  DateTime? updatedAt;
+
   Task({
     this.id,
     this.title,
@@ -119,6 +125,8 @@ class Task extends HiveObject {
     this.status = 'toDo',
     this.order,
     this.categoryIds = const [],
+    this.subtasks = const [],
+    this.updatedAt,
   });
 }
 

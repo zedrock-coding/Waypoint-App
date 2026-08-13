@@ -11,11 +11,14 @@ class UnifiedTask {
   final bool isCompleted;
   final Status status;
   final String? communityId;
+  final String? userId; // Creator ID
   final List<String> categoryIds;
   final Priority priority;
   final List<String> assignees;
   final bool isLocal; 
   final int order; 
+  final List<Map<String, dynamic>> subtasks;
+  final DateTime updatedAt;
 
   UnifiedTask({
     required this.id,
@@ -25,11 +28,14 @@ class UnifiedTask {
     required this.isCompleted,
     required this.status,
     this.communityId,
+    this.userId,
     required this.categoryIds,
     required this.priority,
     required this.assignees,
     required this.isLocal,
     required this.order,
+    required this.subtasks,
+    required this.updatedAt,
   });
 
   factory UnifiedTask.fromHive(hive_model.Task task) {
@@ -41,11 +47,14 @@ class UnifiedTask {
       isCompleted: task.isCompleted ?? false,
       status: _parseStatus(task.status ?? 'toDo'),
       communityId: task.communityId,
+      userId: task.userId,
       categoryIds: List.from(task.categoryIds ?? (task.categoryId != null ? [task.categoryId!] : [])),
       priority: _parsePriority(task.priority ?? 'medium'),
       assignees: List.from(task.assignees ?? []),
       isLocal: task.communityId == null, 
       order: task.order ?? 0,
+      subtasks: (task.subtasks ?? []).map((e) => Map<String, dynamic>.from(e)).toList(),
+      updatedAt: task.updatedAt ?? task.createdAt ?? DateTime.now(),
     );
   }
 
@@ -58,11 +67,14 @@ class UnifiedTask {
       isCompleted: data['is_completed'] ?? false,
       status: _parseStatus(data['status'] ?? 'toDo'),
       communityId: data['community_id'],
+      userId: data['user_id'],
       categoryIds: (data['category_ids'] as List?)?.cast<String>() ?? (data['category_id'] != null ? [data['category_id'].toString()] : []),
       priority: _parsePriority(data['priority'] ?? 'medium'),
       assignees: (data['assignees'] as List?)?.cast<String>() ?? [], 
       isLocal: false,
       order: data['order'] ?? 0,
+      subtasks: (data['subtasks'] as List?)?.map((e) => Map<String, dynamic>.from(e)).toList() ?? [],
+      updatedAt: data['updated_at'] != null ? DateTime.parse(data['updated_at']) : DateTime.parse(data['created_at']),
     );
   }
 

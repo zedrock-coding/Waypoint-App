@@ -2,7 +2,7 @@ name: helm
 description: "A Premium, Cross-Platform Team Event & Task Management Application"
 publish_to: 'none'
 
-version: 2.2.0+3
+version: 3.0.0+4
 
 environment:
   sdk: ^3.11.0
@@ -29,6 +29,8 @@ dependencies:
   google_generative_ai: ^0.4.6
   flutter_dotenv: ^5.1.0
   speech_to_text: ^7.0.0
+  table_calendar: ^3.1.2
+  image_picker: ^1.1.2
 
 dev_dependencies:
   flutter_test:

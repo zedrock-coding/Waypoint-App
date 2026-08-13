@@ -70,7 +70,7 @@ class _AITextDrawerState extends State<AITextDrawer> {
             final comm = communities.firstWhere((c) => c['id'] == communityId, orElse: () => {});
             if (comm.isNotEmpty) responseText += " in ${comm['name']}";
           }
-          _messages.add(_ChatMessage(text: responseText + ".", isUser: false));
+          _messages.add(_ChatMessage(text: "$responseText.", isUser: false));
         });
       } else {
         setState(() {

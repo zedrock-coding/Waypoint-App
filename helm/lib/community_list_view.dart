@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'services/supabase_service.dart';
 import 'services/navigation_provider.dart';
@@ -17,74 +18,92 @@ class _CommunityListViewState extends State<CommunityListView> {
     final controller = TextEditingController();
     return showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Create Community'),
-        content: TextField(controller: controller, decoration: const InputDecoration(labelText: 'Community Name', hintText: 'e.g. My Team'), autofocus: true),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('CANCEL')),
-          ElevatedButton(
-            onPressed: () async {
-              final name = controller.text.trim();
-              if (name.isNotEmpty) {
-                try {
-                  await _supabaseService.createCommunity(name);
-                  if (ctx.mounted) {
-                    Navigator.pop(ctx);
-                  }
-                  if (mounted) {
-                    setState(() {});
-                  }
-                } catch (e) {
-                  if (ctx.mounted) ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text('Error: $e')));
-                }
-              }
-            },
-            child: const Text('CREATE'),
+      builder: (ctx) => Shortcuts(
+        shortcuts: {
+          LogicalKeySet(LogicalKeyboardKey.enter): const ActivateIntent(),
+        },
+        child: AlertDialog(
+          title: const Text('Create Community'),
+          content: TextField(
+            controller: controller, 
+            decoration: const InputDecoration(labelText: 'Community Name', hintText: 'e.g. My Team'), 
+            autofocus: true,
+            onSubmitted: (_) => _submitCreate(ctx, controller.text.trim()),
           ),
-        ],
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('CANCEL')),
+            ElevatedButton(
+              onPressed: () => _submitCreate(ctx, controller.text.trim()),
+              child: const Text('CREATE'),
+            ),
+          ],
+        ),
       ),
     );
+  }
+
+  Future<void> _submitCreate(BuildContext ctx, String name) async {
+    if (name.isNotEmpty) {
+      try {
+        await _supabaseService.createCommunity(name);
+        if (ctx.mounted) {
+          Navigator.pop(ctx);
+        }
+        if (mounted) {
+          setState(() {});
+        }
+      } catch (e) {
+        if (ctx.mounted) ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text('Error: $e')));
+      }
+    }
   }
 
   Future<void> _showJoinDialog() async {
     final controller = TextEditingController();
     return showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Join Community'),
-        content: TextField(
-          controller: controller, 
-          decoration: const InputDecoration(labelText: 'Invite Link or ID', hintText: 'Paste helm://invite... or ID'), 
-          autofocus: true
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('CANCEL')),
-          ElevatedButton(
-            onPressed: () async {
-              final input = controller.text.trim();
-              if (input.isNotEmpty) {
-                String communityId = input;
-                if (input.contains('communityId=')) {
-                  communityId = Uri.parse(input).queryParameters['communityId'] ?? input;
-                }
-                try {
-                  await _supabaseService.joinCommunity(communityId);
-                  if (ctx.mounted) {
-                    Navigator.pop(ctx);
-                  }
-                  if (mounted) {
-                    setState(() {});
-                  }
-                } catch (e) {
-                  if (ctx.mounted) ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text('Error joining: $e')));
-                }
-              }
-            },
-            child: const Text('JOIN'),
+      builder: (ctx) => Shortcuts(
+        shortcuts: {
+          LogicalKeySet(LogicalKeyboardKey.enter): const ActivateIntent(),
+        },
+        child: AlertDialog(
+          title: const Text('Join Community'),
+          content: TextField(
+            controller: controller, 
+            decoration: const InputDecoration(labelText: 'Invite Link or ID', hintText: 'Paste helm://invite... or ID'), 
+            autofocus: true,
+            onSubmitted: (_) => _submitJoin(ctx, controller.text.trim()),
           ),
-        ],
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('CANCEL')),
+            ElevatedButton(
+              onPressed: () => _submitJoin(ctx, controller.text.trim()),
+              child: const Text('JOIN'),
+            ),
+          ],
+        ),
       ),
     );
+  }
+
+  Future<void> _submitJoin(BuildContext ctx, String input) async {
+    if (input.isNotEmpty) {
+      String communityId = input;
+      if (input.contains('communityId=')) {
+        communityId = Uri.parse(input).queryParameters['communityId'] ?? input;
+      }
+      try {
+        await _supabaseService.joinCommunity(communityId);
+        if (ctx.mounted) {
+          Navigator.pop(ctx);
+        }
+        if (mounted) {
+          setState(() {});
+        }
+      } catch (e) {
+        if (ctx.mounted) ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text('Error joining: $e')));
+      }
+    }
   }
 
   @override

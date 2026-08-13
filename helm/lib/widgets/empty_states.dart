@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'task_form_utils.dart';
 
 class DashboardEmptyState extends StatelessWidget {
   const DashboardEmptyState({super.key});
@@ -39,7 +40,9 @@ class DashboardEmptyState extends StatelessWidget {
 }
 
 class CommunityEmptyState extends StatelessWidget {
-  const CommunityEmptyState({super.key});
+  final String? communityId;
+
+  const CommunityEmptyState({super.key, this.communityId});
 
   @override
   Widget build(BuildContext context) {
@@ -71,7 +74,9 @@ class CommunityEmptyState extends StatelessWidget {
           ),
           const SizedBox(height: 32),
           FilledButton.icon(
-            onPressed: () {},
+            onPressed: () {
+              showAddTaskForm(context, initialCommunityId: communityId);
+            },
             icon: const Icon(Icons.add),
             label: const Text('Create Task'),
             style: FilledButton.styleFrom(

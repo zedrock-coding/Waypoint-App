@@ -9,6 +9,7 @@ import 'widgets/task_form_utils.dart';
 import 'widgets/ai_text_drawer.dart';
 import 'widgets/notification_feed.dart';
 import 'widgets/notification_bell.dart';
+import 'widgets/user_avatar.dart';
 import 'services/supabase_service.dart';
 import 'services/navigation_provider.dart';
 
@@ -17,6 +18,7 @@ class AppShell extends StatefulWidget {
   final String title;
   final List<Widget>? actions;
   final Widget? floatingActionButton;
+  final Widget? bottomWidget;
 
   const AppShell({
     super.key,
@@ -24,6 +26,7 @@ class AppShell extends StatefulWidget {
     required this.title,
     this.actions,
     this.floatingActionButton,
+    this.bottomWidget,
   });
 
   @override
@@ -142,6 +145,7 @@ class _AppShellState extends State<AppShell> {
               children: [
                 const SizedBox(height: 8),
                 navItem(icon: Icons.dashboard_rounded, label: 'Dashboard', route: '/'),
+                navItem(icon: Icons.calendar_month_rounded, label: 'Calendar', route: '/calendar'),
                 
                 FutureBuilder<List<Map<String, dynamic>>>(
                   future: supabaseService.fetchUserCommunities(),
@@ -269,21 +273,27 @@ class _AppShellState extends State<AppShell> {
                 child: sidebarContent,
               ),
               endDrawer: const AITextDrawer(),
-              bottomNavigationBar: BottomNavigationBar(
-                currentIndex: navProvider.selectedIndex,
-                onTap: (index) => navProvider.setTab(index),
-                selectedItemColor: colorScheme.primary,
-                unselectedItemColor: colorScheme.onSurface.withOpacity(0.5),
-                items: const [
-                  BottomNavigationBarItem(
-                    icon: Icon(Icons.person_outline_rounded),
-                    activeIcon: Icon(Icons.person_rounded),
-                    label: 'Personal',
-                  ),
-                  BottomNavigationBarItem(
-                    icon: Icon(Icons.hub_outlined),
-                    activeIcon: Icon(Icons.hub_rounded),
-                    label: 'Communities',
+              bottomNavigationBar: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (widget.bottomWidget != null) widget.bottomWidget!,
+                  BottomNavigationBar(
+                    currentIndex: navProvider.selectedIndex,
+                    onTap: (index) => navProvider.setTab(index),
+                    selectedItemColor: colorScheme.primary,
+                    unselectedItemColor: colorScheme.onSurface.withOpacity(0.5),
+                    items: const [
+                      BottomNavigationBarItem(
+                        icon: Icon(Icons.person_outline_rounded),
+                        activeIcon: Icon(Icons.person_rounded),
+                        label: 'Personal',
+                      ),
+                      BottomNavigationBarItem(
+                        icon: Icon(Icons.hub_outlined),
+                        activeIcon: Icon(Icons.hub_rounded),
+                        label: 'Communities',
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -360,7 +370,11 @@ class _AppShellState extends State<AppShell> {
                                         ),
                                         PopupMenuButton<String>(
                                           padding: EdgeInsets.zero,
-                                          icon: Icon(Icons.account_circle_outlined, color: colorScheme.onSurface.withOpacity(0.7)),
+                                          icon: UserAvatar(
+                                            fullName: Supabase.instance.client.auth.currentUser?.userMetadata?['full_name'] ?? 'User',
+                                            avatarUrl: Supabase.instance.client.auth.currentUser?.userMetadata?['avatar_url'],
+                                            radius: 16,
+                                          ),
                                           offset: const Offset(0, 45),
                                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                                           onSelected: (value) {

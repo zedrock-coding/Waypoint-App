@@ -46,7 +46,7 @@ class SupabaseService {
     }
   }
 
-  /// Fetch all members of a specific community, including their full names.
+  /// Fetch all members of a specific community, including their full names and avatars.
   Future<List<Map<String, dynamic>>> getCommunityMembers(String communityId) async {
     try {
       final response = await client.rpc('get_community_member_names', params: {
@@ -59,6 +59,32 @@ class SupabaseService {
           .from('community_members')
           .select('*')
           .eq('community_id', communityId);
+    }
+  }
+
+  /// Upload a profile picture to the 'avatars' bucket.
+  Future<String?> uploadAvatar(Uint8List bytes, String fileName) async {
+    final userId = client.auth.currentUser?.id;
+    if (userId == null) return null;
+
+    final path = '$userId/$fileName';
+    
+    try {
+      await client.storage.from('avatars').uploadBinary(
+        path,
+        bytes,
+        fileOptions: const FileOptions(upsert: true),
+      );
+      
+      final publicUrl = client.storage.from('avatars').getPublicUrl(path);
+      
+      // Sync to user metadata
+      await client.auth.updateUser(UserAttributes(data: {'avatar_url': publicUrl}));
+      
+      return publicUrl;
+    } catch (e) {
+      debugPrint('Error uploading avatar: $e');
+      return null;
     }
   }
 

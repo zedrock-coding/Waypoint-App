@@ -23,6 +23,73 @@ class _SettingPageState extends State<SettingPage> {
     }
   }
 
+  void _showShortcutsDialog() {
+    final colorScheme = Theme.of(context).colorScheme;
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(Icons.keyboard_rounded, color: colorScheme.primary),
+            const SizedBox(width: 12),
+            const Text('Keyboard Shortcuts'),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildShortcutRow('Ctrl + N', 'Create New Task'),
+              _buildShortcutRow('Ctrl + F', 'Search Tasks'),
+              _buildShortcutRow('Ctrl + Space', 'AI Voice Command'),
+              _buildShortcutRow('Ctrl + Tab', 'Switch Tabs'),
+              _buildShortcutRow('Alt + Enter', 'Quick Add Task'),
+              _buildShortcutRow('Enter', 'Submit Form / Save'),
+              _buildShortcutRow('Esc', 'Close Panel / Exit'),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('GOT IT'),
+          ),
+        ],
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      ),
+    );
+  }
+
+  Widget _buildShortcutRow(String keys, String action) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(action, style: const TextStyle(fontSize: 14)),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.3),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Theme.of(context).colorScheme.primary.withOpacity(0.2)),
+            ),
+            child: Text(
+              keys,
+              style: TextStyle(
+                fontFamily: 'monospace',
+                fontWeight: FontWeight.bold,
+                fontSize: 12,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
@@ -83,6 +150,13 @@ class _SettingPageState extends State<SettingPage> {
           const Divider(height: 40),
           Text('System', style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: 16),
+          ListTile(
+            leading: const Icon(Icons.keyboard_rounded),
+            title: const Text('Keyboard Shortcuts'),
+            subtitle: const Text('View navigation and action keys'),
+            trailing: const Icon(Icons.chevron_right_rounded),
+            onTap: _showShortcutsDialog,
+          ),
           ListTile(
             leading: const Icon(Icons.info_outline_rounded),
             title: const Text('About Helm'),

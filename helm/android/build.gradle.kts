@@ -16,11 +16,13 @@ subprojects {
     project.layout.buildDirectory.value(newSubprojectBuildDir)
 }
 
-// Fix for legacy plugins missing 'namespace' (like isar_flutter_libs)
+// Fix for legacy plugins missing 'namespace' or having low SDK versions (like isar_flutter_libs)
 subprojects {
     afterEvaluate {
         if (project.hasProperty("android")) {
             val android = project.extensions.getByName("android") as com.android.build.gradle.BaseExtension
+            
+            // Fix namespace
             if (android.namespace == null) {
                 val manifestFile = project.file("src/main/AndroidManifest.xml")
                 if (manifestFile.exists()) {
@@ -30,6 +32,11 @@ subprojects {
                         android.namespace = packageMatch.groupValues[1]
                     }
                 }
+            }
+
+            // Fix lStar / linking errors by ensuring a minimum compileSdk
+            if (android.compileSdkVersion == null || (android.compileSdkVersion?.substringAfter("android-")?.toIntOrNull() ?: 0) < 34) {
+                android.compileSdkVersion("android-34")
             }
         }
     }
