@@ -8,6 +8,9 @@ on:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./helm
     steps:
       # 1. Check out the code
       - uses: actions/checkout@v3
@@ -26,6 +29,7 @@ jobs:
         run: |
           flutter pub get
           flutter build web --release --base-href "/"
+          cp vercel.json build/web/
 
       # 5. Deploy to Vercel
       - name: Deploy to Vercel
@@ -35,4 +39,4 @@ jobs:
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
           vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
           vercel-args: '--prod'
-          working-directory: ./build/web
+          working-directory: ./helm/build/web
