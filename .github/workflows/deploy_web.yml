@@ -3,7 +3,7 @@ name: Deploy Helm Web to Vercel
 on:
   push:
     branches:
-      - main
+      - highest
 
 jobs:
   build-and-deploy:
