@@ -18,7 +18,7 @@ class AiService {
     }
 
     _model = GenerativeModel(
-      model: 'gemini-1.5-flash', 
+      model: 'gemini-3.5-flash-lite',
       apiKey: apiKey,
       generationConfig: GenerationConfig(
         responseMimeType: 'application/json',
