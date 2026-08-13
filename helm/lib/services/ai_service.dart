@@ -7,14 +7,22 @@ class AiService {
   late final GenerativeModel _model;
 
   AiService() {
-    final apiKey = dotenv.env['GEMINI_API_KEY'];
-    if (apiKey == null || apiKey.isEmpty) {
-      debugPrint('AiService: GEMINI_API_KEY not found in .env file!');
+    // Priority: 1. String.fromEnvironment (Compile-time) 2. flutter_dotenv (Runtime asset)
+    final String envKey = const String.fromEnvironment('GEMINI_API_KEY');
+    final String? dotEnvKey = dotenv.env['GEMINI_API_KEY'];
+    
+    final apiKey = envKey.isNotEmpty ? envKey : (dotEnvKey ?? '');
+
+    if (apiKey.isEmpty) {
+      debugPrint('AiService: GEMINI_API_KEY not found in environment or .env file!');
     }
-    // Switched to ''gemini-3.6-flash'' for maximum compatibility across all API key tiers
+
     _model = GenerativeModel(
-      model: 'gemini-3.5-flash-lite',
-      apiKey: apiKey ?? '',
+      model: 'gemini-1.5-flash', 
+      apiKey: apiKey,
+      generationConfig: GenerationConfig(
+        responseMimeType: 'application/json',
+      ),
     );
   }
 

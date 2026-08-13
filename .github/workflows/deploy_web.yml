@@ -17,7 +17,8 @@ jobs:
         with:
           channel: 'stable'
 
-      # 3. Handle Environment Variables (.env)
+      # 3. Handle Environment Variables
+      # We create the .env file for local asset fallback AND use --dart-define for web stability
       - name: Create .env file
         run: echo "GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}" > helm/.env
 
@@ -26,7 +27,7 @@ jobs:
         working-directory: ./helm
         run: |
           flutter pub get
-          flutter build web --release --base-href "/"
+          flutter build web --release --base-href "/" --dart-define=GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}
           # Ensure vercel.json is in the build directory for routing rules
           cp vercel.json build/web/
 
