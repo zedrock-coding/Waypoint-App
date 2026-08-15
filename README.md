@@ -9,7 +9,7 @@
 ## 🌟 Major Highlights for the Public Launch
 
 ### 🤖 Generative AI Command Center
-*   **Voice & Text Orchestration**: Create complex tasks using natural language. Powered by **Gemini 1.5 Flash**.
+*   **Voice & Text Orchestration**: Create complex tasks using natural language. Powered by **Gemini 3.5 Flash lite**.
 *   **Context-Aware Parsing**: The AI understands your communities and team members, allowing commands like *"Assign a high priority bug fix to Shivam by Friday"*.
 
 ### 📅 Interactive Task Calendar
@@ -33,7 +33,7 @@
 
 ## 🛠 Tech Stack
 *   **Framework**: Flutter (Material 3)
-*   **AI Engine**: Google Generative AI (Gemini 1.5 Flash)
+*   **AI Engine**: Google Generative AI (Gemini 3.5 Flash lite)
 *   **Cloud Backend**: Supabase (PostgreSQL, Realtime, RLS, Storage)
 *   **Local Storage**: Hive (Reactive high-speed NoSQL)
 *   **State Management**: Provider
