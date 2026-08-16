@@ -32,6 +32,10 @@ class NavigationProvider with ChangeNotifier {
     _currentRoute = route;
     if (route != '/') {
       _selectedCommunityId = null;
+    } else {
+      // If we are explicitly navigating to '/', we assume Personal Dashboard
+      _selectedIndex = 0;
+      _selectedCommunityId = null;
     }
     notifyListeners();
   }

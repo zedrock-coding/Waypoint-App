@@ -55,9 +55,18 @@ class _AppShellState extends State<AppShell> {
       bool isSubItem = false,
     }) {
       final bool isCurrentRoute = ModalRoute.of(context)?.settings.name == route;
-      final bool isActive = communityId != null 
-          ? navProvider.selectedCommunityId == communityId
-          : (navProvider.currentRoute == route || (route == '/' && isCurrentRoute));
+      
+      bool isActive;
+      if (communityId != null) {
+        // Specific community is active
+        isActive = navProvider.selectedCommunityId == communityId;
+      } else if (route == '/') {
+        // Main dashboard is active only if we are in the Personal tab (index 0)
+        isActive = navProvider.currentRoute == '/' && navProvider.selectedIndex == 0;
+      } else {
+        // Other routes (Calendar, Categories, etc)
+        isActive = navProvider.currentRoute == route;
+      }
       
       return Padding(
         padding: EdgeInsets.symmetric(horizontal: isSubItem ? 8 : 12, vertical: 4),
@@ -151,16 +160,28 @@ class _AppShellState extends State<AppShell> {
                   future: supabaseService.fetchUserCommunities(),
                   builder: (context, snapshot) {
                     final communities = snapshot.data ?? [];
+                    final bool isCommunitiesHubActive = navProvider.selectedIndex == 1 && navProvider.currentRoute == '/';
+                    final Color headerColor = isCommunitiesHubActive ? colorScheme.primary : colorScheme.onSurface.withOpacity(0.6);
+                    
                     return Theme(
                       data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
                       child: ExpansionTile(
                         initiallyExpanded: true,
                         shape: const Border(),
                         collapsedShape: const Border(),
-                        iconColor: colorScheme.onSurface,
-                        collapsedIconColor: colorScheme.onSurface,
-                        leading: Icon(Icons.hub_rounded, color: colorScheme.onSurface.withOpacity(0.6), size: 22),
-                        title: Text('Communities', style: TextStyle(color: colorScheme.onSurface.withOpacity(0.6), fontSize: 15)),
+                        iconColor: headerColor,
+                        collapsedIconColor: headerColor,
+                        leading: Icon(Icons.hub_rounded, color: headerColor, size: 22),
+                        title: InkWell(
+                          onTap: () {
+                            navProvider.setTab(1);
+                            if (!isDesktop) Navigator.pop(context);
+                            if (ModalRoute.of(context)?.settings.name != '/') {
+                              Navigator.pushReplacementNamed(context, '/');
+                            }
+                          },
+                          child: Text('Communities', style: TextStyle(color: headerColor, fontSize: 15, fontWeight: isCommunitiesHubActive ? FontWeight.bold : FontWeight.normal)),
+                        ),
                         childrenPadding: const EdgeInsets.only(left: 24),
                         children: communities.map((comm) {
                           final members = comm['community_members'] as List?;

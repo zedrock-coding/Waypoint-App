@@ -1,4 +1,2 @@
-# Errors We Need to Fix (Known Errors)
-# *The Navigation Error*
-
-* We need to fix the issue where when we open a community tab or personal tab it doesn't change the sidebar tabs accordingly.
+# Resolved Errors
+* **The Navigation Error**: Fixed the issue where sidebar highlighting didn't sync with tab switching. The sidebar now correctly distinguishes between Personal and Community contexts.
