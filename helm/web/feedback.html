@@ -165,8 +165,8 @@
         const supabaseUrl = 'https://eknzdxexfcfdmqvbyvxt.supabase.co';
         const supabaseKey = 'sb_publishable_fUoY96CXli7DwbZayu8pFQ_4yExvoJg';
 
-        // Use a different name to avoid conflict with the global 'supabase' object from the CDN
-        const supabaseClient = supabasejs.createClient(supabaseUrl, supabaseKey, {
+        // Use the global 'supabase' object provided by the CDN to create the client
+        const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey, {
             auth: {
                 persistSession: false // Prevents Tracking Prevention errors in some browsers
             }

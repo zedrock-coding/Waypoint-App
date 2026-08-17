@@ -117,8 +117,8 @@
         const supabaseUrl = 'https://eknzdxexfcfdmqvbyvxt.supabase.co';
         const supabaseKey = 'sb_publishable_fUoY96CXli7DwbZayu8pFQ_4yExvoJg';
 
-        // Renamed to avoid global conflict and disabled session persistence
-        const supabaseClient = supabasejs.createClient(supabaseUrl, supabaseKey, {
+        // Use the global 'supabase' object provided by the CDN
+        const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey, {
             auth: {
                 persistSession: false
             }
