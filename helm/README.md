@@ -1,12 +1,17 @@
-# Helm 3.0 - The Public Launch 🚀
+# Helm 3.1 - Enhanced Support & Feedback 🚀
 
-**Helm 3.0** marks our first official public release! We've evolved from a simple task tracker into a comprehensive, AI-powered team orchestration workspace. Optimized for **Android**, **Windows**, and **Web**, Helm provides a professional, reactive experience for real-time team collaboration and personal productivity.
+**Helm 3.1** introduces a comprehensive support system alongside our first official public release! We've evolved from a simple task tracker into a comprehensive, AI-powered team orchestration workspace. Optimized for **Android**, **Windows**, and **Web**, Helm provides a professional, reactive experience for real-time team collaboration and personal productivity.
 
 ![Aesthetic](https://img.shields.io/badge/Aesthetic-Slate%20%26%20Mint-88C0A4)
 ![Platform](https://img.shields.io/badge/Platform-Android%20%7C%20Windows%20%7C%20Web-blue)
-![Version](https://img.shields.io/badge/Version-3.0.0-green)
+![Version](https://img.shields.io/badge/Version-3.1.0-green)
 
-## 🌟 Major Highlights for the Public Launch
+## 🌟 Major Highlights
+
+### 🛠 Integrated Support & Feedback
+*   **Direct Submission**: Users can now submit suggestions, bug reports, or help requests directly from the app's sidebar.
+*   **Themed Submission Portal**: A standalone, beautifully designed feedback form hosted on the web.
+*   **WhatsApp Priority Support**: One-tap access to chat for urgent workspace issues.
 
 ### 🤖 Generative AI Command Center
 *   **Voice & Text Orchestration**: Create complex tasks using natural language. Powered by **Gemini 1.5 Flash**.

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'ai_voice_overlay.dart';
 import 'widgets/task_search_delegate.dart';
 import 'widgets/app_intents.dart';
@@ -120,6 +121,52 @@ class _AppShellState extends State<AppShell> {
       );
     }
 
+    Widget urlNavItem({
+      required IconData icon,
+      required String label,
+      required String url,
+    }) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        child: InkWell(
+          onTap: () async {
+            if (!isDesktop) Navigator.pop(context);
+            final uri = Uri.parse(url);
+            try {
+              if (await canLaunchUrl(uri)) {
+                await launchUrl(uri, mode: LaunchMode.externalApplication);
+              }
+            } catch (e) {
+              debugPrint('Could not launch URL: $e');
+            }
+          },
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              children: [
+                Icon(icon, color: colorScheme.onSurface.withOpacity(0.6), size: 22),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Text(
+                    label,
+                    style: TextStyle(
+                      color: colorScheme.onSurface.withOpacity(0.6),
+                      fontSize: 15,
+                    ),
+                  ),
+                ),
+                Icon(Icons.open_in_new_rounded, size: 14, color: colorScheme.onSurface.withOpacity(0.3)),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     Widget sidebarContent = Column(
       children: [
         Container(
@@ -203,6 +250,11 @@ class _AppShellState extends State<AppShell> {
                 ),
                 
                 navItem(icon: Icons.category_rounded, label: 'Manage All', route: '/categories'),
+                urlNavItem(
+                  icon: Icons.help_outline_rounded, 
+                  label: 'Support & Feedback', 
+                  url: 'https://helm-workspace.vercel.app/feedback.html' 
+                ),
                 navItem(icon: Icons.settings_rounded, label: 'Settings', route: '/settings'),
                 const SizedBox(height: 24),
                 const Padding(

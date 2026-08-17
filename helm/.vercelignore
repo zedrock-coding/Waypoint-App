@@ -2,6 +2,8 @@
 *
 !build/web
 !vercel.json
+web/admin.html
+build/web/admin.html
 
 # Platform folders
 android/

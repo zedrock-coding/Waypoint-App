@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Helm Support & Feedback</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        :root {
+            --bg-color: #1A1C1E;
+            --surface-color: #2D2F31;
+            --primary-color: #88C0A4;
+            --text-color: #FFFFFF;
+            --text-secondary: #A0A2A4;
+            --error-color: #FF6B6B;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 450px;
+            padding: 40px;
+            background-color: var(--surface-color);
+            border-radius: 24px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            margin: 20px;
+        }
+
+        h1 {
+            color: var(--primary-color);
+            font-size: 28px;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+
+        p.subtitle {
+            color: var(--text-secondary);
+            font-size: 14px;
+            margin-bottom: 32px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+
+        input, textarea {
+            width: 100%;
+            padding: 14px;
+            background-color: var(--bg-color);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            color: var(--text-color);
+            font-size: 15px;
+            box-sizing: border-box;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        input:focus, textarea:focus {
+            border-color: var(--primary-color);
+        }
+
+        button {
+            width: 100%;
+            padding: 16px;
+            background-color: var(--primary-color);
+            color: var(--bg-color);
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.1s, opacity 0.2s;
+            margin-top: 12px;
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .success-message {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .success-icon {
+            font-size: 48px;
+            color: var(--primary-color);
+            margin-bottom: 16px;
+        }
+
+        .whatsapp-link {
+            display: block;
+            text-align: center;
+            margin-top: 24px;
+            color: var(--primary-color);
+            text-decoration: none;
+            font-size: 13px;
+            opacity: 0.8;
+        }
+
+        .whatsapp-link:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container" id="form-container">
+        <h1>Feedback</h1>
+        <p class="subtitle">Tell us how we can make Helm better for you.</p>
+
+        <form id="feedback-form">
+            <div class="form-group">
+                <label for="name">FULL NAME</label>
+                <input type="text" id="name" required placeholder="John Doe">
+            </div>
+            <div class="form-group">
+                <label for="email">EMAIL ADDRESS</label>
+                <input type="email" id="email" required placeholder="john@example.com">
+            </div>
+            <div class="form-group">
+                <label for="message">MESSAGE</label>
+                <textarea id="message" rows="5" required placeholder="Describe your issue or suggestion..."></textarea>
+            </div>
+            <button type="submit" id="submit-btn">SUBMIT FEEDBACK</button>
+        </form>
+
+        <a href="https://wa.me/9584333692?text=Hi, I need help with Helm" target="_blank" class="whatsapp-link">
+            Need urgent help? Chat on WhatsApp
+        </a>
+    </div>
+
+    <div class="container success-message" id="success-message">
+        <div class="success-icon">✓</div>
+        <h2>Thank You!</h2>
+        <p class="subtitle">Your feedback has been received. We'll get back to you shortly.</p>
+        <button onclick="location.reload()">SEND ANOTHER</button>
+    </div>
+
+    <script>
+        const supabaseUrl = 'https://eknzdxexfcfdmqvbyvxt.supabase.co';
+        const supabaseKey = 'sb_publishable_fUoY96CXli7DwbZayu8pFQ_4yExvoJg';
+        const supabase = supabasejs.createClient(supabaseUrl, supabaseKey);
+
+        const form = document.getElementById('feedback-form');
+        const submitBtn = document.getElementById('submit-btn');
+        const formContainer = document.getElementById('form-container');
+        const successMessage = document.getElementById('success-message');
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            submitBtn.disabled = true;
+            submitBtn.innerText = 'SENDING...';
+
+            const name = document.getElementById('name').value;
+            const email = document.getElementById('email').value;
+            const message = document.getElementById('message').value;
+
+            const { error } = await supabase
+                .from('feedback')
+                .insert([{ name, email, message }]);
+
+            if (error) {
+                alert('Error submitting feedback: ' + error.message);
+                submitBtn.disabled = false;
+                submitBtn.innerText = 'SUBMIT FEEDBACK';
+            } else {
+                formContainer.style.display = 'none';
+                successMessage.style.display = 'block';
+            }
+        });
+    </script>
+</body>
+</html>
