@@ -253,7 +253,7 @@ class _AppShellState extends State<AppShell> {
                 urlNavItem(
                   icon: Icons.help_outline_rounded, 
                   label: 'Support & Feedback', 
-                  url: 'https://helm-workspace.vercel.app/feedback.html' 
+                  url: 'https://helm-omega-blue.vercel.app/feedback.html' 
                 ),
                 navItem(icon: Icons.settings_rounded, label: 'Settings', route: '/settings'),
                 const SizedBox(height: 24),

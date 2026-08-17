@@ -50,7 +50,7 @@ For the purposes of this Privacy Policy:
 - __User__ means any individual who accesses or uses the Service.
 
 
-- __Website__ refers to Helm, accessible from [helm.vercel.app](helm.vercel.app).
+- __Website__ refers to Helm, accessible from [helm-omega-blue.vercel.app](https://helm-omega-blue.vercel.app).
 
 - __You__ means the individual accessing or using the Service, or the company, or other legal entity on behalf of which such individual is accessing or using the Service, as applicable.
 
