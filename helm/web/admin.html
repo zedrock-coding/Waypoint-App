@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Helm Feedback Dashboard</title>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Use a specific version to ensure stability -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.1/dist/umd/supabase.js"></script>
     <style>
         :root {
             --bg-color: #1A1C1E;
@@ -12,6 +13,7 @@
             --primary-color: #88C0A4;
             --text-color: #FFFFFF;
             --text-secondary: #A0A2A4;
+            --error-color: #FF6B6B;
         }
 
         body {
@@ -30,10 +32,27 @@
             margin: 0 auto 40px;
         }
 
-        h1 {
-            color: var(--primary-color);
-            margin: 0;
+        .auth-panel {
+            background-color: var(--surface-color);
+            padding: 20px;
+            border-radius: 12px;
+            margin: 0 auto 40px;
+            max-width: 600px;
+            border: 1px solid rgba(255,255,255,0.1);
         }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            margin-top: 8px;
+            background: var(--bg-color);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 8px;
+            color: white;
+            box-sizing: border-box;
+        }
+
+        h1 { color: var(--primary-color); margin: 0; }
 
         .refresh-btn {
             background-color: var(--primary-color);
@@ -58,49 +77,29 @@
             padding: 24px;
             border-radius: 16px;
             border: 1px solid rgba(255,255,255,0.05);
-            transition: transform 0.2s;
+            animation: fadeIn 0.3s ease-out;
         }
 
-        .card:hover {
-            transform: translateY(-4px);
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
-        .card-header {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 16px;
-        }
+        .card-header { display: flex; justify-content: space-between; margin-bottom: 16px; }
+        .name { font-weight: bold; font-size: 18px; color: var(--primary-color); }
+        .date { font-size: 11px; color: var(--text-secondary); }
+        .email { font-size: 14px; color: var(--text-secondary); margin-bottom: 16px; display: block; text-decoration: none; }
+        .email:hover { text-decoration: underline; }
+        .message { font-size: 15px; line-height: 1.6; color: rgba(255,255,255,0.9); white-space: pre-wrap; }
 
-        .name {
-            font-weight: bold;
-            font-size: 18px;
-            color: var(--primary-color);
-        }
-
-        .date {
-            font-size: 12px;
-            color: var(--text-secondary);
-        }
-
-        .email {
-            font-size: 14px;
-            color: var(--text-secondary);
-            margin-bottom: 16px;
-            display: block;
-        }
-
-        .message {
-            font-size: 15px;
-            line-height: 1.6;
-            color: rgba(255,255,255,0.9);
-            white-space: pre-wrap;
-        }
-
-        .loading {
-            text-align: center;
-            font-size: 18px;
-            color: var(--text-secondary);
-            margin-top: 100px;
+        .error-banner {
+            background-color: rgba(255, 107, 107, 0.1);
+            border: 1px solid var(--error-color);
+            color: var(--error-color);
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
         }
     </style>
 </head>
@@ -110,62 +109,81 @@
         <button class="refresh-btn" onclick="fetchFeedback()">REFRESH</button>
     </div>
 
-    <div id="loading" class="loading">Loading feedback entries...</div>
+    <div class="auth-panel">
+        <label style="font-size: 12px; font-weight: bold;">SUPABASE SERVICE ROLE KEY</label>
+        <input type="password" id="service-key" placeholder="Paste your service_role key here to bypass RLS">
+        <p style="font-size: 11px; color: var(--text-secondary); margin-top: 8px;">
+            This file is local-only. Your key is not saved online. Use the <b>service_role</b> key from your Supabase Project Settings > API.
+        </p>
+    </div>
+
+    <div id="error-banner" class="error-banner"></div>
+    <div id="loading" style="text-align: center; color: var(--text-secondary); margin-top: 40px;">Enter your key and click Refresh.</div>
     <div class="feedback-grid" id="feedback-grid"></div>
 
     <script>
         const supabaseUrl = 'https://eknzdxexfcfdmqvbyvxt.supabase.co';
-        const supabaseKey = 'sb_publishable_fUoY96CXli7DwbZayu8pFQ_4yExvoJg';
-
-        // Use the global 'supabase' object provided by the CDN
-        const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey, {
-            auth: {
-                persistSession: false
-            }
-        });
 
         async function fetchFeedback() {
+            const serviceKey = document.getElementById('service-key').value.trim();
             const grid = document.getElementById('feedback-grid');
             const loading = document.getElementById('loading');
+            const errorBanner = document.getElementById('error-banner');
 
+            if (!serviceKey) {
+                alert('Please enter your service_role key first.');
+                return;
+            }
+
+            errorBanner.style.display = 'none';
             grid.innerHTML = '';
             loading.style.display = 'block';
+            loading.innerText = 'Fetching from cloud...';
 
-            const { data, error } = await supabaseClient
-                .from('feedback')
-                .select('*')
-                .order('created_at', { ascending: false });
+            try {
+                // Initialize client with the provided key
+                const client = typeof supabase !== 'undefined'
+                    ? supabase.createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } })
+                    : null;
 
-            loading.style.display = 'none';
+                if (!client) throw new Error('Supabase library failed to load. Check your internet connection.');
 
-            if (error) {
-                alert('Error fetching feedback: ' + error.message);
-                return;
+                const { data, error } = await client
+                    .from('feedback')
+                    .select('*')
+                    .order('created_at', { ascending: false });
+
+                if (error) throw error;
+
+                loading.style.display = 'none';
+
+                if (data.length === 0) {
+                    loading.innerText = 'No feedback entries found in database.';
+                    loading.style.display = 'block';
+                    return;
+                }
+
+                data.forEach(item => {
+                    const date = new Date(item.created_at).toLocaleString();
+                    const card = document.createElement('div');
+                    card.className = 'card';
+                    card.innerHTML = `
+                        <div class="card-header">
+                            <span class="name">${item.name || 'Anonymous'}</span>
+                            <span class="date">${date}</span>
+                        </div>
+                        <a href="mailto:${item.email}" class="email">${item.email}</a>
+                        <div class="message">${item.message}</div>
+                    `;
+                    grid.appendChild(card);
+                });
+            } catch (err) {
+                loading.style.display = 'none';
+                errorBanner.style.display = 'block';
+                errorBanner.innerText = 'Fetch Failed: ' + (err.message || JSON.stringify(err));
+                console.error(err);
             }
-
-            if (data.length === 0) {
-                loading.innerText = 'No feedback entries yet.';
-                loading.style.display = 'block';
-                return;
-            }
-
-            data.forEach(item => {
-                const date = new Date(item.created_at).toLocaleString();
-                const card = document.createElement('div');
-                card.className = 'card';
-                card.innerHTML = `
-                    <div class="card-header">
-                        <span class="name">${item.name}</span>
-                        <span class="date">${date}</span>
-                    </div>
-                    <a href="mailto:${item.email}" class="email">${item.email}</a>
-                    <div class="message">${item.message}</div>
-                `;
-                grid.appendChild(card);
-            });
         }
-
-        fetchFeedback();
     </script>
 </body>
 </html>
