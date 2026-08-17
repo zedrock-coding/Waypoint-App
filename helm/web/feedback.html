@@ -164,7 +164,13 @@
     <script>
         const supabaseUrl = 'https://eknzdxexfcfdmqvbyvxt.supabase.co';
         const supabaseKey = 'sb_publishable_fUoY96CXli7DwbZayu8pFQ_4yExvoJg';
-        const supabase = supabasejs.createClient(supabaseUrl, supabaseKey);
+
+        // Use a different name to avoid conflict with the global 'supabase' object from the CDN
+        const supabaseClient = supabasejs.createClient(supabaseUrl, supabaseKey, {
+            auth: {
+                persistSession: false // Prevents Tracking Prevention errors in some browsers
+            }
+        });
 
         const form = document.getElementById('feedback-form');
         const submitBtn = document.getElementById('submit-btn');
@@ -180,7 +186,7 @@
             const email = document.getElementById('email').value;
             const message = document.getElementById('message').value;
 
-            const { error } = await supabase
+            const { error } = await supabaseClient
                 .from('feedback')
                 .insert([{ name, email, message }]);
 

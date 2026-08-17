@@ -116,7 +116,13 @@
     <script>
         const supabaseUrl = 'https://eknzdxexfcfdmqvbyvxt.supabase.co';
         const supabaseKey = 'sb_publishable_fUoY96CXli7DwbZayu8pFQ_4yExvoJg';
-        const supabase = supabasejs.createClient(supabaseUrl, supabaseKey);
+
+        // Renamed to avoid global conflict and disabled session persistence
+        const supabaseClient = supabasejs.createClient(supabaseUrl, supabaseKey, {
+            auth: {
+                persistSession: false
+            }
+        });
 
         async function fetchFeedback() {
             const grid = document.getElementById('feedback-grid');
@@ -125,7 +131,7 @@
             grid.innerHTML = '';
             loading.style.display = 'block';
 
-            const { data, error } = await supabase
+            const { data, error } = await supabaseClient
                 .from('feedback')
                 .select('*')
                 .order('created_at', { ascending: false });
