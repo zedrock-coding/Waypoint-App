@@ -186,15 +186,20 @@
             const email = document.getElementById('email').value;
             const message = document.getElementById('message').value;
 
-            const { error } = await supabaseClient
+            console.log('Submitting feedback...', { name, email, message });
+
+            const { data, error } = await supabaseClient
                 .from('feedback')
-                .insert([{ name, email, message }]);
+                .insert([{ name, email, message }])
+                .select(); // Request data back to confirm success
 
             if (error) {
-                alert('Error submitting feedback: ' + error.message);
+                console.error('Supabase Error:', error);
+                alert('Submission Failed: ' + error.message + '\n\nCheck browser console for details.');
                 submitBtn.disabled = false;
                 submitBtn.innerText = 'SUBMIT FEEDBACK';
             } else {
+                console.log('Success:', data);
                 formContainer.style.display = 'none';
                 successMessage.style.display = 'block';
             }
