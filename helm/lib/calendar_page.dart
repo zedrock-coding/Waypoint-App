@@ -26,7 +26,11 @@ class _CalendarPageState extends State<CalendarPage> {
   }
 
   List<UnifiedTask> _getEventsForDay(DateTime day, List<UnifiedTask> allTasks) {
-    return allTasks.where((task) => isSameDay(task.dateTime, day)).toList();
+    // Ensure we are comparing dates correctly by normalizing to midnight local time
+    return allTasks.where((task) {
+      if (task.dueDate == null) return false;
+      return isSameDay(task.dueDate!.toLocal(), day);
+    }).toList();
   }
 
   @override

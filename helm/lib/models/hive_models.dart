@@ -157,6 +157,9 @@ class Settings extends HiveObject {
   @HiveField(7)
   bool? legalAccepted;
 
+  @HiveField(8)
+  bool? onboardingComplete;
+
   Settings({
     this.themeMode = 1,
     this.fontSizeIndex = 2,
@@ -166,5 +169,6 @@ class Settings extends HiveObject {
     this.communityMentionsEnabled = true,
     this.newsAndOffersEnabled = false,
     this.legalAccepted = false,
+    this.onboardingComplete = false,
   });
 }

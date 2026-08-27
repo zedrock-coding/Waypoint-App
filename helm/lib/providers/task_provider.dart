@@ -466,10 +466,14 @@ class TaskProvider with ChangeNotifier {
   // --- CALENDAR FEATURE ---
   
   List<UnifiedTask> get allTasksWithDueDates {
+    // Aggregates both Personal and Community tasks that have a deadline
     final List<UnifiedTask> tasks = _taskBox.values
         .where((t) => t.dueAt != null)
         .map((t) => UnifiedTask.fromHive(t))
         .toList();
+    
+    // Sort by due date
+    tasks.sort((a, b) => (a.dueDate ?? a.dateTime).compareTo(b.dueDate ?? b.dateTime));
     return tasks;
   }
 

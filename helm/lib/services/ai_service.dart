@@ -18,7 +18,7 @@ class AiService {
     }
 
     _model = GenerativeModel(
-      model: 'gemini-3.5-flash-lite',
+      model: 'gemini-1.5-flash',
       apiKey: apiKey,
       generationConfig: GenerationConfig(
         responseMimeType: 'application/json',
@@ -54,24 +54,38 @@ class AiService {
   }) async {
     final now = DateTime.now();
     final systemInstruction = '''
-Act as a JSON data extractor for a task management app named Helm.
-Current Date/Time: ${now.toIso8601String()}
+Act as an expert data extraction engine for Helm, a team task manager.
+Your goal is to parse user natural language into a structured JSON object.
 
-Available Communities: ${jsonEncode(availableCommunities)}
-Available Members: ${jsonEncode(availableMembers)}
+CURRENT CONTEXT:
+- Reference Time: ${now.toIso8601String()} (Local)
+- Available Communities: ${jsonEncode(availableCommunities)}
+- Available Members: ${jsonEncode(availableMembers)}
 
-User Input: "$userInput"
+EXTRACTION RULES:
+1. **Title**: Summarize the core action. (e.g., "Buy milk")
+2. **Due Date**: 
+   - Parse relative terms based on the Reference Time above.
+   - "today" -> same date as Reference Time.
+   - "tomorrow" -> Reference Time + 1 day.
+   - "next Friday" -> Find the date of the upcoming Friday.
+   - Output MUST be a valid ISO 8601 string (e.g., "2024-08-29T23:59:59Z"). If no date is mentioned, use null.
+3. **Priority**: Map to "HIGH", "MEDIUM", or "LOW". Default is "MEDIUM".
+4. **Community ID**: Match mentioned community names to the provided UUIDs.
+5. **Assignee ID**: Match mentioned names or "me" to the member UUIDs.
 
-Extract task details and output ONLY valid JSON matching this schema:
+OUTPUT FORMAT:
+Return ONLY a raw JSON object. Use valid ISO 8601 strings for dates (YYYY-MM-DDTHH:MM:SSZ).
+If the user says "at 5pm tomorrow", calculate the exact timestamp based on the Reference Time.
+
+SCHEMA:
 {
-  "title": "String (Core task description)",
-  "due_date": "ISO 8601 String or null (calculated from relative time)",
-  "priority": "String (HIGH, MEDIUM, LOW) default is MEDIUM",
-  "community_id": "String (UUID of the community if mentioned, otherwise null)",
-  "assignee_id": "String (UUID of the member if mentioned, otherwise null)"
+  "title": "String",
+  "due_date": "ISO8601 String or null",
+  "priority": "HIGH | MEDIUM | LOW",
+  "community_id": "UUID String or null",
+  "assignee_id": "UUID String or null"
 }
-
-IMPORTANT: Do not include any markdown formatting or extra text. Output the raw JSON string only.
 ''';
 
     try {

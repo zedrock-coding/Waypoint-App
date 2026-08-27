@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'theme_provider.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -81,8 +83,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       ? Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 40),
                           child: FilledButton(
-                            onPressed: () {
-                              Navigator.pushReplacementNamed(context, '/');
+                            onPressed: () async {
+                              await context.read<ThemeProvider>().completeOnboarding();
+                              if (mounted) {
+                                Navigator.pushReplacementNamed(context, '/');
+                              }
                             },
                             style: FilledButton.styleFrom(
                               backgroundColor: colorScheme.primary,

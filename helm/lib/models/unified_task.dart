@@ -8,6 +8,7 @@ class UnifiedTask {
   final String title;
   final String description;
   final DateTime dateTime;
+  final DateTime? dueDate; // Explicit due date for calendar
   final bool isCompleted;
   final Status status;
   final String? communityId;
@@ -25,6 +26,7 @@ class UnifiedTask {
     required this.title,
     required this.description,
     required this.dateTime,
+    this.dueDate,
     required this.isCompleted,
     required this.status,
     this.communityId,
@@ -44,6 +46,7 @@ class UnifiedTask {
       title: task.title ?? 'Untitled',
       description: task.description ?? '',
       dateTime: task.dueAt ?? task.createdAt ?? DateTime.now(),
+      dueDate: task.dueAt,
       isCompleted: task.isCompleted ?? false,
       status: _parseStatus(task.status ?? 'toDo'),
       communityId: task.communityId,
@@ -63,7 +66,8 @@ class UnifiedTask {
       id: data['id'].toString(),
       title: data['title'] ?? '',
       description: data['description'] ?? '',
-      dateTime: DateTime.parse(data['created_at']),
+      dateTime: data['due_at'] != null ? DateTime.parse(data['due_at']) : DateTime.parse(data['created_at']),
+      dueDate: data['due_at'] != null ? DateTime.parse(data['due_at']) : null,
       isCompleted: data['is_completed'] ?? false,
       status: _parseStatus(data['status'] ?? 'toDo'),
       communityId: data['community_id'],

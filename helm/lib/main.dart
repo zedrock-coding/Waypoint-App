@@ -136,6 +136,8 @@ class _MyAppState extends State<MyApp> {
     if (!mounted) return;
     try {
       final tp = Provider.of<ThemeProvider>(context, listen: false);
+      
+      // 1. Legal Check
       if (tp.settings.legalAccepted != true) {
         final bool? accepted = await showDialog<bool>(
           context: _navigatorKey.currentContext!,
@@ -147,10 +149,16 @@ class _MyAppState extends State<MyApp> {
           await tp.acceptLegal();
         } else {
           await SystemNavigator.pop();
+          return;
         }
       }
+
+      // 2. Onboarding Check
+      if (tp.settings.onboardingComplete != true) {
+        _navigatorKey.currentState?.pushNamed('/onboarding');
+      }
     } catch (e) {
-      debugPrint('Legal check error: $e');
+      debugPrint('Launch check error: $e');
     }
   }
 

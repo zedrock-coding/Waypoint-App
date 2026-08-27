@@ -201,7 +201,7 @@ class _AppShellState extends State<AppShell> {
               children: [
                 const SizedBox(height: 8),
                 navItem(icon: Icons.dashboard_rounded, label: 'Dashboard', route: '/'),
-                navItem(icon: Icons.calendar_month_rounded, label: 'Calendar', route: '/calendar'),
+                navItem(icon: Icons.calendar_today_rounded, label: 'Calendar', route: '/calendar'),
                 
                 FutureBuilder<List<Map<String, dynamic>>>(
                   future: supabaseService.fetchUserCommunities(),
@@ -218,7 +218,7 @@ class _AppShellState extends State<AppShell> {
                         collapsedShape: const Border(),
                         iconColor: headerColor,
                         collapsedIconColor: headerColor,
-                        leading: Icon(Icons.hub_rounded, color: headerColor, size: 22),
+                        leading: Icon(Icons.groups_rounded, color: headerColor, size: 22),
                         title: InkWell(
                           onTap: () {
                             navProvider.setTab(1);
@@ -237,7 +237,7 @@ class _AppShellState extends State<AppShell> {
                                               members[0]['role'] == 'admin';
                                               
                           return navItem(
-                            icon: isMemberAdmin ? Icons.verified_user_rounded : Icons.label_outline_rounded, 
+                            icon: isMemberAdmin ? Icons.admin_panel_settings_rounded : Icons.group_work_outlined, 
                             label: comm['name'], 
                             route: '/communities/${comm['id']}',
                             communityId: comm['id'],
@@ -249,9 +249,9 @@ class _AppShellState extends State<AppShell> {
                   }
                 ),
                 
-                navItem(icon: Icons.category_rounded, label: 'Manage All', route: '/categories'),
+                navItem(icon: Icons.layers_rounded, label: 'Manage All', route: '/categories'),
                 urlNavItem(
-                  icon: Icons.help_outline_rounded, 
+                  icon: Icons.contact_support_rounded, 
                   label: 'Support & Feedback', 
                   url: 'https://helm-omega-blue.vercel.app/feedback.html' 
                 ),

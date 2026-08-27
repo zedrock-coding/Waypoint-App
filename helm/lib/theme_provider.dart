@@ -85,4 +85,10 @@ class ThemeProvider with ChangeNotifier {
     await _settings.save();
     notifyListeners();
   }
+
+  Future<void> completeOnboarding() async {
+    _settings.onboardingComplete = true;
+    await _settings.save();
+    notifyListeners();
+  }
 }

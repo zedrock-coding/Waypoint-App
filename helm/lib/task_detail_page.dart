@@ -201,14 +201,22 @@ class _TaskDetailContentState extends State<TaskDetailContent> {
                                     dense: true,
                                   );
                                 }),
-                              const SizedBox(height: 40),
-                              _buildSectionTitle(context, 'Comments'),
-                              const SizedBox(height: 16),
-                              _TaskCommentsSection(task: widget.task),
                             ],
                           ),
                         ),
                       ),
+                    ),
+                  ),
+                  // Comments are now outside the AbsorbPointer
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 24, 24, 120),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildSectionTitle(context, 'Comments'),
+                        const SizedBox(height: 16),
+                        _TaskCommentsSection(task: widget.task),
+                      ],
                     ),
                   ),
                 ],
@@ -360,12 +368,12 @@ class _TaskCommentsSectionState extends State<_TaskCommentsSection> {
 
   Future<void> _submitComment() async {
     final text = _commentController.text.trim();
-    if (text.isEmpty) return;
+    if (text.isEmpty || _isSubmitting) return;
 
     setState(() => _isSubmitting = true);
     try {
       await context.read<TaskProvider>().addComment(widget.task.id, text);
-      _commentController.clear();
+      if (mounted) _commentController.clear();
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
@@ -383,7 +391,16 @@ class _TaskCommentsSectionState extends State<_TaskCommentsSection> {
     return StreamBuilder<List<Map<String, dynamic>>>(
       stream: taskProvider.streamTaskComments(widget.task.id),
       builder: (context, snapshot) {
-        final comments = snapshot.data ?? [];
+        final List<Map<String, dynamic>> rawComments = snapshot.data ?? [];
+        
+        // Deduplicate comments by ID to prevent "double send" visual bugs
+        final Map<String, Map<String, dynamic>> uniqueComments = {};
+        for (var c in rawComments) {
+          if (c['id'] != null) {
+            uniqueComments[c['id'].toString()] = c;
+          }
+        }
+        final comments = uniqueComments.values.toList();
         
         // Calculate 2-comment limit logic
         final myRecentComments = comments.where((c) {

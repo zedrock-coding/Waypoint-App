@@ -232,13 +232,14 @@ class SettingsAdapter extends TypeAdapter<Settings> {
       communityMentionsEnabled: fields[5] as bool?,
       newsAndOffersEnabled: fields[6] as bool?,
       legalAccepted: fields[7] as bool?,
+      onboardingComplete: fields[8] as bool?,
     );
   }
 
   @override
   void write(BinaryWriter writer, Settings obj) {
     writer
-      ..writeByte(8)
+      ..writeByte(9)
       ..writeByte(0)
       ..write(obj.themeMode)
       ..writeByte(1)
@@ -254,7 +255,9 @@ class SettingsAdapter extends TypeAdapter<Settings> {
       ..writeByte(6)
       ..write(obj.newsAndOffersEnabled)
       ..writeByte(7)
-      ..write(obj.legalAccepted);
+      ..write(obj.legalAccepted)
+      ..writeByte(8)
+      ..write(obj.onboardingComplete);
   }
 
   @override
