@@ -422,17 +422,6 @@ class _AppShellState extends State<AppShell> {
                                             delegate: CustomTaskSearchDelegate(),
                                           ),
                                         ),
-                                        IconButton(
-                                          visualDensity: VisualDensity.compact,
-                                          icon: Icon(Icons.auto_awesome_rounded, color: colorScheme.primary),
-                                          onPressed: () => _showAIVoiceOverlay(context, isDesktop),
-                                        ),
-                                        if (isDesktop) // Hide keyboard icon on mobile to save space
-                                          IconButton(
-                                            visualDensity: VisualDensity.compact,
-                                            icon: Icon(Icons.keyboard_alt_outlined, color: colorScheme.onSurface.withOpacity(0.7)),
-                                            onPressed: () => _scaffoldKey.currentState?.openEndDrawer(),
-                                          ),
                                         CompositedTransformTarget(
                                           link: _notificationLayerLink,
                                           child: NotificationBellWidget(

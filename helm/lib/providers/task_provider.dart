@@ -6,6 +6,8 @@ import 'package:isar/isar.dart';
 import '../models/hive_models.dart' as hive_model;
 import '../models/unified_task.dart';
 import '../models/event.dart' as isar_model;
+import '../models/sync_model.dart';
+import '../services/sync_service.dart';
 import 'package:uuid/uuid.dart';
 
 class TaskProvider with ChangeNotifier {
@@ -275,24 +277,32 @@ class TaskProvider with ChangeNotifier {
     await _taskBox.put(id, localTask);
 
     if (!isLocalOnly && (communityId != null || userId != null)) {
-      try {
-        await _supabase.from('tasks').insert({
-          'id': id,
-          'title': title,
-          'description': description,
-          'community_id': communityId,
-          'category_ids': categoryIds,
-          'assignees': assignees,
-          'subtasks': subtasks,
-          'user_id': userId,
-          'priority': priority.name,
-          'status': _statusToString(status),
-          'is_completed': status == Status.done,
-          'order': newOrder,
-          'due_at': dueAt?.toIso8601String(),
-        });
-      } catch (e) {
-        debugPrint('Supabase Sync Error: $e');
+      final Map<String, dynamic> taskData = {
+        'id': id,
+        'title': title,
+        'description': description,
+        'community_id': communityId,
+        'category_ids': categoryIds,
+        'assignees': assignees,
+        'subtasks': subtasks,
+        'user_id': userId,
+        'priority': priority.name,
+        'status': _statusToString(status),
+        'is_completed': status == Status.done,
+        'order': newOrder,
+        'due_at': dueAt?.toIso8601String(),
+        'updated_at': DateTime.now().toIso8601String(),
+      };
+
+      if (await SyncService().isOnline()) {
+        try {
+          await _supabase.from('tasks').upsert(taskData);
+        } catch (e) {
+          debugPrint('Supabase Sync Error, adding to queue: $e');
+          await SyncService().addToQueue(id: id, action: SyncActionType.create, table: 'tasks', payload: taskData);
+        }
+      } else {
+        await SyncService().addToQueue(id: id, action: SyncActionType.create, table: 'tasks', payload: taskData);
       }
     }
   }
@@ -384,24 +394,30 @@ class TaskProvider with ChangeNotifier {
 
     final bool shouldSync = hiveTask.userId != null || hiveTask.communityId != null;
     if (shouldSync) {
-      try {
-        final Map<String, dynamic> updates = {
-          'title': title,
-          'description': description,
-          'category_ids': categoryIds,
-          'assignees': assignees,
-          'subtasks': subtasks,
-          'updated_at': DateTime.now().toIso8601String(),
-        };
-        if (priority != null) updates['priority'] = priority.name;
-        if (status != null) {
-          updates['status'] = _statusToString(status);
-          updates['is_completed'] = status == Status.done;
-        }
+      final Map<String, dynamic> updates = {
+        'id': id,
+        'title': title,
+        'description': description,
+        'category_ids': categoryIds,
+        'assignees': assignees,
+        'subtasks': subtasks,
+        'updated_at': DateTime.now().toIso8601String(),
+      };
+      if (priority != null) updates['priority'] = priority.name;
+      if (status != null) {
+        updates['status'] = _statusToString(status);
+        updates['is_completed'] = status == Status.done;
+      }
 
-        await _supabase.from('tasks').update(updates).eq('id', id);
-      } catch (e) {
-        debugPrint('Update Sync Error: $e');
+      if (await SyncService().isOnline()) {
+        try {
+          await _supabase.from('tasks').upsert(updates);
+        } catch (e) {
+          debugPrint('Update Sync Error, adding to queue: $e');
+          await SyncService().addToQueue(id: id, action: SyncActionType.update, table: 'tasks', payload: updates);
+        }
+      } else {
+        await SyncService().addToQueue(id: id, action: SyncActionType.update, table: 'tasks', payload: updates);
       }
     }
     notifyListeners();
@@ -422,13 +438,20 @@ class TaskProvider with ChangeNotifier {
 
     final bool shouldSync = hiveTask.userId != null || hiveTask.communityId != null;
     if (shouldSync) {
-      try {
-        await _supabase.from('tasks').update({
-          'subtasks': subs,
-          'updated_at': DateTime.now().toIso8601String(),
-        }).eq('id', taskId);
-      } catch (e) {
-        debugPrint('Subtask Sync Error: $e');
+      final updates = {
+        'id': taskId,
+        'subtasks': subs,
+        'updated_at': DateTime.now().toIso8601String(),
+      };
+      if (await SyncService().isOnline()) {
+        try {
+          await _supabase.from('tasks').upsert(updates);
+        } catch (e) {
+          debugPrint('Subtask Sync Error, adding to queue: $e');
+          await SyncService().addToQueue(id: taskId, action: SyncActionType.update, table: 'tasks', payload: updates);
+        }
+      } else {
+        await SyncService().addToQueue(id: taskId, action: SyncActionType.update, table: 'tasks', payload: updates);
       }
     }
     notifyListeners();
@@ -482,20 +505,26 @@ class TaskProvider with ChangeNotifier {
     if (hiveTask != null) {
       hiveTask.status = _statusToString(newStatus);
       hiveTask.isCompleted = newStatus == Status.done;
+      hiveTask.updatedAt = DateTime.now();
       await hiveTask.save();
     }
     
     if (hiveTask?.userId != null || task.communityId != null) {
-      try {
-        await _supabase
-            .from('tasks')
-            .update({
-              'status': _statusToString(newStatus),
-              'is_completed': newStatus == Status.done,
-            })
-            .eq('id', task.id);
-      } catch (e) {
-        debugPrint('Sync Error: $e');
+      final updates = {
+        'id': task.id,
+        'status': _statusToString(newStatus),
+        'is_completed': newStatus == Status.done,
+        'updated_at': DateTime.now().toIso8601String(),
+      };
+      if (await SyncService().isOnline()) {
+        try {
+          await _supabase.from('tasks').upsert(updates);
+        } catch (e) {
+          debugPrint('Sync Error, adding to queue: $e');
+          await SyncService().addToQueue(id: task.id, action: SyncActionType.update, table: 'tasks', payload: updates);
+        }
+      } else {
+        await SyncService().addToQueue(id: task.id, action: SyncActionType.update, table: 'tasks', payload: updates);
       }
     }
     notifyListeners();
@@ -528,6 +557,7 @@ class TaskProvider with ChangeNotifier {
       status: hiveTask.status,
       order: hiveTask.order,
       subtasks: hiveTask.subtasks,
+      updatedAt: hiveTask.updatedAt,
     );
 
     final bool shouldSyncDelete = hiveTask.userId != null || hiveTask.communityId != null;
@@ -535,10 +565,15 @@ class TaskProvider with ChangeNotifier {
     await _taskBox.delete(id);
     
     if (shouldSyncDelete) {
-      try {
-        await _supabase.from('tasks').delete().eq('id', id);
-      } catch (e) {
-        debugPrint('Delete Sync Error: $e');
+      if (await SyncService().isOnline()) {
+        try {
+          await _supabase.from('tasks').delete().eq('id', id);
+        } catch (e) {
+          debugPrint('Delete Sync Error, adding to queue: $e');
+          await SyncService().addToQueue(id: id, action: SyncActionType.delete, table: 'tasks', payload: {'id': id});
+        }
+      } else {
+        await SyncService().addToQueue(id: id, action: SyncActionType.delete, table: 'tasks', payload: {'id': id});
       }
     }
     notifyListeners();
@@ -552,24 +587,32 @@ class TaskProvider with ChangeNotifier {
 
     final bool shouldSync = task.userId != null || task.communityId != null;
     if (shouldSync) {
-      try {
-        await _supabase.from('tasks').insert({
-          'id': task.id,
-          'title': task.title,
-          'description': task.description,
-          'community_id': task.communityId,
-          'category_ids': task.categoryIds,
-          'assignees': task.assignees,
-          'subtasks': task.subtasks,
-          'user_id': task.userId,
-          'priority': task.priority,
-          'status': task.status,
-          'is_completed': task.isCompleted,
-          'created_at': task.createdAt?.toIso8601String(),
-          'order': task.order,
-        });
-      } catch (e) {
-        debugPrint('Undo Sync Error: $e');
+      final taskData = {
+        'id': task.id,
+        'title': task.title,
+        'description': task.description,
+        'community_id': task.communityId,
+        'category_ids': task.categoryIds,
+        'assignees': task.assignees,
+        'subtasks': task.subtasks,
+        'user_id': task.userId,
+        'priority': task.priority,
+        'status': task.status,
+        'is_completed': task.isCompleted,
+        'created_at': task.createdAt?.toIso8601String(),
+        'order': task.order,
+        'updated_at': DateTime.now().toIso8601String(),
+      };
+
+      if (await SyncService().isOnline()) {
+        try {
+          await _supabase.from('tasks').upsert(taskData);
+        } catch (e) {
+          debugPrint('Undo Sync Error, adding to queue: $e');
+          await SyncService().addToQueue(id: task.id!, action: SyncActionType.create, table: 'tasks', payload: taskData);
+        }
+      } else {
+        await SyncService().addToQueue(id: task.id!, action: SyncActionType.create, table: 'tasks', payload: taskData);
       }
     }
 

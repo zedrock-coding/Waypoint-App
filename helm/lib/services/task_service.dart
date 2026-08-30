@@ -1,28 +1,71 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'sync_service.dart';
+import '../models/sync_model.dart';
 
 class TaskService {
   final _supabase = Supabase.instance.client;
+  final _syncService = SyncService();
 
-  /// Create a new task.
-  Future<void> createTask({
-    required String title,
-    String? description,
-    String? communityId,
-  }) async {
-    final userId = _supabase.auth.currentUser?.id;
-    if (userId == null) throw Exception('Auth Required');
+  /// Create a new task with offline support.
+  Future<void> createTask(Map<String, dynamic> taskData) async {
+    final String id = taskData['id'];
+    
+    if (await _syncService.isOnline()) {
+      try {
+        await _supabase.from('tasks').upsert(taskData);
+        return;
+      } catch (e) {
+        // Fallback to queue if server error
+      }
+    }
+    
+    await _syncService.addToQueue(
+      id: id,
+      action: SyncActionType.create,
+      table: 'tasks',
+      payload: taskData,
+    );
+  }
 
-    await _supabase.from('tasks').insert({
-      'title': title,
-      'description': description,
-      'user_id': userId,
-      'community_id': communityId,
-      'is_completed': false,
-    });
+  /// Update a task with offline support.
+  Future<void> updateTask(String id, Map<String, dynamic> updates) async {
+    if (await _syncService.isOnline()) {
+      try {
+        await _supabase.from('tasks').update(updates).eq('id', id);
+        return;
+      } catch (e) {
+        // Fallback to queue
+      }
+    }
+
+    await _syncService.addToQueue(
+      id: id,
+      action: SyncActionType.update,
+      table: 'tasks',
+      payload: {'id': id, ...updates},
+    );
+  }
+
+  /// Delete a task with offline support.
+  Future<void> deleteTask(String id) async {
+    if (await _syncService.isOnline()) {
+      try {
+        await _supabase.from('tasks').delete().eq('id', id);
+        return;
+      } catch (e) {
+        // Fallback to queue
+      }
+    }
+
+    await _syncService.addToQueue(
+      id: id,
+      action: SyncActionType.delete,
+      table: 'tasks',
+      payload: {'id': id},
+    );
   }
 
   /// Read (Real-time Stream).
-  /// Returns a stream of tasks, optionally filtered by communityId.
   Stream<List<Map<String, dynamic>>> getTasksStream({String? communityId}) {
     final userId = _supabase.auth.currentUser?.id;
     if (userId == null) return const Stream.empty();
@@ -38,18 +81,5 @@ class TaskService {
           .eq('user_id', userId)
           .order('created_at', ascending: false);
     }
-  }
-
-  /// Update: Toggle completion status.
-  Future<void> toggleTaskCompletion(String taskId, bool currentStatus) async {
-    await _supabase
-        .from('tasks')
-        .update({'is_completed': !currentStatus})
-        .eq('id', taskId);
-  }
-
-  /// Delete a task.
-  Future<void> deleteTask(String taskId) async {
-    await _supabase.from('tasks').delete().eq('id', taskId);
   }
 }

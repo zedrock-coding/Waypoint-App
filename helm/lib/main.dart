@@ -19,6 +19,7 @@ import 'services/task_service.dart';
 import 'services/navigation_provider.dart';
 import 'services/hive_database.dart';
 import 'services/ai_service.dart';
+import 'services/sync_service.dart';
 import 'providers/task_provider.dart';
 
 import 'widgets/task_item_card.dart';
@@ -62,6 +63,9 @@ void main() async {
   debugPrint('INIT: Starting Hive...');
   await HiveDatabase.init();
   debugPrint('INIT: Hive Started.');
+
+  debugPrint('INIT: Starting SyncService...');
+  SyncService().init();
 
   try {
     debugPrint('INIT: Starting Notifications...');
@@ -155,7 +159,7 @@ class _MyAppState extends State<MyApp> {
 
       // 2. Onboarding Check
       if (tp.settings.onboardingComplete != true) {
-        _navigatorKey.currentState?.pushNamed('/onboarding');
+        _navigatorKey.currentState?.pushNamedAndRemoveUntil('/onboarding', (r) => false);
       }
     } catch (e) {
       debugPrint('Launch check error: $e');

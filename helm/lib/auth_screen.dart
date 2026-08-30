@@ -12,10 +12,15 @@ class _AuthScreenState extends State<AuthScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _fullNameController = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
+  
   bool _isSignUp = false;
   bool _isLoading = false;
+  bool _obscurePassword = true;
 
   Future<void> _handleSubmit() async {
+    if (!_formKey.currentState!.validate()) return;
+
     setState(() => _isLoading = true);
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
@@ -23,9 +28,6 @@ class _AuthScreenState extends State<AuthScreen> {
 
     try {
       if (_isSignUp) {
-        if (fullName.isEmpty) {
-          throw Exception('Please enter your full name.');
-        }
         await Supabase.instance.client.auth.signUp(
           email: email,
           password: password,
@@ -33,27 +35,36 @@ class _AuthScreenState extends State<AuthScreen> {
         );
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Account created! Verification email sent (if enabled).')),
+            const SnackBar(
+              content: Text('Account created! Please check your email for verification.'),
+              behavior: SnackBarBehavior.floating,
+            ),
           );
         }
       } else {
-        debugPrint('Attempting sign in for $email');
-        final response = await Supabase.instance.client.auth.signInWithPassword(
+        await Supabase.instance.client.auth.signInWithPassword(
           email: email,
           password: password,
         );
-        debugPrint('Sign in response: ${response.user?.id}');
       }
     } on AuthException catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.message), backgroundColor: Colors.redAccent),
+          SnackBar(
+            content: Text(e.message), 
+            backgroundColor: Colors.redAccent,
+            behavior: SnackBarBehavior.floating,
+          ),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: ${e.toString().replaceAll('Exception: ', '')}'), backgroundColor: Colors.redAccent),
+          SnackBar(
+            content: Text('Error: ${e.toString().replaceAll('Exception: ', '')}'), 
+            backgroundColor: Colors.redAccent,
+            behavior: SnackBarBehavior.floating,
+          ),
         );
       }
     } finally {
@@ -73,82 +84,117 @@ class _AuthScreenState extends State<AuthScreen> {
           padding: const EdgeInsets.all(24.0),
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 400),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.change_history,
-                  size: 80,
-                  color: colorScheme.primary,
-                ),
-                const SizedBox(height: 24),
-                Text(
-                  _isSignUp ? 'Join Helm' : 'Welcome Back',
-                  style: textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  _isSignUp ? 'Create your account to start managing tasks.' : 'Sign in to access your dashboard.',
-                  textAlign: TextAlign.center,
-                  style: textTheme.bodyMedium?.copyWith(color: colorScheme.onSurfaceVariant),
-                ),
-                const SizedBox(height: 32),
-                if (_isSignUp) ...[
-                  TextField(
-                    controller: _fullNameController,
-                    decoration: const InputDecoration(
-                      labelText: 'Full Name',
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.person_outline),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: colorScheme.primaryContainer.withOpacity(0.1),
+                      shape: BoxShape.circle,
                     ),
-                    textCapitalization: TextCapitalization.words,
+                    child: Icon(
+                      Icons.change_history,
+                      size: 60,
+                      color: colorScheme.primary,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Text(
+                    _isSignUp ? 'Join Helm' : 'Welcome Back',
+                    style: textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    _isSignUp ? 'Create your account to start managing tasks.' : 'Sign in to access your dashboard.',
+                    textAlign: TextAlign.center,
+                    style: textTheme.bodyMedium?.copyWith(color: colorScheme.onSurfaceVariant),
+                  ),
+                  const SizedBox(height: 32),
+                  
+                  if (_isSignUp) ...[
+                    TextFormField(
+                      controller: _fullNameController,
+                      decoration: const InputDecoration(
+                        labelText: 'Full Name',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.person_outline),
+                        hintText: 'John Doe',
+                      ),
+                      textCapitalization: TextCapitalization.words,
+                      validator: (v) => v?.isEmpty ?? true ? 'Enter your name' : null,
+                      onFieldSubmitted: (_) => FocusScope.of(context).nextFocus(),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+                  
+                  TextFormField(
+                    controller: _emailController,
+                    autofocus: true, // AUTO-FOCUS EMAIL
+                    decoration: const InputDecoration(
+                      labelText: 'Email',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.email_outlined),
+                      hintText: 'name@example.com',
+                    ),
+                    keyboardType: TextInputType.emailAddress,
+                    validator: (v) => v?.isEmpty ?? true ? 'Enter email' : null,
+                    onFieldSubmitted: (_) => FocusScope.of(context).nextFocus(),
                   ),
                   const SizedBox(height: 16),
-                ],
-                TextField(
-                  controller: _emailController,
-                  decoration: const InputDecoration(
-                    labelText: 'Email',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.email_outlined),
-                  ),
-                  keyboardType: TextInputType.emailAddress,
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: _passwordController,
-                  decoration: const InputDecoration(
-                    labelText: 'Password',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.lock_outline),
-                  ),
-                  obscureText: true,
-                ),
-                const SizedBox(height: 32),
-                SizedBox(
-                  width: double.infinity,
-                  height: 50,
-                  child: ElevatedButton(
-                    onPressed: _isLoading ? null : _handleSubmit,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: colorScheme.primary,
-                      foregroundColor: colorScheme.onPrimary,
+                  
+                  TextFormField(
+                    controller: _passwordController,
+                    decoration: InputDecoration(
+                      labelText: 'Password',
+                      border: const OutlineInputBorder(),
+                      prefixIcon: const Icon(Icons.lock_outline),
+                      // PASSWORD VISIBILITY TOGGLE
+                      suffixIcon: IconButton(
+                        icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility),
+                        onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                      ),
                     ),
-                    child: _isLoading
-                        ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                          )
-                        : Text(_isSignUp ? 'Sign Up' : 'Sign In'),
+                    obscureText: _obscurePassword,
+                    validator: (v) => (v?.length ?? 0) < 6 ? 'Min 6 characters' : null,
+                    onFieldSubmitted: (_) => _handleSubmit(), // ENTER KEY SUBMISSION
                   ),
-                ),
-                const SizedBox(height: 16),
-                TextButton(
-                  onPressed: () => setState(() => _isSignUp = !_isSignUp),
-                  child: Text(_isSignUp ? 'Already have an account? Sign In' : 'Need an account? Sign Up'),
-                ),
-              ],
+                  const SizedBox(height: 32),
+                  
+                  SizedBox(
+                    width: double.infinity,
+                    height: 56,
+                    child: ElevatedButton(
+                      onPressed: _isLoading ? null : _handleSubmit,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: colorScheme.primary,
+                        foregroundColor: colorScheme.onPrimary,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        elevation: 0,
+                      ),
+                      child: _isLoading
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                            )
+                          : Text(_isSignUp ? 'SIGN UP' : 'SIGN IN', style: const TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.1)),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextButton(
+                    onPressed: () {
+                      setState(() {
+                        _isSignUp = !_isSignUp;
+                        _formKey.currentState?.reset();
+                      });
+                    },
+                    child: Text(_isSignUp ? 'Already have an account? Sign In' : 'Need an account? Sign Up'),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
