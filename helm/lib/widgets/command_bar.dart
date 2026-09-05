@@ -113,6 +113,7 @@ class _CommandBarWidgetState extends State<CommandBarWidget> with SingleTickerPr
 
       if (result != null) {
         final title = result['title'] ?? 'New AI Task';
+        final description = result['description']; // Inject AI generated description
         final dueDate = result['due_date'] != null ? DateTime.tryParse(result['due_date']) : null;
         final priorityStr = (result['priority'] ?? 'MEDIUM').toString().toLowerCase();
         final communityId = result['community_id'];
@@ -125,7 +126,7 @@ class _CommandBarWidgetState extends State<CommandBarWidget> with SingleTickerPr
         // 3. Create Task
         await taskProvider.addTask(
           title: title,
-          description: "Created via Voice/Text Command: $input",
+          description: description,
           communityId: communityId,
           assignees: assigneeId != null ? [assigneeId] : [],
           priority: priority,
