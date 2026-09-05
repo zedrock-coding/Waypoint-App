@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../theme_provider.dart';
 import '../notification_service.dart';
+import '../providers/task_provider.dart';
 
 class VelocityDashboardCard extends StatelessWidget {
   final int totalTasksToday;
@@ -88,7 +89,7 @@ class VelocityDashboardCard extends StatelessWidget {
             children: [
               _buildProgressIndicator(progress, colorScheme),
               _buildTaskStats(colorScheme, isCramped),
-              if (!isCramped) _buildStreakInfo(colorScheme),
+              if (!isCramped) _buildStreakInfo(context, colorScheme),
             ],
           ),
         ],
@@ -146,14 +147,18 @@ class VelocityDashboardCard extends StatelessWidget {
     );
   }
 
-  Widget _buildStreakInfo(ColorScheme colorScheme) {
+  Widget _buildStreakInfo(BuildContext context, ColorScheme colorScheme) {
+    final int streak = context.select<TaskProvider, int>((provider) => provider.currentStreak);
+    
+    if (streak == 0) return const SizedBox.shrink();
+
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         const Icon(Icons.local_fire_department_rounded, color: Colors.orange, size: 20),
         const SizedBox(width: 4),
         Text(
-          '3-Day Streak',
+          '$streak-Day Streak',
           style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: colorScheme.onSurface.withOpacity(0.6)),
         ),
       ],

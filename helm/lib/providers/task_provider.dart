@@ -486,6 +486,48 @@ class TaskProvider with ChangeNotifier {
     }
   }
 
+  // --- GAMIFICATION FEATURE ---
+  
+  int get currentStreak {
+    // Calculates a simple daily streak based on completed tasks
+    final List<UnifiedTask> allCompleted = _taskBox.values
+        .where((t) => (t.isCompleted ?? false) || t.status == 'done')
+        .map((t) => UnifiedTask.fromHive(t))
+        .toList();
+        
+    if (allCompleted.isEmpty) return 0;
+    
+    // Group by local Date (ignoring time)
+    final Set<String> completedDates = {};
+    for (var t in allCompleted) {
+      final date = t.updatedAt; // The time it was marked done
+      final dateString = '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+      completedDates.add(dateString);
+    }
+    
+    int streak = 0;
+    DateTime checkDate = DateTime.now();
+    
+    // Check if missed today, but did yesterday (streak is still active but 0 for today added yet)
+    final todayStr = '${checkDate.year}-${checkDate.month.toString().padLeft(2, '0')}-${checkDate.day.toString().padLeft(2, '0')}';
+    
+    if (!completedDates.contains(todayStr)) {
+      checkDate = checkDate.subtract(const Duration(days: 1));
+    }
+    
+    while(true) {
+      final str = '${checkDate.year}-${checkDate.month.toString().padLeft(2, '0')}-${checkDate.day.toString().padLeft(2, '0')}';
+      if (completedDates.contains(str)) {
+        streak++;
+        checkDate = checkDate.subtract(const Duration(days: 1));
+      } else {
+        break;
+      }
+    }
+    
+    return streak;
+  }
+
   // --- CALENDAR FEATURE ---
   
   List<UnifiedTask> get allTasksWithDueDates {

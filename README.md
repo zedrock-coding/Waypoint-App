@@ -1,10 +1,10 @@
-# Helm 0.3.1 - Public Release 🚀
+# Helm 0.3.2 - Public Release 🚀
 
-**Helm 0.3.1** marks our official public release! We've evolved from a simple task tracker into a comprehensive, AI-powered team orchestration workspace. Optimized for **Android**, **Windows**, and **Web**, Helm provides a professional, reactive experience for real-time team collaboration and personal productivity.
+**Helm 0.3.2** marks our official public release! We've evolved from a simple task tracker into a comprehensive, AI-powered team orchestration workspace. Optimized for **Android**, **Windows**, and **Web**, Helm provides a professional, reactive experience for real-time team collaboration and personal productivity.
 
 ![Aesthetic](https://img.shields.io/badge/Aesthetic-Slate%20%26%20Mint-88C0A4)
 ![Platform](https://img.shields.io/badge/Platform-Android%20%7C%20Windows%20%7C%20Web-blue)
-![Version](https://img.shields.io/badge/Version-0.3.1-green)
+![Version](https://img.shields.io/badge/Version-0.3.2-green)
 
 ## 🌟 Major Highlights for the Public Launch
 

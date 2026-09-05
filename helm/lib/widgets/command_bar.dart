@@ -112,8 +112,21 @@ class _CommandBarWidgetState extends State<CommandBarWidget> with SingleTickerPr
       );
 
       if (result != null) {
+        final bool clarificationNeeded = result['clarification_needed'] ?? false;
+        
+        if (clarificationNeeded) {
+          if (mounted) {
+            final msg = result['clarification_message'] ?? 'Could you clarify what you want to do?';
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('AI: $msg'), behavior: SnackBarBehavior.floating, duration: const Duration(seconds: 4)),
+            );
+            _textController.text = input + ' ';
+          }
+          return;
+        }
+
         final title = result['title'] ?? 'New AI Task';
-        final description = result['description']; // Inject AI generated description
+        final description = result['description']; 
         final dueDate = result['due_date'] != null ? DateTime.tryParse(result['due_date']) : null;
         final priorityStr = (result['priority'] ?? 'MEDIUM').toString().toLowerCase();
         final communityId = result['community_id'];

@@ -1,7 +1,9 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:webview_flutter/webview_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'ai_voice_overlay.dart';
 import 'widgets/task_search_delegate.dart';
@@ -39,6 +41,31 @@ class _AppShellState extends State<AppShell> {
   final LayerLink _notificationLayerLink = LayerLink();
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
+  void _showAIVoiceOverlay(BuildContext context, bool isDesktop) {
+    if (!isDesktop) {
+      showModalBottomSheet(
+        context: context,
+        backgroundColor: Colors.transparent, 
+        isScrollControlled: true,
+        builder: (ctx) => const AIVoiceOverlay(),
+      );
+    } else {
+      showDialog(
+        context: context,
+        barrierColor: Colors.black26,
+        builder: (ctx) => Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 400),
+            child: const Dialog(
+              backgroundColor: Colors.transparent,
+              child: AIVoiceOverlay(),
+            ),
+          ),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final supabaseService = SupabaseService();
@@ -59,13 +86,10 @@ class _AppShellState extends State<AppShell> {
       
       bool isActive;
       if (communityId != null) {
-        // Specific community is active
         isActive = navProvider.selectedCommunityId == communityId;
       } else if (route == '/') {
-        // Main dashboard is active only if we are in the Personal tab (index 0)
         isActive = navProvider.currentRoute == '/' && navProvider.selectedIndex == 0;
       } else {
-        // Other routes (Calendar, Categories, etc)
         isActive = navProvider.currentRoute == route;
       }
       
@@ -82,7 +106,6 @@ class _AppShellState extends State<AppShell> {
             if (!isDesktop) Navigator.pop(context);
             
             if (!isCurrentRoute) {
-              // If we are selecting a community, we must go back to the dashboard route ('/')
               final String targetRoute = communityId != null ? '/' : route;
               Navigator.pushReplacementNamed(context, targetRoute);
             }
@@ -131,14 +154,45 @@ class _AppShellState extends State<AppShell> {
         child: InkWell(
           onTap: () async {
             if (!isDesktop) Navigator.pop(context);
-            final uri = Uri.parse(url);
-            try {
-              if (await canLaunchUrl(uri)) {
-                await launchUrl(uri, mode: LaunchMode.externalApplication);
-              }
-            } catch (e) {
-              debugPrint('Could not launch URL: $e');
-            }
+            showDialog(
+              context: context,
+              builder: (ctx) => Dialog(
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                clipBehavior: Clip.hardEdge,
+                child: SizedBox(
+                  width: 800,
+                  height: 600,
+                  child: Column(
+                    children: [
+                      Container(
+                        color: colorScheme.surfaceVariant,
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        child: Row(
+                          children: [
+                            Icon(icon, size: 20, color: colorScheme.onSurface),
+                            const SizedBox(width: 8),
+                            Text(label, style: const TextStyle(fontWeight: FontWeight.bold)),
+                            const Spacer(),
+                            IconButton(
+                              icon: const Icon(Icons.open_in_browser_rounded),
+                              tooltip: 'Open in Browser',
+                              onPressed: () => launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.close),
+                              onPressed: () => Navigator.pop(ctx),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Expanded(
+                        child: _SupportWebView(url: url),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
           },
           borderRadius: BorderRadius.circular(12),
           child: Container(
@@ -268,250 +322,286 @@ class _AppShellState extends State<AppShell> {
       ],
     );
 
-    return Shortcuts(
-      shortcuts: <ShortcutActivator, Intent>{
-        const SingleActivator(LogicalKeyboardKey.keyN, control: true): const NewTaskIntent(),
-        const SingleActivator(LogicalKeyboardKey.keyF, control: true): const SearchIntent(),
-        const SingleActivator(LogicalKeyboardKey.space, control: true): const AIVoiceIntent(),
-        const SingleActivator(LogicalKeyboardKey.keyN, meta: true): const NewTaskIntent(),
-        const SingleActivator(LogicalKeyboardKey.keyF, meta: true): const SearchIntent(),
-        const SingleActivator(LogicalKeyboardKey.space, meta: true): const AIVoiceIntent(),
-        
-        // UX Enhancement: Tab control
-        const SingleActivator(LogicalKeyboardKey.tab, control: true): const CycleTabIntent(),
-        const SingleActivator(LogicalKeyboardKey.escape): const EscapeIntent(),
-        const SingleActivator(LogicalKeyboardKey.enter, alt: true): const EnterIntent(),
-      },
-      child: Actions(
-        actions: <Type, Action<Intent>>{
-          NewTaskIntent: CallbackAction<NewTaskIntent>(
-            onInvoke: (intent) => showAddTaskForm(
-              context,
-              initialCommunityId: Provider.of<NavigationProvider>(context, listen: false).selectedCommunityId,
-            ),
-          ),
-          SearchIntent: CallbackAction<SearchIntent>(
-            onInvoke: (intent) => showSearch(
-              context: context,
-              delegate: CustomTaskSearchDelegate(),
-            ),
-          ),
-          AIVoiceIntent: CallbackAction<AIVoiceIntent>(
-            onInvoke: (intent) => _showAIVoiceOverlay(context, isDesktop),
-          ),
-          CycleTabIntent: CallbackAction<CycleTabIntent>(
-            onInvoke: (intent) {
-              final nav = Provider.of<NavigationProvider>(context, listen: false);
-              nav.setTab((nav.selectedIndex + 1) % 2);
-              return null;
-            },
-          ),
-          EscapeIntent: CallbackAction<EscapeIntent>(
-            onInvoke: (intent) {
-              if (_showDesktopNotifications) {
-                setState(() => _showDesktopNotifications = false);
-              } else if (_scaffoldKey.currentState?.isDrawerOpen ?? false) {
-                Navigator.pop(context);
-              } else if (_scaffoldKey.currentState?.isEndDrawerOpen ?? false) {
-                Navigator.pop(context);
-              } else if (navProvider.selectedCommunityId != null) {
-                navProvider.selectCommunity(null);
-              }
-              return null;
-            },
-          ),
-          EnterIntent: CallbackAction<EnterIntent>(
-            onInvoke: (intent) {
-              showAddTaskForm(
-                context,
-                initialCommunityId: Provider.of<NavigationProvider>(context, listen: false).selectedCommunityId,
-              );
-              return null;
-            },
-          ),
+    return FocusScope(
+      child: Shortcuts(
+        shortcuts: <ShortcutActivator, Intent>{
+          const SingleActivator(LogicalKeyboardKey.keyN): const NewTaskIntent(),
+          const SingleActivator(LogicalKeyboardKey.keyC): const CycleTabIntent(),
+          const SingleActivator(LogicalKeyboardKey.slash): const SearchIntent(),
+          const SingleActivator(LogicalKeyboardKey.escape): const EscapeIntent(),
+          const SingleActivator(LogicalKeyboardKey.enter, alt: true): const EnterIntent(),
         },
-        child: Focus(
-          autofocus: true,
-          child: SafeArea(
-            top: true,
-            child: GestureDetector(
-              onTap: () {
-                if (_showDesktopNotifications) setState(() => _showDesktopNotifications = false);
+        child: Actions(
+          actions: <Type, Action<Intent>>{
+            NewTaskIntent: CallbackAction<NewTaskIntent>(
+              onInvoke: (intent) {
+                if (FocusManager.instance.primaryFocus?.context?.widget is EditableText) return null;
+                showAddTaskForm(
+                  context,
+                  initialCommunityId: Provider.of<NavigationProvider>(context, listen: false).selectedCommunityId,
+                );
+                return null;
               },
-              child: Scaffold(
-              key: _scaffoldKey,
-              backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-              drawer: isDesktop ? null : Drawer(
-                backgroundColor: colorScheme.surface,
-                child: sidebarContent,
-              ),
-              endDrawer: const AITextDrawer(),
-              bottomNavigationBar: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (widget.bottomWidget != null) widget.bottomWidget!,
-                  BottomNavigationBar(
-                    currentIndex: navProvider.selectedIndex,
-                    onTap: (index) => navProvider.setTab(index),
-                    selectedItemColor: colorScheme.primary,
-                    unselectedItemColor: colorScheme.onSurface.withOpacity(0.5),
-                    items: const [
-                      BottomNavigationBarItem(
-                        icon: Icon(Icons.person_outline_rounded),
-                        activeIcon: Icon(Icons.person_rounded),
-                        label: 'Personal',
-                      ),
-                      BottomNavigationBarItem(
-                        icon: Icon(Icons.hub_outlined),
-                        activeIcon: Icon(Icons.hub_rounded),
-                        label: 'Communities',
+            ),
+            SearchIntent: CallbackAction<SearchIntent>(
+              onInvoke: (intent) {
+                if (FocusManager.instance.primaryFocus?.context?.widget is EditableText) return null;
+                showSearch(
+                  context: context,
+                  delegate: CustomTaskSearchDelegate(),
+                );
+                return null;
+              },
+            ),
+            CycleTabIntent: CallbackAction<CycleTabIntent>(
+              onInvoke: (intent) {
+                if (FocusManager.instance.primaryFocus?.context?.widget is EditableText) return null;
+                final nav = Provider.of<NavigationProvider>(context, listen: false);
+                nav.setTab((nav.selectedIndex + 1) % 2);
+                return null;
+              },
+            ),
+            EscapeIntent: CallbackAction<EscapeIntent>(
+              onInvoke: (intent) {
+                if (_showDesktopNotifications) {
+                  setState(() => _showDesktopNotifications = false);
+                } else if (_scaffoldKey.currentState?.isDrawerOpen ?? false) {
+                  Navigator.pop(context);
+                } else if (_scaffoldKey.currentState?.isEndDrawerOpen ?? false) {
+                  Navigator.pop(context);
+                } else if (navProvider.selectedCommunityId != null) {
+                  navProvider.selectCommunity(null);
+                }
+                return null;
+              },
+            ),
+            EnterIntent: CallbackAction<EnterIntent>(
+              onInvoke: (intent) {
+                showAddTaskForm(
+                  context,
+                  initialCommunityId: Provider.of<NavigationProvider>(context, listen: false).selectedCommunityId,
+                );
+                return null;
+              },
+            ),
+          },
+          child: Focus(
+            autofocus: true,
+            child: SafeArea(
+              top: true,
+              child: GestureDetector(
+                onTap: () {
+                  if (_showDesktopNotifications) setState(() => _showDesktopNotifications = false);
+                },
+                child: Scaffold(
+                  key: _scaffoldKey,
+                  backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+                  drawer: isDesktop ? null : Drawer(
+                    backgroundColor: colorScheme.surface,
+                    child: sidebarContent,
+                  ),
+                  endDrawer: const AITextDrawer(),
+                  bottomNavigationBar: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (widget.bottomWidget != null) widget.bottomWidget!,
+                      BottomNavigationBar(
+                        currentIndex: navProvider.selectedIndex,
+                        onTap: (index) => navProvider.setTab(index),
+                        selectedItemColor: colorScheme.primary,
+                        unselectedItemColor: colorScheme.onSurface.withOpacity(0.5),
+                        items: const [
+                          BottomNavigationBarItem(
+                            icon: Icon(Icons.person_outline_rounded),
+                            activeIcon: Icon(Icons.person_rounded),
+                            label: 'Personal',
+                          ),
+                          BottomNavigationBarItem(
+                            icon: Icon(Icons.hub_outlined),
+                            activeIcon: Icon(Icons.hub_rounded),
+                            label: 'Communities',
+                          ),
+                        ],
                       ),
                     ],
                   ),
-                ],
-              ),
-              body: Stack(
-                children: [
-                  Row(
+                  body: Stack(
                     children: [
-                      if (isDesktop) 
-                        Container(
-                          width: 280, 
-                          decoration: BoxDecoration(
-                            color: colorScheme.surface,
-                            border: Border(right: BorderSide(color: colorScheme.outlineVariant, width: 1)),
-                          ),
-                          child: sidebarContent
-                        ),
-                      Expanded(
-                        child: Column(
-                          children: [
+                      Row(
+                        children: [
+                          if (isDesktop) 
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                              child: Row(
-                                children: [
-                                  if (!isDesktop)
-                                    IconButton(
-                                      icon: Icon(Icons.menu, color: colorScheme.onSurface),
-                                      onPressed: () => _scaffoldKey.currentState?.openDrawer(),
-                                    ),
-                                  if (!isDesktop) const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
-                                      navProvider.selectedIndex == 0 ? 'Personal Tasks' : 'Communities',
-                                      overflow: TextOverflow.ellipsis,
-                                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                        fontWeight: FontWeight.bold,
-                                        color: colorScheme.onSurface,
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 4),
-                                  // Action group
-                                  Flexible(
-                                    flex: 0,
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        if (widget.actions != null) ...widget.actions!,
+                              width: 280, 
+                              decoration: BoxDecoration(
+                                color: colorScheme.surface,
+                                border: Border(right: BorderSide(color: colorScheme.outlineVariant, width: 1)),
+                              ),
+                              child: sidebarContent,
+                            ),
+                          Expanded(
+                            child: Column(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                                  child: Row(
+                                    children: [
+                                      if (!isDesktop)
                                         IconButton(
-                                          visualDensity: VisualDensity.compact,
-                                          icon: Icon(Icons.search, color: colorScheme.onSurface.withOpacity(0.7)),
-                                          onPressed: () => showSearch(
-                                            context: context,
-                                            delegate: CustomTaskSearchDelegate(),
+                                          icon: Icon(Icons.menu, color: colorScheme.onSurface),
+                                          onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+                                        ),
+                                      if (!isDesktop) const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          navProvider.selectedIndex == 0 ? 'Personal Tasks' : 'Communities',
+                                          overflow: TextOverflow.ellipsis,
+                                          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                            fontWeight: FontWeight.bold,
+                                            color: colorScheme.onSurface,
                                           ),
                                         ),
-                                        CompositedTransformTarget(
-                                          link: _notificationLayerLink,
-                                          child: NotificationBellWidget(
-                                            isDesktop: isDesktop,
-                                            layerLink: _notificationLayerLink,
-                                            onToggle: () => setState(() => _showDesktopNotifications = !_showDesktopNotifications),
-                                          ),
-                                        ),
-                                        PopupMenuButton<String>(
-                                          padding: EdgeInsets.zero,
-                                          icon: UserAvatar(
-                                            fullName: Supabase.instance.client.auth.currentUser?.userMetadata?['full_name'] ?? 'User',
-                                            avatarUrl: Supabase.instance.client.auth.currentUser?.userMetadata?['avatar_url'],
-                                            radius: 16,
-                                          ),
-                                          offset: const Offset(0, 45),
-                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                                          onSelected: (value) {
-                                            if (value == 'settings') {
-                                              Navigator.pushNamed(context, '/account-settings');
-                                            } else if (value == 'communities') {
-                                              navProvider.setTab(1); 
-                                            } else if (value == 'logout') {
-                                              Supabase.instance.client.auth.signOut();
-                                            }
-                                          },
-                                          itemBuilder: (context) => [
-                                            const PopupMenuItem(value: 'settings', child: ListTile(dense: true, leading: Icon(Icons.manage_accounts), title: Text('Account Settings'))),
-                                            const PopupMenuItem(value: 'communities', child: ListTile(dense: true, leading: Icon(Icons.hub), title: Text('Manage Communities'))),
-                                            const PopupMenuDivider(),
-                                            const PopupMenuItem(value: 'logout', child: ListTile(dense: true, leading: Icon(Icons.logout, color: Colors.red), title: Text('Log Out', style: TextStyle(color: Colors.red)))),
+                                      ),
+                                      const SizedBox(width: 4),
+                                      // Action group
+                                      Flexible(
+                                        flex: 0,
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            if (widget.actions != null) ...widget.actions!,
+                                            IconButton(
+                                              visualDensity: VisualDensity.compact,
+                                              icon: Icon(Icons.search, color: colorScheme.onSurface.withOpacity(0.7)),
+                                              onPressed: () => showSearch(
+                                                context: context,
+                                                delegate: CustomTaskSearchDelegate(),
+                                              ),
+                                            ),
+                                            IconButton(
+                                              visualDensity: VisualDensity.compact,
+                                              icon: Icon(Icons.auto_awesome_rounded, color: colorScheme.primary),
+                                              onPressed: () => _showAIVoiceOverlay(context, isDesktop),
+                                            ),
+                                            if (isDesktop) 
+                                              IconButton(
+                                                visualDensity: VisualDensity.compact,
+                                                icon: Icon(Icons.keyboard_alt_outlined, color: colorScheme.onSurface.withOpacity(0.7)),
+                                                onPressed: () => _scaffoldKey.currentState?.openEndDrawer(),
+                                              ),
+                                            CompositedTransformTarget(
+                                              link: _notificationLayerLink,
+                                              child: NotificationBellWidget(
+                                                isDesktop: isDesktop,
+                                                layerLink: _notificationLayerLink,
+                                                onToggle: () => setState(() => _showDesktopNotifications = !_showDesktopNotifications),
+                                              ),
+                                            ),
+                                            PopupMenuButton<String>(
+                                              padding: EdgeInsets.zero,
+                                              icon: UserAvatar(
+                                                fullName: Supabase.instance.client.auth.currentUser?.userMetadata?['full_name'] ?? 'User',
+                                                avatarUrl: Supabase.instance.client.auth.currentUser?.userMetadata?['avatar_url'],
+                                                radius: 16,
+                                              ),
+                                              offset: const Offset(0, 45),
+                                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                              onSelected: (value) {
+                                                if (value == 'settings') {
+                                                  Navigator.pushNamed(context, '/account-settings');
+                                                } else if (value == 'communities') {
+                                                  navProvider.setTab(1); 
+                                                } else if (value == 'logout') {
+                                                  Supabase.instance.client.auth.signOut();
+                                                }
+                                              },
+                                              itemBuilder: (context) => [
+                                                const PopupMenuItem(value: 'settings', child: ListTile(dense: true, leading: Icon(Icons.manage_accounts), title: Text('Account Settings'))),
+                                                const PopupMenuItem(value: 'communities', child: ListTile(dense: true, leading: Icon(Icons.hub), title: Text('Manage Communities'))),
+                                                const PopupMenuDivider(),
+                                                const PopupMenuItem(value: 'logout', child: ListTile(dense: true, leading: Icon(Icons.logout, color: Colors.red), title: Text('Log Out', style: TextStyle(color: Colors.red)))),
+                                              ],
+                                            ),
                                           ],
                                         ),
-                                      ],
-                                    ),
+                                      ),
+                                    ],
                                   ),
-                                ],
-                              ),
+                                ),
+                                Expanded(child: widget.child),
+                              ],
                             ),
-                            Expanded(child: widget.child),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
+                      
+                      if (isDesktop && _showDesktopNotifications)
+                        Positioned(
+                          top: 60, 
+                          right: 20,
+                          child: CompositedTransformFollower(
+                            link: _notificationLayerLink,
+                            showWhenUnlinked: false,
+                            offset: const Offset(-310, 45),
+                            child: NotificationFeedUI(),
+                          ),
+                        ),
                     ],
                   ),
-                  
-                  if (isDesktop && _showDesktopNotifications)
-                    Positioned(
-                      top: 60, 
-                      right: 20,
-                      child: CompositedTransformFollower(
-                        link: _notificationLayerLink,
-                        showWhenUnlinked: false,
-                        offset: const Offset(-310, 45),
-                        child: NotificationFeedUI(),
-                      ),
-                    ),
-                ],
+                  floatingActionButton: widget.floatingActionButton,
+                ),
               ),
-              floatingActionButton: widget.floatingActionButton,
             ),
           ),
         ),
       ),
-    ),
-  );
+    );
+  }
 }
 
-  void _showAIVoiceOverlay(BuildContext context, bool isDesktop) {
-    if (!isDesktop) {
-      showModalBottomSheet(
-        context: context,
-        backgroundColor: Colors.transparent, 
-        isScrollControlled: true,
-        builder: (ctx) => const AIVoiceOverlay(),
-      );
-    } else {
-      showDialog(
-        context: context,
-        barrierColor: Colors.black26,
-        builder: (ctx) => Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 400),
-            child: const Dialog(
-              backgroundColor: Colors.transparent,
-              child: AIVoiceOverlay(),
-            ),
-          ),
+class _SupportWebView extends StatefulWidget {
+  final String url;
+  const _SupportWebView({required this.url});
+
+  @override
+  State<_SupportWebView> createState() => _SupportWebViewState();
+}
+
+class _SupportWebViewState extends State<_SupportWebView> {
+  WebViewController? _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    if (!kIsWeb && (defaultTargetPlatform == TargetPlatform.android || defaultTargetPlatform == TargetPlatform.iOS)) {
+      _controller = WebViewController()
+        ..setJavaScriptMode(JavaScriptMode.unrestricted)
+        ..setBackgroundColor(Colors.transparent)
+        ..loadRequest(Uri.parse(widget.url));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_controller == null || kIsWeb) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.open_in_browser_rounded, size: 64, color: Colors.teal),
+            const SizedBox(height: 24),
+            const Text('Support Portal', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 16),
+            const Text('Click the button below to open the support form safely in a new tab.'),
+            const SizedBox(height: 32),
+            ElevatedButton(
+              onPressed: () => launchUrl(Uri.parse(widget.url)),
+              child: const Text('OPEN SUPPORT FORM'),
+            )
+          ],
         ),
       );
     }
+    
+    return WebViewWidget(controller: _controller!);
   }
 }

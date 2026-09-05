@@ -39,6 +39,7 @@ EXTRACTION RULES:
 
 OUTPUT FORMAT:
 Return ONLY a raw JSON object. Do not wrap it in markdown. Do not include any explanations.
+If the input lacks enough context to form a task (e.g., "do the thing", "hello"), set "clarification_needed" to true and provide a question in "clarification_message".
 
 SCHEMA:
 {
@@ -47,7 +48,9 @@ SCHEMA:
   "due_date": "ISO8601 String or null",
   "priority": "HIGH | MEDIUM | LOW",
   "community_id": "UUID String or null",
-  "assignee_id": "UUID String or null"
+  "assignee_id": "UUID String or null",
+  "clarification_needed": Boolean,
+  "clarification_message": "String or null"
 }
 '''),
       generationConfig: GenerationConfig(

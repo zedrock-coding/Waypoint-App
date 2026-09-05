@@ -17,17 +17,33 @@ class _AuthScreenState extends State<AuthScreen> {
   bool _isSignUp = false;
   bool _isLoading = false;
   bool _obscurePassword = true;
+  String? _errorMessage;
 
   Future<void> _handleSubmit() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+    
+    // Explicit read and validate
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
     final fullName = _fullNameController.text.trim();
 
+    if (!_formKey.currentState!.validate()) {
+      setState(() => _isLoading = false);
+      return;
+    }
+
     try {
       if (_isSignUp) {
+        if (fullName.isEmpty) {
+          setState(() {
+            _errorMessage = 'Please enter your full name.';
+            _isLoading = false;
+          });
+          return;
+        }
         await Supabase.instance.client.auth.signUp(
           email: email,
           password: password,
@@ -49,23 +65,11 @@ class _AuthScreenState extends State<AuthScreen> {
       }
     } on AuthException catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(e.message), 
-            backgroundColor: Colors.redAccent,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+        setState(() => _errorMessage = e.message);
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: ${e.toString().replaceAll('Exception: ', '')}'), 
-            backgroundColor: Colors.redAccent,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+        setState(() => _errorMessage = 'An unexpected error occurred. Please try again.');
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -89,6 +93,22 @@ class _AuthScreenState extends State<AuthScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
+                  if (_errorMessage != null)
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      margin: const EdgeInsets.only(bottom: 16),
+                      decoration: BoxDecoration(
+                        color: Colors.redAccent.withOpacity(0.1),
+                        border: Border.all(color: Colors.redAccent.withOpacity(0.5)),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        _errorMessage!,
+                        style: const TextStyle(color: Colors.redAccent, fontSize: 13),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
                   Container(
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
