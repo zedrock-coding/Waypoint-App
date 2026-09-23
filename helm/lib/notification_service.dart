@@ -182,6 +182,77 @@ class NotificationService {
     await _notificationsPlugin.cancelAll();
   }
 
+  Future<void> scheduleTaskDueDateNotification({
+    required String taskId,
+    required String title,
+    required DateTime dueAt,
+  }) async {
+    final int baseId = taskId.hashCode;
+    final now = DateTime.now();
+
+    const details = NotificationDetails(
+      android: AndroidNotificationDetails(
+        'task_reminders',
+        'Task Reminders',
+        channelDescription: 'Notifications for due tasks',
+        importance: Importance.max,
+        priority: Priority.high,
+      ),
+      iOS: DarwinNotificationDetails(),
+    );
+
+    // 1. Exact due time
+    if (dueAt.isAfter(now)) {
+      final tzDueAt = tz.TZDateTime.from(dueAt, tz.local);
+      await _notificationsPlugin.zonedSchedule(
+        baseId,
+        'Task Due Now!',
+        'Task "$title" is due right now.',
+        tzDueAt,
+        details,
+        uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      );
+    }
+
+    // 2. 1 Hour Before
+    final oneHourBefore = dueAt.subtract(const Duration(hours: 1));
+    if (oneHourBefore.isAfter(now)) {
+      final tzOneHour = tz.TZDateTime.from(oneHourBefore, tz.local);
+      await _notificationsPlugin.zonedSchedule(
+        baseId + 1,
+        'Task Due Soon (1 Hour)',
+        'Task "$title" is due in 1 hour.',
+        tzOneHour,
+        details,
+        uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      );
+    }
+
+    // 3. 24 Hours Before
+    final dayBefore = dueAt.subtract(const Duration(hours: 24));
+    if (dayBefore.isAfter(now)) {
+      final tzDayBefore = tz.TZDateTime.from(dayBefore, tz.local);
+      await _notificationsPlugin.zonedSchedule(
+        baseId + 2,
+        'Task Due Tomorrow',
+        'Task "$title" is due in 24 hours.',
+        tzDayBefore,
+        details,
+        uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      );
+    }
+  }
+
+  Future<void> cancelTaskNotifications(String taskId) async {
+    final int baseId = taskId.hashCode;
+    await _notificationsPlugin.cancel(baseId);
+    await _notificationsPlugin.cancel(baseId + 1);
+    await _notificationsPlugin.cancel(baseId + 2);
+  }
+
   tz.TZDateTime _nextInstanceOfTime(TimeOfDay time) {
     final tz.TZDateTime now = tz.TZDateTime.now(tz.local);
     tz.TZDateTime scheduledDate = tz.TZDateTime(

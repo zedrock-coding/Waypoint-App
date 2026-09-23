@@ -2,7 +2,7 @@ name: helm
 description: "A Premium, Cross-Platform Team Event & Task Management Application"
 publish_to: 'none'
 
-version: 0.3.2+7
+version: 0.3.3+8
 
 environment:
   sdk: ^3.11.0

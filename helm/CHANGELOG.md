@@ -4,6 +4,13 @@ All notable changes to the **Helm** project will be documented in this file.
 
 ---
 
+## [0.3.3] - Navigation Hotfix
+
+### 🐛 Fixed
+- **Communities Navigation**: Clicking the "Communities" tab on the bottom navigation or sidebar now properly resets the active route and guarantees a return to the main dashboard/directory view, escaping deep-linked community context.
+
+---
+
 ## [0.3.2] - Current Release
 
 ### 🚀 Added

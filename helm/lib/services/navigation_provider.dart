@@ -22,9 +22,8 @@ class NavigationProvider with ChangeNotifier {
   void setTab(int index) {
     _selectedIndex = index;
     _currentRoute = '/';
-    if (index == 0) {
-      _selectedCommunityId = null;
-    }
+    // Clearing the selected community ensures we return to the root view of the tab
+    _selectedCommunityId = null;
     notifyListeners();
   }
 

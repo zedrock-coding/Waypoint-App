@@ -127,7 +127,16 @@ class _CommandBarWidgetState extends State<CommandBarWidget> with SingleTickerPr
 
         final title = result['title'] ?? 'New AI Task';
         final description = result['description']; 
-        final dueDate = result['due_date'] != null ? DateTime.tryParse(result['due_date']) : null;
+        
+        DateTime? dueDate;
+        if (result['due_date'] != null && result['due_date'].toString().isNotEmpty) {
+          final parsed = DateTime.tryParse(result['due_date'].toString());
+          if (parsed != null) {
+            // Localized date at 12:00 PM to eliminate timezone shift issues
+            dueDate = DateTime(parsed.year, parsed.month, parsed.day, 12, 0, 0);
+          }
+        }
+
         final priorityStr = (result['priority'] ?? 'MEDIUM').toString().toLowerCase();
         final communityId = result['community_id'];
         final assigneeId = result['assignee_id'];

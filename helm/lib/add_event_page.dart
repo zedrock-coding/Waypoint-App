@@ -31,6 +31,7 @@ class _AddEventPageState extends State<AddEventPage> {
   late TextEditingController _titleController;
   late TextEditingController _descriptionController;
   late DateTime _selectedDate;
+  TimeOfDay? _selectedTime;
   
   late Priority _selectedPriority;
   late Status _selectedStatus;
@@ -72,6 +73,9 @@ class _AddEventPageState extends State<AddEventPage> {
     }
     
     _selectedDate = widget.taskToEdit?.dateTime ?? DateTime.now();
+    _selectedTime = widget.taskToEdit?.dateTime != null 
+        ? TimeOfDay.fromDateTime(widget.taskToEdit!.dateTime)
+        : null;
     _selectedPriority = widget.taskToEdit?.priority ?? Priority.medium;
     _selectedStatus = widget.taskToEdit?.status ?? Status.toDo;
     
@@ -149,6 +153,18 @@ class _AddEventPageState extends State<AddEventPage> {
             .map((c) => {'title': c.text.trim(), 'is_completed': false})
             .toList();
 
+        // Combine date and time
+        DateTime finalDueAt = _selectedDate;
+        if (_selectedTime != null) {
+          finalDueAt = DateTime(
+            _selectedDate.year,
+            _selectedDate.month,
+            _selectedDate.day,
+            _selectedTime!.hour,
+            _selectedTime!.minute,
+          );
+        }
+
         if (widget.taskToEdit != null) {
           // Preserve completion status for existing subtasks if possible
           // In a real app we'd map old to new, for now we just take the text
@@ -161,6 +177,7 @@ class _AddEventPageState extends State<AddEventPage> {
             subtasks: subtasks,
             priority: _selectedPriority,
             status: _selectedStatus,
+            dueAt: finalDueAt,
           );
         } else {
           final String? communityId = (_selectedDestination != null && _selectedDestination != 'local') 
@@ -179,6 +196,7 @@ class _AddEventPageState extends State<AddEventPage> {
             priority: _selectedPriority,
             status: _selectedStatus,
             isLocalOnly: isLocalOnly,
+            dueAt: finalDueAt,
           );
         }
 
@@ -327,14 +345,28 @@ class _AddEventPageState extends State<AddEventPage> {
   }
 
   Widget _buildDatePicker() {
-    return ListTile(
-      shape: RoundedRectangleBorder(side: BorderSide(color: Theme.of(context).dividerColor), borderRadius: BorderRadius.circular(4)),
-      title: Text("Due Date: ${DateFormat.yMMMd().format(_selectedDate)}"),
-      trailing: const Icon(Icons.calendar_today),
-      onTap: () async {
-        final picked = await showDatePicker(context: context, initialDate: _selectedDate, firstDate: DateTime(2000), lastDate: DateTime(2101));
-        if (picked != null) setState(() { _selectedDate = picked; _hasUnsavedChanges = true; });
-      },
+    return Column(
+      children: [
+        ListTile(
+          shape: RoundedRectangleBorder(side: BorderSide(color: Theme.of(context).dividerColor), borderRadius: BorderRadius.circular(4)),
+          title: Text("Due Date: ${DateFormat.yMMMd().format(_selectedDate)}"),
+          trailing: const Icon(Icons.calendar_today),
+          onTap: () async {
+            final picked = await showDatePicker(context: context, initialDate: _selectedDate, firstDate: DateTime(2000), lastDate: DateTime(2101));
+            if (picked != null) setState(() { _selectedDate = picked; _hasUnsavedChanges = true; });
+          },
+        ),
+        const SizedBox(height: 16),
+        ListTile(
+          shape: RoundedRectangleBorder(side: BorderSide(color: Theme.of(context).dividerColor), borderRadius: BorderRadius.circular(4)),
+          title: Text("Time: ${_selectedTime != null ? _selectedTime!.format(context) : 'None (All Day)'}"),
+          trailing: const Icon(Icons.access_time),
+          onTap: () async {
+            final picked = await showTimePicker(context: context, initialTime: _selectedTime ?? TimeOfDay.now());
+            if (picked != null) setState(() { _selectedTime = picked; _hasUnsavedChanges = true; });
+          },
+        ),
+      ],
     );
   }
 

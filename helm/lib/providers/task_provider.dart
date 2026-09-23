@@ -8,6 +8,7 @@ import '../models/unified_task.dart';
 import '../models/event.dart' as isar_model;
 import '../models/sync_model.dart';
 import '../services/sync_service.dart';
+import '../notification_service.dart';
 import 'package:uuid/uuid.dart';
 
 class TaskProvider with ChangeNotifier {
@@ -175,11 +176,13 @@ class TaskProvider with ChangeNotifier {
               communityId: d['community_id'],
               categoryIds: (d['category_ids'] as List?)?.cast<String>() ?? (d['category_id'] != null ? [d['category_id'].toString()] : []),
               createdAt: DateTime.parse(d['created_at']),
+              dueAt: d['due_at'] != null ? DateTime.parse(d['due_at']) : null,
               priority: d['priority'] ?? 'medium',
               status: d['status'] ?? 'toDo',
               order: d['order'] ?? 0,
               assignees: (d['assignees'] as List?)?.cast<String>() ?? [],
               subtasks: (d['subtasks'] as List?)?.map((e) => Map<dynamic, dynamic>.from(e)).toList() ?? [],
+              updatedAt: d['updated_at'] != null ? DateTime.parse(d['updated_at']) : null,
             );
             
             final existing = _taskBox.get(t.id);
@@ -230,11 +233,13 @@ class TaskProvider with ChangeNotifier {
               communityId: d['community_id'],
               categoryIds: (d['category_ids'] as List?)?.cast<String>() ?? (d['category_id'] != null ? [d['category_id'].toString()] : []),
               createdAt: DateTime.parse(d['created_at']),
+              dueAt: d['due_at'] != null ? DateTime.parse(d['due_at']) : null,
               priority: d['priority'] ?? 'medium',
               status: d['status'] ?? 'toDo',
               order: d['order'] ?? 0,
               assignees: (d['assignees'] as List?)?.cast<String>() ?? [],
               subtasks: (d['subtasks'] as List?)?.map((e) => Map<dynamic, dynamic>.from(e)).toList() ?? [],
+              updatedAt: d['updated_at'] != null ? DateTime.parse(d['updated_at']) : null,
             );
             return UnifiedTask.fromHive(t);
           }).toList()..sort((a, b) => a.order.compareTo(b.order));
@@ -275,6 +280,14 @@ class TaskProvider with ChangeNotifier {
       order: newOrder,
     );
     await _taskBox.put(id, localTask);
+
+    if (dueAt != null && status != Status.done) {
+      unawaited(NotificationService().scheduleTaskDueDateNotification(
+        taskId: id,
+        title: title,
+        dueAt: dueAt,
+      ));
+    }
 
     if (!isLocalOnly && (communityId != null || userId != null)) {
       final Map<String, dynamic> taskData = {
@@ -368,6 +381,7 @@ class TaskProvider with ChangeNotifier {
     required String id,
     required String title,
     String? description,
+    DateTime? dueAt,
     List<String> categoryIds = const [],
     List<String> assignees = const [],
     List<Map<String, dynamic>> subtasks = const [],
@@ -379,6 +393,7 @@ class TaskProvider with ChangeNotifier {
 
     hiveTask.title = title;
     hiveTask.description = description;
+    hiveTask.dueAt = dueAt;
     hiveTask.categoryIds = categoryIds;
     hiveTask.assignees = assignees;
     hiveTask.subtasks = subtasks.map((e) => Map<dynamic, dynamic>.from(e)).toList();
@@ -392,6 +407,16 @@ class TaskProvider with ChangeNotifier {
     
     await hiveTask.save();
 
+    if (hiveTask.dueAt != null && hiveTask.status != 'done') {
+      unawaited(NotificationService().scheduleTaskDueDateNotification(
+        taskId: id,
+        title: hiveTask.title ?? title,
+        dueAt: hiveTask.dueAt!,
+      ));
+    } else {
+      unawaited(NotificationService().cancelTaskNotifications(id));
+    }
+
     final bool shouldSync = hiveTask.userId != null || hiveTask.communityId != null;
     if (shouldSync) {
       final Map<String, dynamic> updates = {
@@ -401,6 +426,7 @@ class TaskProvider with ChangeNotifier {
         'category_ids': categoryIds,
         'assignees': assignees,
         'subtasks': subtasks,
+        'due_at': dueAt?.toIso8601String(),
         'updated_at': DateTime.now().toIso8601String(),
       };
       if (priority != null) updates['priority'] = priority.name;
@@ -550,6 +576,16 @@ class TaskProvider with ChangeNotifier {
       hiveTask.updatedAt = DateTime.now();
       await hiveTask.save();
     }
+
+    if (newStatus == Status.done) {
+      unawaited(NotificationService().cancelTaskNotifications(task.id));
+    } else if (task.dueDate != null) {
+      unawaited(NotificationService().scheduleTaskDueDateNotification(
+        taskId: task.id,
+        title: task.title,
+        dueAt: task.dueDate!,
+      ));
+    }
     
     if (hiveTask?.userId != null || task.communityId != null) {
       final updates = {
@@ -605,6 +641,7 @@ class TaskProvider with ChangeNotifier {
     final bool shouldSyncDelete = hiveTask.userId != null || hiveTask.communityId != null;
 
     await _taskBox.delete(id);
+    unawaited(NotificationService().cancelTaskNotifications(id));
     
     if (shouldSyncDelete) {
       if (await SyncService().isOnline()) {

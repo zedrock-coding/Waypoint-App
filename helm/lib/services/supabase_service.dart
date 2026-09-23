@@ -19,10 +19,8 @@ class SupabaseService {
 
   Future<List<Map<String, dynamic>>> _fetchCommunitiesWithRetry({int retries = 2}) async {
     try {
-      final response = await client
-          .from('communities')
-          .select('*, community_members!inner(role)');
-      return response;
+      final response = await client.rpc('get_user_communities');
+      return List<Map<String, dynamic>>.from(response);
     } catch (e) {
       if (e is PostgrestException && e.code == 'PGRST303' && retries > 0) {
         debugPrint('Supabase: Clock skew detected (PGRST303). Retrying in 2 seconds...');

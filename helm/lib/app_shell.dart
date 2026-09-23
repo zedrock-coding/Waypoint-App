@@ -407,7 +407,12 @@ class _AppShellState extends State<AppShell> {
                       if (widget.bottomWidget != null) widget.bottomWidget!,
                       BottomNavigationBar(
                         currentIndex: navProvider.selectedIndex,
-                        onTap: (index) => navProvider.setTab(index),
+                        onTap: (index) {
+                          navProvider.setTab(index);
+                          if (ModalRoute.of(context)?.settings.name != '/') {
+                            Navigator.pushReplacementNamed(context, '/');
+                          }
+                        },
                         selectedItemColor: colorScheme.primary,
                         unselectedItemColor: colorScheme.onSurface.withOpacity(0.5),
                         items: const [

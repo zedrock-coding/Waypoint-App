@@ -15,6 +15,9 @@ class InviteService {
   
   StreamSubscription<Uri>? _linkSubscription;
   String? _pendingCommunityId;
+  final _inviteController = StreamController<String>.broadcast();
+
+  Stream<String> get onInviteReceived => _inviteController.stream;
 
   /// Initialize deep link listening.
   Future<void> init() async {
@@ -45,6 +48,7 @@ class InviteService {
     if (uri.scheme == 'helm' && uri.host == 'invite') {
       final communityId = uri.queryParameters['communityId'];
       if (communityId != null) {
+        _inviteController.add(communityId);
         _processJoin(communityId);
       }
     }

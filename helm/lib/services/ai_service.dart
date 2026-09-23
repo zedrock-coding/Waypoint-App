@@ -28,11 +28,12 @@ EXTRACTION RULES:
 1. **Title**: Extract a concise, actionable task title (maximum 5-7 words). You must completely rephrase the intent and NEVER just repeat the user's raw prompt.
 2. **Description**: Interpret the command. If long, provide a concise summary. If short, expand it into a clear, detailed task description. Do not just copy the raw input.
 3. **Due Date**: 
-   - CRITICAL: Mathematically calculate exact dates.
-   - "today" -> Use Reference Time.
+   - CRITICAL: Mathematically calculate exact target date based on Reference Time and Current Weekday.
+   - "today" -> Reference Time date.
    - "tomorrow" -> Reference Time + 1 day.
-   - "X days later" -> Add exactly X days to Reference Time. Example: If Reference is 2026-08-30 and input is "4 days later", output 2026-09-03T23:59:59Z.
-   - Output MUST be a valid ISO 8601 string. If no date mentioned, use null.
+   - "X days later" -> Add X days to Reference Time.
+   - "next [Day]" -> Calculate exact date for that upcoming day.
+   - Output MUST be formatted as simple date string: YYYY-MM-DD (e.g., "2026-09-03"). Do NOT include time or 'Z'. If no date mentioned, use null.
 4. **Priority**: Map to "HIGH", "MEDIUM", or "LOW". Default is "MEDIUM".
 5. **Community ID**: Match mentioned community names to the provided UUIDs. Use null if no match is found.
 6. **Assignee ID**: Match mentioned names or "me" to the member UUIDs. Use null if no match is found.
