@@ -8,6 +8,7 @@ import 'models/hive_models.dart' as hive_model;
 import 'widgets/task_form_utils.dart';
 import 'providers/task_provider.dart';
 import 'services/supabase_service.dart';
+import 'services/ai_service.dart';
 
 class TaskDetailScreen extends StatelessWidget {
   final UnifiedTask task;
@@ -47,6 +48,7 @@ class TaskDetailContent extends StatefulWidget {
 class _TaskDetailContentState extends State<TaskDetailContent> {
   bool _isReadOnly = false;
   bool _loadingPerms = true;
+  bool _generatingSubtasks = false;
 
   @override
   void initState() {
@@ -85,6 +87,59 @@ class _TaskDetailContentState extends State<TaskDetailContent> {
       }
     } catch (e) {
       if (mounted) setState(() => _loadingPerms = false);
+    }
+  }
+
+  Future<void> _autoGenerateSubtasks() async {
+    if (_generatingSubtasks || _isReadOnly) return;
+    
+    setState(() => _generatingSubtasks = true);
+    try {
+      final aiService = context.read<AiService>();
+      final newSubtasks = await aiService.generateSubtasks(
+        title: widget.task.title,
+        description: widget.task.description,
+      );
+      
+      if (newSubtasks.isNotEmpty) {
+        final currentSubtasks = List<Map<String, dynamic>>.from(widget.task.subtasks);
+        for (final st in newSubtasks) {
+          currentSubtasks.add({'title': st, 'is_completed': false});
+        }
+        
+        if (mounted) {
+          await context.read<TaskProvider>().updateTask(
+            id: widget.task.id,
+            title: widget.task.title,
+            description: widget.task.description,
+            subtasks: currentSubtasks,
+            categoryIds: widget.task.categoryIds,
+            assignees: widget.task.assignees,
+            priority: widget.task.priority,
+            status: widget.task.status,
+          );
+        }
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('AI Subtasks Generated!'), behavior: SnackBarBehavior.floating),
+          );
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Could not generate subtasks from this description.'), behavior: SnackBarBehavior.floating),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error generating subtasks: $e'), backgroundColor: Colors.redAccent),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _generatingSubtasks = false);
     }
   }
 
@@ -176,7 +231,20 @@ class _TaskDetailContentState extends State<TaskDetailContent> {
                               ),
                               
                               const SizedBox(height: 40),
-                              _buildSectionTitle(context, 'Sub-tasks'),
+                              Row(
+                                children: [
+                                  _buildSectionTitle(context, 'Sub-tasks'),
+                                  const Spacer(),
+                                  if (!_isReadOnly)
+                                    _generatingSubtasks 
+                                      ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                                      : IconButton(
+                                          icon: Icon(Icons.auto_awesome_rounded, size: 20, color: colorScheme.primary),
+                                          tooltip: 'Auto-Generate Subtasks',
+                                          onPressed: _autoGenerateSubtasks,
+                                        ),
+                                ],
+                              ),
                               const SizedBox(height: 16),
                               if (widget.task.subtasks.isEmpty)
                                 const Center(child: Text('No sub-tasks.'))

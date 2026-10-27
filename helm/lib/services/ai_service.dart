@@ -2,14 +2,21 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
+import 'needle_engine.dart';
 
 class AiService {
   late final GenerativeModel _model;
+  final NeedleEngine _needleEngine;
 
-  AiService() {
+  NeedleEngine get needleEngine => _needleEngine;
+
+  AiService({NeedleEngine? needleEngine})
+      : _needleEngine = needleEngine ?? CactusNeedleEngine() {
+    _needleEngine.initialize();
+
     // Priority: 1. String.fromEnvironment (Compile-time) 2. flutter_dotenv (Runtime asset)
     final String envKey = const String.fromEnvironment('GEMINI_API_KEY');
-    final String? dotEnvKey = dotenv.env['GEMINI_API_KEY'];
+    final String? dotEnvKey = dotenv.isInitialized ? dotenv.env['GEMINI_API_KEY'] : null;
     
     final apiKey = envKey.isNotEmpty ? envKey : (dotEnvKey ?? '');
 
@@ -81,6 +88,7 @@ SCHEMA:
     }
   }
 
+  /// Original text parser with fallback logic
   Future<Map<String, dynamic>?> parseTaskCommand({
     required String userInput,
     required List<Map<String, dynamic>> availableCommunities,
@@ -113,6 +121,149 @@ User Input: "$userInput"
     } catch (e) {
       debugPrint('AiService Error: $e');
       rethrow;
+    }
+  }
+
+  /// Two-Tier Hybrid parsing: Fast on-device Needle 3 extraction + Cloud de-jumbling
+  Future<Map<String, dynamic>?> parseHybridCommand({
+    required String userInput,
+    required List<Map<String, dynamic>> availableCommunities,
+    required List<Map<String, dynamic>> availableMembers,
+    bool forceCloud = false,
+  }) async {
+    final clean = userInput.trim();
+    if (clean.isEmpty) return null;
+
+    final wordCount = clean.split(RegExp(r'\s+')).length;
+    final isSimple = wordCount <= 8;
+
+    // Fast Path: Direct simple commands run on edge Needle engine
+    if (!forceCloud && isSimple && _needleEngine.isReady) {
+      try {
+        final localResult = await _needleEngine.extractTask(
+          input: clean,
+          availableCommunities: availableCommunities,
+          availableMembers: availableMembers,
+        );
+        if (localResult != null) return localResult;
+      } catch (e) {
+        debugPrint('NeedleEngine Fast Path error: $e');
+      }
+    }
+
+    // Cloud Tier: Gemini unjumbles complex words into structured template
+    try {
+      final cloudTemplate = await parseTaskCommand(
+        userInput: clean,
+        availableCommunities: availableCommunities,
+        availableMembers: availableMembers,
+      );
+
+      // Pass cloud blueprint through Needle Engine for deterministic schema enforcement
+      return await _needleEngine.extractTask(
+        input: clean,
+        templateContext: cloudTemplate,
+        availableCommunities: availableCommunities,
+        availableMembers: availableMembers,
+      );
+    } catch (e) {
+      debugPrint('Cloud Tier Fallback to NeedleEngine: $e');
+      return await _needleEngine.extractTask(
+        input: clean,
+        availableCommunities: availableCommunities,
+        availableMembers: availableMembers,
+      );
+    }
+  }
+
+  /// Direct Multimodal Audio Ingestion: sends raw audio bytes to Gemini to eliminate transcription errors
+  Future<Map<String, dynamic>?> parseVoiceCommand({
+    required Uint8List audioBytes,
+    required List<Map<String, dynamic>> availableCommunities,
+    required List<Map<String, dynamic>> availableMembers,
+  }) async {
+    final now = DateTime.now();
+    final List<String> weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    final currentWeekday = weekdays[now.weekday - 1];
+
+    final prompt = '''
+Listen to the user speaking and extract the task intent.
+De-jumble any rambling, vocal pauses, or self-corrections in the audio.
+
+CURRENT CONTEXT:
+- Reference Time: ${now.toIso8601String()} (Local)
+- Current Weekday: $currentWeekday
+- Available Communities: ${jsonEncode(availableCommunities)}
+- Available Members: ${jsonEncode(availableMembers)}
+''';
+
+    try {
+      final response = await _executeWithRetry(() => _model.generateContent([
+        Content.data('audio/wav', audioBytes),
+        Content.text(prompt),
+      ]));
+
+      final text = response.text;
+      if (text == null) return null;
+
+      final cleanJson = text.replaceAll('```json', '').replaceAll('```', '').trim();
+      final Map<String, dynamic> cloudTemplate = jsonDecode(cleanJson);
+
+      // Enforce grammar constraints via NeedleEngine
+      return await _needleEngine.extractTask(
+        input: cloudTemplate['title'] ?? 'Voice Task',
+        templateContext: cloudTemplate,
+        availableCommunities: availableCommunities,
+        availableMembers: availableMembers,
+      );
+    } catch (e) {
+      debugPrint('Multimodal Voice Command Error: $e');
+      rethrow;
+    }
+  }
+
+  Future<List<String>> generateSubtasks({
+    required String title,
+    required String description,
+  }) async {
+    final prompt = '''
+Analyze task title and description. Break down into 3-5 concise, actionable subtasks.
+Output ONLY raw JSON string array. No markdown.
+
+Task Title: "$title"
+Task Description: "$description"
+
+SCHEMA:
+[
+  "Subtask 1",
+  "Subtask 2"
+]
+''';
+
+    try {
+      final response = await _executeWithRetry(() => _model.generateContent([
+        Content.text(prompt)
+      ]));
+
+      final text = response.text;
+      List<String> hints = [];
+      if (text != null) {
+        final cleanJson = text.replaceAll('```json', '').replaceAll('```', '').trim();
+        final List<dynamic> parsed = jsonDecode(cleanJson);
+        hints = parsed.map((e) => e.toString()).toList();
+      }
+
+      // Needle Engine validates and expands subtasks
+      return await _needleEngine.expandSubtasks(
+        title: title,
+        templateHints: hints,
+      );
+    } catch (e) {
+      debugPrint('AiService Subtask Error: $e');
+      return await _needleEngine.expandSubtasks(
+        title: title,
+        templateHints: [],
+      );
     }
   }
 }
