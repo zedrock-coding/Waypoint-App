@@ -141,6 +141,9 @@ class CactusNeedleEngine implements NeedleEngine {
       }
     }
 
+    final bool clarificationNeeded = templateContext?['clarification_needed'] == true;
+    final String? clarificationMessage = templateContext?['clarification_message']?.toString();
+
     // Guaranteed schema conformance
     return {
       'title': title,
@@ -149,8 +152,8 @@ class CactusNeedleEngine implements NeedleEngine {
       'priority': priorityStr.toUpperCase(),
       'community_id': communityId,
       'assignee_id': assigneeId,
-      'clarification_needed': false,
-      'clarification_message': null,
+      'clarification_needed': clarificationNeeded,
+      'clarification_message': clarificationMessage,
     };
   }
 

@@ -47,7 +47,13 @@ EXTRACTION RULES:
 
 OUTPUT FORMAT:
 Return ONLY a raw JSON object. Do not wrap it in markdown. Do not include any explanations.
-If the input lacks enough context to form a task (e.g., "do the thing", "hello"), set "clarification_needed" to true and provide a question in "clarification_message".
+
+CONVERSATIONAL CLARIFICATION:
+If the user's command is missing important actionable details (e.g., they say "remind me to prepare presentation" but give no due date/time, or "add task for the client" without clear title or deadline), engage in a natural conversation:
+- Set "clarification_needed" to true.
+- Set "clarification_message" to a concise, friendly question asking specifically for the missing detail (e.g., "When should this presentation be ready?", "What is the deadline for this task?").
+- Retain whatever details the user already specified in the JSON schema fields.
+- When an Existing Task Draft or Conversation History is provided, merge new voice answers directly into the draft.
 
 SCHEMA:
 {
@@ -176,18 +182,28 @@ User Input: "$userInput"
     }
   }
 
-  /// Direct Multimodal Audio Ingestion: sends raw audio bytes to Gemini to eliminate transcription errors
+  /// Direct Multimodal Audio Ingestion with conversational multi-turn slot refinement
   Future<Map<String, dynamic>?> parseVoiceCommand({
     required Uint8List audioBytes,
     required List<Map<String, dynamic>> availableCommunities,
     required List<Map<String, dynamic>> availableMembers,
+    Map<String, dynamic>? currentDraft,
+    List<Map<String, String>> conversationHistory = const [],
   }) async {
     final now = DateTime.now();
     final List<String> weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
     final currentWeekday = weekdays[now.weekday - 1];
 
+    final historySnippet = conversationHistory.isEmpty
+        ? 'None'
+        : conversationHistory.map((h) => '${h['role']}: ${h['content']}').join('\n');
+
+    final draftSnippet = currentDraft == null
+        ? 'None'
+        : jsonEncode(currentDraft);
+
     final prompt = '''
-Listen to the user speaking and extract the task intent.
+Listen to the user speaking and extract or refine the task intent.
 De-jumble any rambling, vocal pauses, or self-corrections in the audio.
 
 CURRENT CONTEXT:
@@ -195,6 +211,14 @@ CURRENT CONTEXT:
 - Current Weekday: $currentWeekday
 - Available Communities: ${jsonEncode(availableCommunities)}
 - Available Members: ${jsonEncode(availableMembers)}
+- Existing Task Draft: $draftSnippet
+- Conversation History:
+$historySnippet
+
+INSTRUCTIONS:
+1. If an Existing Task Draft is provided, integrate and merge the user's voice reply into that draft.
+2. If essential details are still missing (such as due date, clarity of what needs doing), set "clarification_needed": true and generate "clarification_message" with a short, conversational question.
+3. If enough information is provided to make an actionable task, set "clarification_needed": false and return the complete task JSON.
 ''';
 
     try {
@@ -211,7 +235,7 @@ CURRENT CONTEXT:
 
       // Enforce grammar constraints via NeedleEngine
       return await _needleEngine.extractTask(
-        input: cloudTemplate['title'] ?? 'Voice Task',
+        input: cloudTemplate['title'] ?? (currentDraft?['title'] ?? 'Voice Task'),
         templateContext: cloudTemplate,
         availableCommunities: availableCommunities,
         availableMembers: availableMembers,

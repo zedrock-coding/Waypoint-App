@@ -284,14 +284,22 @@ class _AppShellState extends State<AppShell> {
     return FocusScope(
       child: Shortcuts(
         shortcuts: <ShortcutActivator, Intent>{
-          const SingleActivator(LogicalKeyboardKey.keyN): const NewTaskIntent(),
-          const SingleActivator(LogicalKeyboardKey.keyC): const CycleTabIntent(),
-          const SingleActivator(LogicalKeyboardKey.slash): const SearchIntent(),
+          const SingleActivator(LogicalKeyboardKey.keyN, control: true): const NewTaskIntent(),
+          const SingleActivator(LogicalKeyboardKey.keyF, control: true): const SearchIntent(),
+          const SingleActivator(LogicalKeyboardKey.space, control: true): const AIVoiceIntent(),
+          const SingleActivator(LogicalKeyboardKey.tab, control: true): const CycleTabIntent(),
+          const SingleActivator(LogicalKeyboardKey.keyC, control: true): const CycleTabIntent(),
           const SingleActivator(LogicalKeyboardKey.escape): const EscapeIntent(),
           const SingleActivator(LogicalKeyboardKey.enter, alt: true): const EnterIntent(),
         },
         child: Actions(
           actions: <Type, Action<Intent>>{
+            AIVoiceIntent: CallbackAction<AIVoiceIntent>(
+              onInvoke: (intent) {
+                _showAIVoiceOverlay(context, isDesktop);
+                return null;
+              },
+            ),
             NewTaskIntent: CallbackAction<NewTaskIntent>(
               onInvoke: (intent) {
                 if (FocusManager.instance.primaryFocus?.context?.widget is EditableText) return null;
@@ -439,11 +447,6 @@ class _AppShellState extends State<AppShell> {
                                                 context: context,
                                                 delegate: CustomTaskSearchDelegate(),
                                               ),
-                                            ),
-                                            IconButton(
-                                              visualDensity: VisualDensity.compact,
-                                              icon: Icon(Icons.auto_awesome_rounded, color: colorScheme.primary),
-                                              onPressed: () => _showAIVoiceOverlay(context, isDesktop),
                                             ),
                                             CompositedTransformTarget(
                                               link: _notificationLayerLink,

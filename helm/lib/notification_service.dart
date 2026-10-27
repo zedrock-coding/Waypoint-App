@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -13,52 +14,69 @@ class NotificationService {
   NotificationService._internal();
 
   final FlutterLocalNotificationsPlugin _notificationsPlugin = FlutterLocalNotificationsPlugin();
-  final _supabase = Supabase.instance.client;
   RealtimeChannel? _notificationChannel;
 
+  SupabaseClient? get _supabase {
+    try {
+      return Supabase.instance.client;
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<void> init() async {
-    tz.initializeTimeZones();
-    
-    const AndroidInitializationSettings androidSettings = AndroidInitializationSettings('@mipmap/launcher_icon');
-    const DarwinInitializationSettings iosSettings = DarwinInitializationSettings(
-      requestAlertPermission: true,
-      requestBadgePermission: true,
-      requestSoundPermission: true,
-    );
+    try {
+      tz.initializeTimeZones();
+      
+      const AndroidInitializationSettings androidSettings = AndroidInitializationSettings('@mipmap/launcher_icon');
+      const DarwinInitializationSettings iosSettings = DarwinInitializationSettings(
+        requestAlertPermission: true,
+        requestBadgePermission: true,
+        requestSoundPermission: true,
+      );
 
-    const InitializationSettings initSettings = InitializationSettings(
-      android: androidSettings,
-      iOS: iosSettings,
-    );
+      const InitializationSettings initSettings = InitializationSettings(
+        android: androidSettings,
+        iOS: iosSettings,
+      );
 
-    await _notificationsPlugin.initialize(
-      initSettings,
-      onDidReceiveNotificationResponse: (NotificationResponse details) {
-        // Handle notification click: Navigate to specific task/community if needed
-      },
-    );
-
-    // Initial setup for logged in user
-    if (_supabase.auth.currentUser != null) {
-      listenToSupabaseNotifications();
+      if (!kIsWeb && defaultTargetPlatform != TargetPlatform.windows) {
+        await _notificationsPlugin.initialize(
+          initSettings,
+          onDidReceiveNotificationResponse: (NotificationResponse details) {
+            // Handle notification click: Navigate to specific task/community if needed
+          },
+        );
+      }
+    } catch (e) {
+      debugPrint('NotificationService init error: $e');
     }
 
-    // Listen for auth changes
-    _supabase.auth.onAuthStateChange.listen((data) {
-      if (data.event == AuthChangeEvent.signedIn) {
+    // Initial setup for logged in user
+    final client = _supabase;
+    if (client != null) {
+      if (client.auth.currentUser != null) {
         listenToSupabaseNotifications();
-      } else if (data.event == AuthChangeEvent.signedOut) {
-        stopListening();
       }
-    });
+
+      // Listen for auth changes
+      client.auth.onAuthStateChange.listen((data) {
+        if (data.event == AuthChangeEvent.signedIn) {
+          listenToSupabaseNotifications();
+        } else if (data.event == AuthChangeEvent.signedOut) {
+          stopListening();
+        }
+      });
+    }
   }
 
   void listenToSupabaseNotifications() {
-    final userId = _supabase.auth.currentUser?.id;
-    if (userId == null) return;
+    final client = _supabase;
+    final userId = client?.auth.currentUser?.id;
+    if (client == null || userId == null) return;
 
     _notificationChannel?.unsubscribe();
-    _notificationChannel = _supabase
+    _notificationChannel = client
         .channel('public:notifications')
         .onPostgresChanges(
           event: PostgresChangeEvent.insert,
@@ -123,32 +141,47 @@ class NotificationService {
     required String body,
     String? payload,
   }) async {
-    const androidDetails = AndroidNotificationDetails(
-      'helm_notifications',
-      'Helm Notifications',
-      channelDescription: 'Real-time task and community updates',
-      importance: Importance.max,
-      priority: Priority.high,
-      showWhen: true,
-    );
+    if (kIsWeb || defaultTargetPlatform == TargetPlatform.windows) {
+      return;
+    }
+    try {
+      const androidDetails = AndroidNotificationDetails(
+        'helm_notifications',
+        'Helm Notifications',
+        channelDescription: 'Real-time task and community updates',
+        importance: Importance.max,
+        priority: Priority.high,
+        showWhen: true,
+      );
 
-    const notificationDetails = NotificationDetails(
-      android: androidDetails,
-      iOS: DarwinNotificationDetails(presentAlert: true, presentBadge: true, presentSound: true),
-    );
+      const notificationDetails = NotificationDetails(
+        android: androidDetails,
+        iOS: DarwinNotificationDetails(presentAlert: true, presentBadge: true, presentSound: true),
+      );
 
-    await _notificationsPlugin.show(id, title, body, notificationDetails, payload: payload);
+      await _notificationsPlugin.show(id, title, body, notificationDetails, payload: payload);
+    } catch (e) {
+      debugPrint('Failed to show notification: $e');
+    }
   }
 
   Future<bool> requestPermissions() async {
-    final androidPlugin = _notificationsPlugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
-    final bool? androidGranted = await androidPlugin?.requestNotificationsPermission();
-    
-    final bool? iosGranted = await _notificationsPlugin
-        .resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>()
-        ?.requestPermissions(alert: true, badge: true, sound: true);
+    if (kIsWeb || defaultTargetPlatform == TargetPlatform.windows) {
+      return true;
+    }
+    try {
+      final androidPlugin = _notificationsPlugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+      final bool? androidGranted = await androidPlugin?.requestNotificationsPermission();
+      
+      final bool? iosGranted = await _notificationsPlugin
+          .resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>()
+          ?.requestPermissions(alert: true, badge: true, sound: true);
 
-    return (androidGranted ?? false) || (iosGranted ?? false);
+      return (androidGranted ?? false) || (iosGranted ?? false);
+    } catch (e) {
+      debugPrint('Failed to request notification permissions: $e');
+      return true;
+    }
   }
 
   Future<void> scheduleDailyNotification({
@@ -157,29 +190,43 @@ class NotificationService {
     required String body,
     required TimeOfDay time,
   }) async {
-    await _notificationsPlugin.zonedSchedule(
-      id,
-      title,
-      body,
-      _nextInstanceOfTime(time),
-      const NotificationDetails(
-        android: AndroidNotificationDetails(
-          'daily_reminders',
-          'Daily Reminders',
-          channelDescription: 'Daily task reminder notifications',
-          importance: Importance.max,
-          priority: Priority.high,
+    if (kIsWeb || defaultTargetPlatform == TargetPlatform.windows) {
+      return;
+    }
+    try {
+      await _notificationsPlugin.zonedSchedule(
+        id,
+        title,
+        body,
+        _nextInstanceOfTime(time),
+        const NotificationDetails(
+          android: AndroidNotificationDetails(
+            'daily_reminders',
+            'Daily Reminders',
+            channelDescription: 'Daily task reminder notifications',
+            importance: Importance.max,
+            priority: Priority.high,
+          ),
+          iOS: DarwinNotificationDetails(),
         ),
-        iOS: DarwinNotificationDetails(),
-      ),
-      uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      matchDateTimeComponents: DateTimeComponents.time,
-    );
+        uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        matchDateTimeComponents: DateTimeComponents.time,
+      );
+    } catch (e) {
+      debugPrint('Failed to schedule daily notification: $e');
+    }
   }
 
   Future<void> cancelAllNotifications() async {
-    await _notificationsPlugin.cancelAll();
+    if (kIsWeb || defaultTargetPlatform == TargetPlatform.windows) {
+      return;
+    }
+    try {
+      await _notificationsPlugin.cancelAll();
+    } catch (e) {
+      debugPrint('Failed to cancel notifications: $e');
+    }
   }
 
   Future<void> scheduleTaskDueDateNotification({
@@ -187,6 +234,18 @@ class NotificationService {
     required String title,
     required DateTime dueAt,
   }) async {
+    // Check user preference
+    final settings = Hive.isBoxOpen('settings') ? Hive.box<Settings>('settings').get('app_settings') : null;
+    final isEnabled = settings?.dueDateRemindersEnabled ?? true;
+    if (!isEnabled) {
+      debugPrint('Task due date notification suppressed: setting disabled');
+      return;
+    }
+
+    if (kIsWeb || defaultTargetPlatform == TargetPlatform.windows) {
+      return;
+    }
+
     final int baseId = taskId.hashCode;
     final now = DateTime.now();
 
@@ -201,56 +260,71 @@ class NotificationService {
       iOS: DarwinNotificationDetails(),
     );
 
-    // 1. Exact due time
-    if (dueAt.isAfter(now)) {
-      final tzDueAt = tz.TZDateTime.from(dueAt, tz.local);
-      await _notificationsPlugin.zonedSchedule(
-        baseId,
-        'Task Due Now!',
-        'Task "$title" is due right now.',
-        tzDueAt,
-        details,
-        uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
-        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      );
-    }
+    try {
+      try {
+        tz.initializeTimeZones();
+      } catch (_) {}
 
-    // 2. 1 Hour Before
-    final oneHourBefore = dueAt.subtract(const Duration(hours: 1));
-    if (oneHourBefore.isAfter(now)) {
-      final tzOneHour = tz.TZDateTime.from(oneHourBefore, tz.local);
-      await _notificationsPlugin.zonedSchedule(
-        baseId + 1,
-        'Task Due Soon (1 Hour)',
-        'Task "$title" is due in 1 hour.',
-        tzOneHour,
-        details,
-        uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
-        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      );
-    }
+      // 1. Exact due time
+      if (dueAt.isAfter(now)) {
+        final tzDueAt = tz.TZDateTime.from(dueAt, tz.local);
+        await _notificationsPlugin.zonedSchedule(
+          baseId,
+          'Task Due Now!',
+          'Task "$title" is due right now.',
+          tzDueAt,
+          details,
+          uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+          androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        );
+      }
 
-    // 3. 24 Hours Before
-    final dayBefore = dueAt.subtract(const Duration(hours: 24));
-    if (dayBefore.isAfter(now)) {
-      final tzDayBefore = tz.TZDateTime.from(dayBefore, tz.local);
-      await _notificationsPlugin.zonedSchedule(
-        baseId + 2,
-        'Task Due Tomorrow',
-        'Task "$title" is due in 24 hours.',
-        tzDayBefore,
-        details,
-        uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
-        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      );
+      // 2. 1 Hour Before
+      final oneHourBefore = dueAt.subtract(const Duration(hours: 1));
+      if (oneHourBefore.isAfter(now)) {
+        final tzOneHour = tz.TZDateTime.from(oneHourBefore, tz.local);
+        await _notificationsPlugin.zonedSchedule(
+          baseId + 1,
+          'Task Due Soon (1 Hour)',
+          'Task "$title" is due in 1 hour.',
+          tzOneHour,
+          details,
+          uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+          androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        );
+      }
+
+      // 3. 24 Hours Before
+      final dayBefore = dueAt.subtract(const Duration(hours: 24));
+      if (dayBefore.isAfter(now)) {
+        final tzDayBefore = tz.TZDateTime.from(dayBefore, tz.local);
+        await _notificationsPlugin.zonedSchedule(
+          baseId + 2,
+          'Task Due Tomorrow',
+          'Task "$title" is due in 24 hours.',
+          tzDayBefore,
+          details,
+          uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+          androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        );
+      }
+    } catch (e) {
+      debugPrint('Failed to schedule task due date notification: $e');
     }
   }
 
   Future<void> cancelTaskNotifications(String taskId) async {
-    final int baseId = taskId.hashCode;
-    await _notificationsPlugin.cancel(baseId);
-    await _notificationsPlugin.cancel(baseId + 1);
-    await _notificationsPlugin.cancel(baseId + 2);
+    if (kIsWeb || defaultTargetPlatform == TargetPlatform.windows) {
+      return;
+    }
+    try {
+      final int baseId = taskId.hashCode;
+      await _notificationsPlugin.cancel(baseId);
+      await _notificationsPlugin.cancel(baseId + 1);
+      await _notificationsPlugin.cancel(baseId + 2);
+    } catch (e) {
+      debugPrint('Failed to cancel task notification: $e');
+    }
   }
 
   tz.TZDateTime _nextInstanceOfTime(TimeOfDay time) {

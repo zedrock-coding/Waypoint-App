@@ -245,8 +245,6 @@ class VelocityDashboardCard extends StatelessWidget {
           body: 'Time to check your tasks!', 
           time: const TimeOfDay(hour: 9, minute: 0),
         );
-      } else {
-        return;
       }
     } else {
       await ns.cancelAllNotifications();

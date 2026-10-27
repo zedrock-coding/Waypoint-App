@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'theme_provider.dart';
 import 'app_shell.dart';
+import 'notification_service.dart';
 
 class SettingPage extends StatefulWidget {
   const SettingPage({super.key});
@@ -14,6 +15,9 @@ class _SettingPageState extends State<SettingPage> {
   Future<void> _handleNotificationToggle(String key, bool enabled, ThemeProvider provider) async {
     try {
       await provider.updateNotificationSetting(key, enabled);
+      if (key == 'dueDateReminders' && !enabled) {
+        await NotificationService().cancelAllNotifications();
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

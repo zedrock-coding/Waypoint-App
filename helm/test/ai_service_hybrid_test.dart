@@ -67,6 +67,23 @@ void main() {
       expect(result['due_date'], equals('2026-11-01'));
     });
 
+    test('Preserves clarification_needed and clarification_message in template context', () async {
+      final cloudTemplate = {
+        'title': 'Call dentist',
+        'clarification_needed': true,
+        'clarification_message': 'When would you like to schedule the dentist call?',
+      };
+
+      final result = await engine.extractTask(
+        input: 'Call dentist',
+        templateContext: cloudTemplate,
+      );
+
+      expect(result, isNotNull);
+      expect(result!['clarification_needed'], isTrue);
+      expect(result['clarification_message'], equals('When would you like to schedule the dentist call?'));
+    });
+
     test('Expands subtasks correctly', () async {
       final subtasks = await engine.expandSubtasks(
         title: 'Deploy backend service',

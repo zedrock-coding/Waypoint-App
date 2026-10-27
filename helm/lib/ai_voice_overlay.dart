@@ -7,7 +7,7 @@ import 'services/ai_service.dart';
 import 'services/audio_recording_service.dart';
 import 'services/supabase_service.dart';
 
-enum AIState { listening, processing, success, error }
+enum AIState { listening, processing, clarifying, success, error }
 
 class AIVoiceOverlay extends StatefulWidget {
   const AIVoiceOverlay({super.key});
@@ -23,6 +23,10 @@ class _AIVoiceOverlayState extends State<AIVoiceOverlay>
   final AudioRecordingService _audioService = AudioRecordingService();
   AIState _currentState = AIState.listening;
   String _errorMessage = '';
+
+  Map<String, dynamic>? _currentDraft;
+  String? _clarificationQuestion;
+  final List<Map<String, String>> _conversationHistory = [];
 
   @override
   void initState() {
@@ -50,7 +54,7 @@ class _AIVoiceOverlayState extends State<AIVoiceOverlay>
   }
 
   Future<void> _finishRecordingAndProcess() async {
-    if (_currentState != AIState.listening) return;
+    if (_currentState != AIState.listening && _currentState != AIState.clarifying) return;
 
     setState(() => _currentState = AIState.processing);
 
@@ -71,30 +75,61 @@ class _AIVoiceOverlayState extends State<AIVoiceOverlay>
     final supabaseService = SupabaseService();
 
     try {
-      final communities = await supabaseService.fetchUserCommunities();
-      final members = await supabaseService.fetchAllAccessibleMembers();
+      List<Map<String, dynamic>> communities = [];
+      List<Map<String, dynamic>> members = [];
+      try {
+        communities = await supabaseService.fetchUserCommunities();
+        members = await supabaseService.fetchAllAccessibleMembers();
+      } catch (e) {
+        debugPrint('AIVoiceOverlay: Remote community fetch skipped: $e');
+      }
 
       final result = await aiService.parseVoiceCommand(
         audioBytes: audioBytes,
         availableCommunities: communities,
         availableMembers: members,
+        currentDraft: _currentDraft,
+        conversationHistory: _conversationHistory,
       );
 
       if (result != null) {
-        final title = result['title'] ?? 'Voice Task';
-        final description = result['description'];
+        final bool needsClarification = result['clarification_needed'] == true;
+
+        if (needsClarification) {
+          // AI proactively asks for missing details in a conversation
+          final question = result['clarification_message'] ?? 'Could you clarify when this task is due or needed?';
+          _conversationHistory.add({'role': 'assistant', 'content': question});
+          
+          if (mounted) {
+            setState(() {
+              _currentDraft = result;
+              _clarificationQuestion = question;
+              _currentState = AIState.clarifying;
+            });
+            // Automatically arm microphone for the next answer turn
+            await _startListening();
+          }
+          return;
+        }
+
+        // Complete details gathered - finalize task
+        final title = result['title'] ?? (_currentDraft?['title'] ?? 'Voice Task');
+        final description = result['description'] ?? _currentDraft?['description'];
 
         DateTime? dueDate;
-        if (result['due_date'] != null && result['due_date'].toString().isNotEmpty) {
-          final parsed = DateTime.tryParse(result['due_date'].toString());
+        final dateStr = result['due_date'] ?? _currentDraft?['due_date'];
+        if (dateStr != null && dateStr.toString().isNotEmpty) {
+          final parsed = DateTime.tryParse(dateStr.toString());
           if (parsed != null) {
             dueDate = DateTime(parsed.year, parsed.month, parsed.day, 12, 0, 0);
           }
         }
 
-        final communityId = result['community_id'];
-        final assigneeId = result['assignee_id'];
-        final Priority priority = UnifiedTask.parsePriority(result['priority']?.toString());
+        final communityId = result['community_id'] ?? _currentDraft?['community_id'];
+        final assigneeId = result['assignee_id'] ?? _currentDraft?['assignee_id'];
+        final Priority priority = UnifiedTask.parsePriority(
+          (result['priority'] ?? _currentDraft?['priority'])?.toString(),
+        );
 
         await taskProvider.addTask(
           title: title,
@@ -147,15 +182,10 @@ class _AIVoiceOverlayState extends State<AIVoiceOverlay>
         mainAxisSize: MainAxisSize.min,
         children: [
           _buildCenterGraphic(colorScheme),
-          const SizedBox(height: 24),
+          const SizedBox(height: 20),
           _buildStatusText(colorScheme),
-          const SizedBox(height: 8),
-          if (_currentState == AIState.listening)
-            const Text(
-              "Tap microphone when done speaking",
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.white54, fontSize: 12),
-            ),
+          const SizedBox(height: 10),
+          _buildSubtext(colorScheme),
           if (_currentState == AIState.error) ...[
             const SizedBox(height: 12),
             TextButton(
@@ -171,26 +201,67 @@ class _AIVoiceOverlayState extends State<AIVoiceOverlay>
     );
   }
 
+  Widget _buildSubtext(ColorScheme colorScheme) {
+    if (_currentState == AIState.listening) {
+      return const Text(
+        "Speak your task, then tap mic when done",
+        textAlign: TextAlign.center,
+        style: TextStyle(color: Colors.white54, fontSize: 13),
+      );
+    }
+
+    if (_currentState == AIState.clarifying) {
+      return Column(
+        children: [
+          if (_currentDraft?['title'] != null)
+            Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.tealAccent.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.tealAccent.withOpacity(0.3)),
+              ),
+              child: Text(
+                'Task: "${_currentDraft!['title']}"',
+                style: const TextStyle(color: Colors.tealAccent, fontSize: 12, fontWeight: FontWeight.w600),
+              ),
+            ),
+          const Text(
+            "Speak your answer, then tap mic to confirm",
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.white54, fontSize: 13),
+          ),
+        ],
+      );
+    }
+
+    return const SizedBox.shrink();
+  }
+
   Widget _buildCenterGraphic(ColorScheme colorScheme) {
     switch (_currentState) {
       case AIState.listening:
+      case AIState.clarifying:
         return GestureDetector(
           onTap: _finishRecordingAndProcess,
           child: AnimatedBuilder(
             animation: _scaleAnimation,
             builder: (context, child) {
+              final color = _currentState == AIState.clarifying ? Colors.amberAccent : Colors.tealAccent;
               return Transform.scale(
                 scale: _scaleAnimation.value,
                 child: Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Colors.tealAccent.withOpacity(0.15),
+                    color: color.withOpacity(0.18),
                     shape: BoxShape.circle,
+                    border: Border.all(color: color.withOpacity(0.5), width: 2),
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.mic,
                     size: 48,
-                    color: Colors.tealAccent,
+                    color: color,
                   ),
                 ),
               );
@@ -236,30 +307,41 @@ class _AIVoiceOverlayState extends State<AIVoiceOverlay>
   }
 
   Widget _buildStatusText(ColorScheme colorScheme) {
-    String text;
     switch (_currentState) {
       case AIState.listening:
-        text = "Helm is listening...";
-        break;
+        return const Text(
+          "Helm is listening...",
+          textAlign: TextAlign.center,
+          style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+        );
+      case AIState.clarifying:
+        return Text(
+          _clarificationQuestion ?? "Could you clarify the details?",
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            color: Colors.amberAccent,
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
+        );
       case AIState.processing:
-        text = "De-jumbling & Creating Task...";
-        break;
+        return const Text(
+          "Refining & Finalizing...",
+          textAlign: TextAlign.center,
+          style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+        );
       case AIState.success:
-        text = "Task Added Successfully";
-        break;
+        return const Text(
+          "Task Added Successfully",
+          textAlign: TextAlign.center,
+          style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+        );
       case AIState.error:
-        text = _errorMessage.isNotEmpty ? _errorMessage : "Something went wrong";
-        break;
+        return Text(
+          _errorMessage.isNotEmpty ? _errorMessage : "Something went wrong",
+          textAlign: TextAlign.center,
+          style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+        );
     }
-
-    return Text(
-      text,
-      textAlign: TextAlign.center,
-      style: const TextStyle(
-        color: Colors.white,
-        fontSize: 18,
-        fontWeight: FontWeight.bold,
-      ),
-    );
   }
 }
