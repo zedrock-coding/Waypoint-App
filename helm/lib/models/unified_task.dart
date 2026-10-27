@@ -48,11 +48,11 @@ class UnifiedTask {
       dateTime: task.dueAt ?? task.createdAt ?? DateTime.now(),
       dueDate: task.dueAt,
       isCompleted: task.isCompleted ?? false,
-      status: _parseStatus(task.status ?? 'toDo'),
+      status: parseStatus(task.status ?? 'toDo'),
       communityId: task.communityId,
       userId: task.userId,
       categoryIds: List.from(task.categoryIds ?? (task.categoryId != null ? [task.categoryId!] : [])),
-      priority: _parsePriority(task.priority ?? 'medium'),
+      priority: parsePriority(task.priority ?? 'medium'),
       assignees: List.from(task.assignees ?? []),
       isLocal: task.communityId == null, 
       order: task.order ?? 0,
@@ -69,11 +69,11 @@ class UnifiedTask {
       dateTime: data['due_at'] != null ? DateTime.parse(data['due_at']) : DateTime.parse(data['created_at']),
       dueDate: data['due_at'] != null ? DateTime.parse(data['due_at']) : null,
       isCompleted: data['is_completed'] ?? false,
-      status: _parseStatus(data['status'] ?? 'toDo'),
+      status: parseStatus(data['status'] ?? 'toDo'),
       communityId: data['community_id'],
       userId: data['user_id'],
       categoryIds: (data['category_ids'] as List?)?.cast<String>() ?? (data['category_id'] != null ? [data['category_id'].toString()] : []),
-      priority: _parsePriority(data['priority'] ?? 'medium'),
+      priority: parsePriority(data['priority'] ?? 'medium'),
       assignees: (data['assignees'] as List?)?.cast<String>() ?? [], 
       isLocal: false,
       order: data['order'] ?? 0,
@@ -82,7 +82,8 @@ class UnifiedTask {
     );
   }
 
-  static Priority _parsePriority(String p) {
+  static Priority parsePriority(String? p) {
+    if (p == null) return Priority.medium;
     switch (p.toLowerCase()) {
       case 'high': return Priority.high;
       case 'low': return Priority.low;
@@ -90,11 +91,17 @@ class UnifiedTask {
     }
   }
 
-  static Status _parseStatus(String s) {
-    switch (s) {
-      case 'inProgress': return Status.inProgress;
-      case 'done': return Status.done;
-      default: return Status.toDo;
+  static Status parseStatus(String? s) {
+    if (s == null) return Status.toDo;
+    switch (s.toLowerCase()) {
+      case 'inprogress':
+      case 'in_progress':
+        return Status.inProgress;
+      case 'done':
+      case 'completed':
+        return Status.done;
+      default:
+        return Status.toDo;
     }
   }
 }

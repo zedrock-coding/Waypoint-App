@@ -2,10 +2,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:isar/isar.dart';
 import '../models/hive_models.dart' as hive_model;
 import '../models/unified_task.dart';
-import '../models/event.dart' as isar_model;
 import '../models/sync_model.dart';
 import '../services/sync_service.dart';
 import '../notification_service.dart';
@@ -15,7 +13,6 @@ class TaskProvider with ChangeNotifier {
   final _supabase = Supabase.instance.client;
   final _taskBox = Hive.box<hive_model.Task>('tasks');
   final _categoryBox = Hive.box<hive_model.Category>('categories');
-  final Isar? isar;
   
   String? _selectedCategoryId;
   String? _activeCommunityId;
@@ -27,7 +24,7 @@ class TaskProvider with ChangeNotifier {
   StreamSubscription? _categorySub;
   StreamSubscription? _hiveSub;
 
-  TaskProvider({this.isar}) {
+  TaskProvider() {
     _init();
   }
 
@@ -62,71 +59,6 @@ class TaskProvider with ChangeNotifier {
         _refreshPersonalTasks();
       }
     });
-
-    if (isar != null) {
-      _migrateFromIsar();
-    }
-  }
-
-  Future<void> _migrateFromIsar() async {
-    if (isar == null) return;
-    
-    final events = await isar!.collection<isar_model.Event>().where().findAll();
-    if (events.isEmpty) return;
-
-    debugPrint('TaskProvider: Migrating ${events.length} tasks from Isar to Hive...');
-    
-    for (int i = 0; i < events.length; i++) {
-      final event = events[i];
-      final id = const Uuid().v4();
-      final task = hive_model.Task(
-        id: id,
-        title: event.title,
-        description: event.description,
-        isCompleted: event.status == isar_model.Status.done,
-        userId: _supabase.auth.currentUser?.id,
-        createdAt: event.dateTime,
-        priority: event.priority.name,
-        status: _isarStatusToString(event.status),
-        order: i,
-        assignees: List.from(event.assignees),
-        categoryIds: [], 
-        subtasks: [],
-      );
-      
-      await _taskBox.put(id, task);
-      
-      if (task.userId != null) {
-        try {
-          await _supabase.from('tasks').insert({
-            'id': id,
-            'title': task.title,
-            'description': task.description,
-            'user_id': task.userId,
-            'priority': task.priority,
-            'status': task.status,
-            'is_completed': task.isCompleted,
-            'created_at': task.createdAt?.toIso8601String() ?? DateTime.now().toIso8601String(),
-            'order': i,
-            'assignees': task.assignees,
-            'subtasks': [],
-          });
-        } catch (e) {
-          debugPrint('Migration Sync Error: $e');
-        }
-      }
-    }
-
-    await isar!.writeTxn(() => isar!.collection<isar_model.Event>().clear());
-    debugPrint('TaskProvider: Migration Complete.');
-  }
-
-  String _isarStatusToString(isar_model.Status s) {
-    switch (s) {
-      case isar_model.Status.inProgress: return 'inProgress';
-      case isar_model.Status.done: return 'done';
-      default: return 'toDo';
-    }
   }
 
   Future<void> _refreshPersonalTasks() async {

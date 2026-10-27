@@ -1,21 +1,13 @@
 import 'dart:async';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:isar/isar.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
-import 'models/event.dart';
-import 'models/category.dart' as model;
-import 'models/settings.dart';
 import 'models/unified_task.dart';
 
-import 'repositories/task_repository.dart';
 import 'services/invite_service.dart';
-import 'services/task_service.dart';
 import 'services/navigation_provider.dart';
 import 'services/hive_database.dart';
 import 'services/ai_service.dart';
@@ -72,29 +64,11 @@ void main() async {
     await NotificationService().init();
     debugPrint('INIT: Notifications Started.');
     
-    Isar? isar;
-    if (!kIsWeb) {
-      try {
-        debugPrint('INIT: Opening Isar migration bridge...');
-        final dir = await getApplicationDocumentsDirectory();
-        isar = await Isar.open(
-          [EventSchema, model.CategorySchema, SettingsSchema],
-          directory: dir.path,
-        );
-        debugPrint('INIT: Isar bridge opened.');
-      } catch (e) {
-        debugPrint('INIT: Skipping Isar bridge (Incompatible/Missing): $e');
-      }
-    }
-
-    final TaskRepository taskRepo = TaskRepository();
-    final TaskProvider taskProvider = TaskProvider(isar: isar);
+    final TaskProvider taskProvider = TaskProvider();
 
     runApp(
       MultiProvider(
         providers: [
-          Provider<TaskRepository>.value(value: taskRepo),
-          Provider<TaskService>(create: (context) => TaskService()),
           Provider<AiService>(create: (context) => AiService()),
           ChangeNotifierProvider<ThemeProvider>(create: (context) => ThemeProvider()),
           ChangeNotifierProvider<NavigationProvider>(create: (context) => NavigationProvider()),
@@ -227,7 +201,6 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   Widget build(BuildContext context) {
     final navProvider = context.watch<NavigationProvider>();
-    final taskService = context.read<TaskService>();
     final taskProvider = context.watch<TaskProvider>();
     
     final double width = MediaQuery.of(context).size.width;
@@ -263,7 +236,7 @@ class _MyHomePageState extends State<MyHomePage> {
             onPressed: () => navProvider.selectCommunity(null),
           ),
         ];
-        body = _buildSupabaseTaskStream(taskService, navProvider.selectedCommunityId!, taskProvider, isDesktop);
+        body = _buildSupabaseTaskStream(navProvider.selectedCommunityId!, taskProvider, isDesktop);
       } else {
         title = 'Communities';
         body = const CommunityListView();
@@ -381,7 +354,7 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 
-  Widget _buildSupabaseTaskStream(TaskService taskService, String communityId, TaskProvider taskProvider, bool isDesktop) {
+  Widget _buildSupabaseTaskStream(String communityId, TaskProvider taskProvider, bool isDesktop) {
     return StreamBuilder<List<UnifiedTask>>(
       stream: taskProvider.streamCommunityTasks(communityId),
       builder: (context, snapshot) {

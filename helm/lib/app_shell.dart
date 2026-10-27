@@ -1,15 +1,12 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:webview_flutter/webview_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'ai_voice_overlay.dart';
 import 'widgets/task_search_delegate.dart';
 import 'widgets/app_intents.dart';
 import 'widgets/task_form_utils.dart';
-import 'widgets/ai_text_drawer.dart';
 import 'widgets/notification_feed.dart';
 import 'widgets/notification_bell.dart';
 import 'widgets/user_avatar.dart';
@@ -154,45 +151,7 @@ class _AppShellState extends State<AppShell> {
         child: InkWell(
           onTap: () async {
             if (!isDesktop) Navigator.pop(context);
-            showDialog(
-              context: context,
-              builder: (ctx) => Dialog(
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                clipBehavior: Clip.hardEdge,
-                child: SizedBox(
-                  width: 800,
-                  height: 600,
-                  child: Column(
-                    children: [
-                      Container(
-                        color: colorScheme.surfaceVariant,
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        child: Row(
-                          children: [
-                            Icon(icon, size: 20, color: colorScheme.onSurface),
-                            const SizedBox(width: 8),
-                            Text(label, style: const TextStyle(fontWeight: FontWeight.bold)),
-                            const Spacer(),
-                            IconButton(
-                              icon: const Icon(Icons.open_in_browser_rounded),
-                              tooltip: 'Open in Browser',
-                              onPressed: () => launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.close),
-                              onPressed: () => Navigator.pop(ctx),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Expanded(
-                        child: _SupportWebView(url: url),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            );
+            await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
           },
           borderRadius: BorderRadius.circular(12),
           child: Container(
@@ -400,7 +359,6 @@ class _AppShellState extends State<AppShell> {
                     backgroundColor: colorScheme.surface,
                     child: sidebarContent,
                   ),
-                  endDrawer: const AITextDrawer(),
                   bottomNavigationBar: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -487,12 +445,6 @@ class _AppShellState extends State<AppShell> {
                                               icon: Icon(Icons.auto_awesome_rounded, color: colorScheme.primary),
                                               onPressed: () => _showAIVoiceOverlay(context, isDesktop),
                                             ),
-                                            if (isDesktop) 
-                                              IconButton(
-                                                visualDensity: VisualDensity.compact,
-                                                icon: Icon(Icons.keyboard_alt_outlined, color: colorScheme.onSurface.withOpacity(0.7)),
-                                                onPressed: () => _scaffoldKey.currentState?.openEndDrawer(),
-                                              ),
                                             CompositedTransformTarget(
                                               link: _notificationLayerLink,
                                               child: NotificationBellWidget(
@@ -563,50 +515,3 @@ class _AppShellState extends State<AppShell> {
   }
 }
 
-class _SupportWebView extends StatefulWidget {
-  final String url;
-  const _SupportWebView({required this.url});
-
-  @override
-  State<_SupportWebView> createState() => _SupportWebViewState();
-}
-
-class _SupportWebViewState extends State<_SupportWebView> {
-  WebViewController? _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    if (!kIsWeb && (defaultTargetPlatform == TargetPlatform.android || defaultTargetPlatform == TargetPlatform.iOS)) {
-      _controller = WebViewController()
-        ..setJavaScriptMode(JavaScriptMode.unrestricted)
-        ..setBackgroundColor(Colors.transparent)
-        ..loadRequest(Uri.parse(widget.url));
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (_controller == null || kIsWeb) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.open_in_browser_rounded, size: 64, color: Colors.teal),
-            const SizedBox(height: 24),
-            const Text('Support Portal', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 16),
-            const Text('Click the button below to open the support form safely in a new tab.'),
-            const SizedBox(height: 32),
-            ElevatedButton(
-              onPressed: () => launchUrl(Uri.parse(widget.url)),
-              child: const Text('OPEN SUPPORT FORM'),
-            )
-          ],
-        ),
-      );
-    }
-    
-    return WebViewWidget(controller: _controller!);
-  }
-}

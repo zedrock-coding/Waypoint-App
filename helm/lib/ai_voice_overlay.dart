@@ -92,13 +92,9 @@ class _AIVoiceOverlayState extends State<AIVoiceOverlay>
           }
         }
 
-        final priorityStr = (result['priority'] ?? 'MEDIUM').toString().toLowerCase();
         final communityId = result['community_id'];
         final assigneeId = result['assignee_id'];
-
-        Priority priority = Priority.medium;
-        if (priorityStr == 'high') priority = Priority.high;
-        if (priorityStr == 'low') priority = Priority.low;
+        final Priority priority = UnifiedTask.parsePriority(result['priority']?.toString());
 
         await taskProvider.addTask(
           title: title,
