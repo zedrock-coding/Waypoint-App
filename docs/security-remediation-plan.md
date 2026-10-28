@@ -39,7 +39,7 @@ Everything else (sync correctness, stale UI, notification delivery, tech debt) i
 
 | Threat | Current exposure | Phase that closes it |
 |---|---|---|
-| Anyone reads the Gemini key from `/assets/.env` or git | **Live** | 1 |
+| Anyone reads the Gemini key from `/assets/.env` (unauthenticated) or from repo history/clones | **Live** | 1 |
 | Anyone with the repo/history reads the same key | **Live** | 0 (rotate) / 1 |
 | Malicious feedback row executes JS in the admin dashboard, stealing the pasted `service_role` | **Live** | 0 |
 | Member edits an Owner/Admin task via a custom client (bypasses the Flutter `AbsorbPointer`) | **Live** | 3 |
