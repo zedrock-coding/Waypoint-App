@@ -4,6 +4,20 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 class SupabaseService {
   static final client = Supabase.instance.client;
 
+  /// Short-lived roster cache. Every task card used to refetch the same member
+  /// list, and the assignee avatar had no name to show at all. Keyed by
+  /// community, invalidated by [clearMemberCache] or the TTL.
+  static final Map<String, _CachedMembers> _memberCache = {};
+  static const Duration _memberCacheTtl = Duration(minutes: 2);
+
+  static void clearMemberCache([String? communityId]) {
+    if (communityId == null) {
+      _memberCache.clear();
+    } else {
+      _memberCache.remove(communityId);
+    }
+  }
+
   /// Fetch all communities the current logged-in user is a member of.
   Future<List<Map<String, dynamic>>> fetchUserCommunities() async {
     final userId = client.auth.currentUser?.id;
@@ -45,19 +59,30 @@ class SupabaseService {
   }
 
   /// Fetch all members of a specific community, including their full names and avatars.
-  Future<List<Map<String, dynamic>>> getCommunityMembers(String communityId) async {
+  Future<List<Map<String, dynamic>>> getCommunityMembers(String communityId, {bool forceRefresh = false}) async {
+    final cached = _memberCache[communityId];
+    if (!forceRefresh &&
+        cached != null &&
+        DateTime.now().difference(cached.fetchedAt) < _memberCacheTtl) {
+      return cached.members;
+    }
+
+    List<Map<String, dynamic>> members;
     try {
       final response = await client.rpc('get_community_member_names', params: {
         'p_community_id': communityId,
       });
-      return List<Map<String, dynamic>>.from(response);
+      members = List<Map<String, dynamic>>.from(response);
     } catch (e) {
       debugPrint('Error fetching members with names: $e. Falling back to IDs.');
-      return await client
+      members = await client
           .from('community_members')
           .select('*')
           .eq('community_id', communityId);
     }
+
+    _memberCache[communityId] = _CachedMembers(members, DateTime.now());
+    return members;
   }
 
   /// Upload a profile picture to the 'avatars' bucket.
@@ -172,4 +197,11 @@ class SupabaseService {
   Future<void> signOut() async {
     await client.auth.signOut();
   }
+}
+
+class _CachedMembers {
+  final List<Map<String, dynamic>> members;
+  final DateTime fetchedAt;
+
+  _CachedMembers(this.members, this.fetchedAt);
 }

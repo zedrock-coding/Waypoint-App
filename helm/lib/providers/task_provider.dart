@@ -53,11 +53,17 @@ class TaskProvider with ChangeNotifier {
     _supabase.auth.onAuthStateChange.listen((data) {
       if (data.event == AuthChangeEvent.signedIn ||
           data.event == AuthChangeEvent.tokenRefreshed) {
+        // A new session means the old realtime subscriptions are dead; cached
+        // streams would never emit again.
+        _communityTaskStreams.clear();
+        _commentStreams.clear();
         _setupSupabaseSync();
         _setupCategorySync();
       } else if (data.event == AuthChangeEvent.signedOut) {
         _supabaseSub?.cancel();
         _categorySub?.cancel();
+        _communityTaskStreams.clear();
+        _commentStreams.clear();
         _refreshPersonalTasks();
       }
     });
@@ -198,15 +204,24 @@ class TaskProvider with ChangeNotifier {
     );
   }
 
-  Stream<List<UnifiedTask>> streamCommunityTasks(String communityId) {
-    return _supabase
-        .from('tasks')
-        .stream(primaryKey: ['id'])
-        .eq('community_id', communityId)
-        .map((data) {
-          return data.map((d) => UnifiedTask.fromHive(_taskFromRow(d))).toList()
-            ..sort((a, b) => a.order.compareTo(b.order));
-        });
+  /// Community task streams, memoized per community.
+  ///
+  /// `StreamBuilder` used to receive a brand-new stream on every build, which
+  /// tore down and re-established the realtime subscription on each frame — the
+  /// likely cause of duplicated comment deliveries and pointless socket churn.
+  final Map<String, Stream<List<UnifiedTask>>> _communityTaskStreams = {};
+
+  Stream<List<UnifiedTask>> communityTasksStream(String communityId) {
+    return _communityTaskStreams.putIfAbsent(communityId, () {
+      return _supabase
+          .from('tasks')
+          .stream(primaryKey: ['id'])
+          .eq('community_id', communityId)
+          .map((data) {
+            return data.map((d) => UnifiedTask.fromHive(_taskFromRow(d))).toList()
+              ..sort((a, b) => a.order.compareTo(b.order));
+          });
+    });
   }
 
   void _setupCategorySync() {
@@ -523,12 +538,18 @@ class TaskProvider with ChangeNotifier {
 
   // --- COMMENTING FEATURE ---
 
+  /// Comments stream, memoized per task for the same reason as community tasks:
+  /// a new stream on every build re-subscribes and can deliver duplicates.
+  final Map<String, Stream<List<Map<String, dynamic>>>> _commentStreams = {};
+
   Stream<List<Map<String, dynamic>>> streamTaskComments(String taskId) {
-    return _supabase
-        .from('task_comments')
-        .stream(primaryKey: ['id'])
-        .eq('task_id', taskId)
-        .order('created_at', ascending: true);
+    return _commentStreams.putIfAbsent(taskId, () {
+      return _supabase
+          .from('task_comments')
+          .stream(primaryKey: ['id'])
+          .eq('task_id', taskId)
+          .order('created_at', ascending: true);
+    });
   }
 
   Future<void> addComment(String taskId, String text) async {

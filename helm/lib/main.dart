@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -13,6 +14,7 @@ import 'services/navigation_provider.dart';
 import 'services/hive_database.dart';
 import 'services/ai_service.dart';
 import 'services/sync_service.dart';
+import 'services/task_rules.dart';
 import 'providers/task_provider.dart';
 
 import 'widgets/task_item_card.dart';
@@ -231,12 +233,74 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  UnifiedTask? _selectedTask;
+  /// Only the id is kept; the task itself is resolved from the provider/stream on
+  /// every build. Holding a `UnifiedTask` meant the desktop panel showed a
+  /// frozen snapshot that ignored every later edit until it was reopened.
+  String? _selectedTaskId;
+  String? _detailScope;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => _requestNotificationPermissionOnce(),
+    );
+  }
+
+  /// Android 13+ will not show a notification until the runtime permission is
+  /// granted, and nothing used to ask outside the dashboard card — so reminders
+  /// silently never appeared for most installs. Ask once, after sign-in, with a
+  /// short rationale, then persist the decision.
+  Future<void> _requestNotificationPermissionOnce() async {
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) return;
+    if (Supabase.instance.client.auth.currentUser == null) return;
+    if (!Hive.isBoxOpen('settings')) return;
+
+    final settingsBox = Hive.box('settings');
+    if (settingsBox.get('notification_permission_requested') == true) return;
+
+    if (!mounted) return;
+    final wantsReminders = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Enable task reminders?'),
+        content: const Text(
+          'Helm can notify you before a task is due. Reminders are scheduled on '
+          'this device only, and you can turn them off later in Settings.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('NOT NOW'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('ENABLE'),
+          ),
+        ],
+      ),
+    );
+
+    if (wantsReminders == true) {
+      await NotificationService().requestPermissions();
+    }
+    await settingsBox.put('notification_permission_requested', true);
+  }
 
   @override
   Widget build(BuildContext context) {
     final navProvider = context.watch<NavigationProvider>();
     final taskProvider = context.watch<TaskProvider>();
+
+    // A selected task belongs to one scope (personal tab, or one community).
+    // Changing tab or community drops the selection instead of showing a task
+    // from somewhere else.
+    final String scope =
+        '${navProvider.selectedIndex}:${navProvider.selectedCommunityId ?? ''}';
+    if (_detailScope != null && _detailScope != scope) {
+      _selectedTaskId = null;
+    }
+    _detailScope = scope;
     
     final double width = MediaQuery.of(context).size.width;
     final bool isDesktop = width > 900;
@@ -281,7 +345,7 @@ class _MyHomePageState extends State<MyHomePage> {
     return AppShell(
       title: title,
       actions: appBarActions,
-      floatingActionButton: _selectedTask == null ? FloatingActionButton(
+      floatingActionButton: _selectedTaskId == null ? FloatingActionButton(
         onPressed: () {
           HapticFeedback.mediumImpact();
           showAddTaskForm(
@@ -304,24 +368,44 @@ class _MyHomePageState extends State<MyHomePage> {
           AnimatedContainer(
             duration: const Duration(milliseconds: 300),
             curve: Curves.easeInOut,
-            width: (isDesktop && _selectedTask != null) ? 400 : 0,
+            width: (isDesktop && _selectedTaskId != null) ? 400 : 0,
             clipBehavior: Clip.hardEdge,
             decoration: BoxDecoration(
               color: Theme.of(context).colorScheme.surface,
               border: Border(left: BorderSide(color: Theme.of(context).colorScheme.outlineVariant, width: 0.5)),
             ),
-            child: _selectedTask == null 
-                ? const SizedBox.shrink()
-                : TaskDetailContent(
-                    key: ValueKey('detail_${_selectedTask!.id}'),
-                    task: _selectedTask!, 
-                    onClose: () => setState(() => _selectedTask = null),
-                    useHero: false,
-                  ),
+            child: _buildDetailPanel(navProvider, taskProvider),
           ),
         ],
       ),
     );
+  }
+
+  Widget _buildDetailPanel(NavigationProvider nav, TaskProvider taskProvider) {
+    final id = _selectedTaskId;
+    if (id == null) return const SizedBox.shrink();
+
+    Widget panel(UnifiedTask? task) {
+      if (task == null) return const SizedBox.shrink();
+      return TaskDetailContent(
+        key: ValueKey('detail_${task.id}'),
+        task: task,
+        onClose: () => setState(() => _selectedTaskId = null),
+        useHero: false,
+      );
+    }
+
+    final communityId = nav.selectedCommunityId;
+    if (nav.selectedIndex == 1 && communityId != null) {
+      return StreamBuilder<List<UnifiedTask>>(
+        stream: taskProvider.communityTasksStream(communityId),
+        builder: (context, snapshot) {
+          return panel(findTaskById(snapshot.data, id));
+        },
+      );
+    }
+
+    return panel(findTaskById(taskProvider.personalTasks, id));
   }
 
   Widget _buildPersonalTasksView(bool isDesktop, TaskProvider taskProvider) {
@@ -342,6 +426,7 @@ class _MyHomePageState extends State<MyHomePage> {
             onReorder: (oldIndex, newIndex) {
               taskProvider.reorderTasks(oldIndex, newIndex);
             },
+            onReorderStart: (_) => HapticFeedback.mediumImpact(),
             proxyDecorator: (child, index, animation) => WobbleDecorator(child: child),
             buildDefaultDragHandles: false,
             itemBuilder: (context, index) {
@@ -352,7 +437,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 index: index,
                 onTap: () {
                   if (isDesktop) {
-                    setState(() => _selectedTask = unifiedTask);
+                    setState(() => _selectedTaskId = unifiedTask.id);
                   } else {
                     Navigator.push(
                       context,
@@ -391,7 +476,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
   Widget _buildSupabaseTaskStream(String communityId, TaskProvider taskProvider, bool isDesktop) {
     return StreamBuilder<List<UnifiedTask>>(
-      stream: taskProvider.streamCommunityTasks(communityId),
+      stream: taskProvider.communityTasksStream(communityId),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
@@ -411,7 +496,7 @@ class _MyHomePageState extends State<MyHomePage> {
               index: index,
               onTap: () {
                 if (isDesktop) {
-                  setState(() => _selectedTask = unifiedTask);
+                  setState(() => _selectedTaskId = unifiedTask.id);
                 } else {
                   Navigator.push(
                     context,
@@ -482,8 +567,6 @@ class _WobbleDecoratorState extends State<WobbleDecorator> with SingleTickerProv
       duration: const Duration(milliseconds: 100),
       vsync: this,
     )..repeat(reverse: true);
-    
-    HapticFeedback.heavyImpact();
   }
 
   @override

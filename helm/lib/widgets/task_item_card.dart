@@ -5,6 +5,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'user_avatar.dart';
 import '../models/unified_task.dart';
 import '../models/hive_models.dart' as hive_model;
+import '../services/supabase_service.dart';
 
 class TaskItemCard extends StatelessWidget {
   final UnifiedTask task;
@@ -189,12 +190,32 @@ class TaskItemCard extends StatelessWidget {
 
   Widget _buildAssigneeAvatar(ColorScheme colorScheme) {
     if (task.assignees.isEmpty) return const SizedBox.shrink();
-    
-    return UserAvatar(
-      fullName: 'Assignee', // Fallback since we only have ID here
-      radius: 12,
+
+    // Show the real assignee. The card only has ids, so resolve the name from
+    // the (cached) community roster; fall back to the id prefix while loading.
+    final String assigneeId = task.assignees.first;
+    final communityId = task.communityId;
+
+    if (communityId == null) {
+      return UserAvatar(fullName: _shortId(assigneeId), radius: 12);
+    }
+
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: SupabaseService().getCommunityMembers(communityId),
+      builder: (context, snapshot) {
+        String? name;
+        for (final member in snapshot.data ?? const <Map<String, dynamic>>[]) {
+          if (member['user_id']?.toString() == assigneeId) {
+            name = member['full_name']?.toString();
+            break;
+          }
+        }
+        return UserAvatar(fullName: name ?? _shortId(assigneeId), radius: 12);
+      },
     );
   }
+
+  String _shortId(String id) => id.length > 4 ? id.substring(0, 4) : id;
 
   Widget _buildTaskContent(BuildContext context, bool isDone, ColorScheme colorScheme, Color priorityColor) {
     final categoryBox = Hive.box<hive_model.Category>('categories');

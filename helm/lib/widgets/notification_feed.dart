@@ -12,6 +12,20 @@ class NotificationFeedUI extends StatefulWidget {
 class _NotificationFeedUIState extends State<NotificationFeedUI> {
   final _supabase = Supabase.instance.client;
 
+  /// Created once per screen open; building it in `build` re-subscribed on
+  /// every rebuild.
+  late final Stream<List<Map<String, dynamic>>> _feedStream;
+
+  @override
+  void initState() {
+    super.initState();
+    _feedStream = _supabase
+        .from('notifications')
+        .stream(primaryKey: ['id'])
+        .order('created_at', ascending: false)
+        .limit(20);
+  }
+
   Future<void> _markAllAsRead() async {
     final userId = _supabase.auth.currentUser?.id;
     if (userId == null) return;
@@ -79,11 +93,7 @@ class _NotificationFeedUIState extends State<NotificationFeedUI> {
           const Divider(height: 1),
           Flexible(
             child: StreamBuilder<List<Map<String, dynamic>>>(
-              stream: _supabase
-                  .from('notifications')
-                  .stream(primaryKey: ['id'])
-                  .order('created_at', ascending: false)
-                  .limit(20),
+              stream: _feedStream,
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: Padding(
@@ -114,8 +124,13 @@ class _NotificationFeedUIState extends State<NotificationFeedUI> {
                   itemCount: notifications.length,
                   itemBuilder: (context, index) {
                     final item = notifications[index];
-                    final isRead = item['is_read'] as bool;
-                    final date = DateTime.parse(item['created_at']);
+                    // Realtime payloads are untyped JSON: `as bool` on a null
+                    // and `DateTime.parse` on a missing value both threw inside
+                    // the builder and blanked the whole feed.
+                    final isRead = item['is_read'] == true;
+                    final date = DateTime.tryParse(item['created_at']?.toString() ?? '') ?? DateTime.now();
+                    final title = item['title']?.toString() ?? 'Notification';
+                    final body = item['body']?.toString() ?? '';
 
                     return Material(
                       color: isRead ? Colors.transparent : colorScheme.primary.withOpacity(0.03),
@@ -134,7 +149,7 @@ class _NotificationFeedUIState extends State<NotificationFeedUI> {
                           child: Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              _buildIcon(context, item['type']),
+                              _buildIcon(context, item['type']?.toString() ?? ''),
                               const SizedBox(width: 16),
                               Expanded(
                                 child: Column(
@@ -144,7 +159,7 @@ class _NotificationFeedUIState extends State<NotificationFeedUI> {
                                       children: [
                                         Expanded(
                                           child: Text(
-                                            item['title'],
+                                            title,
                                             style: TextStyle(
                                               fontSize: 14,
                                               fontWeight: isRead ? FontWeight.normal : FontWeight.bold,
@@ -159,7 +174,7 @@ class _NotificationFeedUIState extends State<NotificationFeedUI> {
                                     ),
                                     const SizedBox(height: 4),
                                     Text(
-                                      item['body'],
+                                      body,
                                       style: TextStyle(
                                         fontSize: 13,
                                         color: colorScheme.onSurface.withOpacity(0.7),

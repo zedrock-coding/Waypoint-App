@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'notification_feed.dart';
 
-class NotificationBellWidget extends StatelessWidget {
+class NotificationBellWidget extends StatefulWidget {
   final bool isDesktop;
   final LayerLink layerLink;
   final VoidCallback onToggle;
@@ -15,15 +15,30 @@ class NotificationBellWidget extends StatelessWidget {
   });
 
   @override
+  State<NotificationBellWidget> createState() => _NotificationBellWidgetState();
+}
+
+class _NotificationBellWidgetState extends State<NotificationBellWidget> {
+  /// Created once. Building the stream inside `build` re-subscribed on every
+  /// rebuild of the shell, which is both wasteful and a source of duplicate
+  /// realtime events.
+  late final Stream<List<Map<String, dynamic>>> _unreadStream;
+
+  @override
+  void initState() {
+    super.initState();
+    _unreadStream = Supabase.instance.client
+        .from('notifications')
+        .stream(primaryKey: ['id'])
+        .eq('is_read', false);
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final supabase = Supabase.instance.client;
     final colorScheme = Theme.of(context).colorScheme;
 
     return StreamBuilder<List<Map<String, dynamic>>>(
-      stream: supabase
-          .from('notifications')
-          .stream(primaryKey: ['id'])
-          .eq('is_read', false),
+      stream: _unreadStream,
       builder: (context, snapshot) {
         final unreadCount = snapshot.data?.length ?? 0;
 
@@ -54,14 +69,14 @@ class NotificationBellWidget extends StatelessWidget {
             ],
           ),
           onPressed: () {
-            if (isDesktop) {
-              onToggle();
+            if (widget.isDesktop) {
+              widget.onToggle();
             } else {
               showModalBottomSheet(
                 context: context,
                 backgroundColor: Colors.transparent,
                 isScrollControlled: true,
-                builder: (context) => NotificationFeedUI(),
+                builder: (context) => const NotificationFeedUI(),
               );
             }
           },

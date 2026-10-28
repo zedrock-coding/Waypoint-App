@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'widgets/user_avatar.dart';
 import 'services/supabase_service.dart';
-import 'app_shell.dart';
 
 class CommunityManagePage extends StatefulWidget {
   final String communityId;
@@ -23,9 +22,25 @@ class _CommunityManagePageState extends State<CommunityManagePage> {
   bool _isAdmin = false;
   bool _isOwner = false;
 
+  /// The roster future is created once. A `FutureBuilder` with a fresh
+  /// `future:` expression re-runs the RPC on every rebuild (including every
+  /// setState for a role change), which also made the list flicker.
+  late Future<List<Map<String, dynamic>>> _membersFuture;
+
   @override
   void initState() {
     super.initState();
+    _membersFuture =
+        _supabaseService.getCommunityMembers(widget.communityId);
+    _checkPermissions();
+  }
+
+  void _refreshMembers() {
+    SupabaseService.clearMemberCache(widget.communityId);
+    setState(() {
+      _membersFuture =
+          _supabaseService.getCommunityMembers(widget.communityId, forceRefresh: true);
+    });
     _checkPermissions();
   }
 
@@ -63,7 +78,7 @@ class _CommunityManagePageState extends State<CommunityManagePage> {
   Future<void> _removeMember(String targetUserId) async {
     try {
       await _supabaseService.removeMember(widget.communityId, targetUserId);
-      if (mounted) setState(() {}); 
+      if (mounted) _refreshMembers();
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to remove: $e')));
@@ -74,7 +89,7 @@ class _CommunityManagePageState extends State<CommunityManagePage> {
   Future<void> _changeRole(String targetUserId, String newRole) async {
     try {
       await _supabaseService.updateMemberRole(widget.communityId, targetUserId, newRole);
-      if (mounted) setState(() {}); 
+      if (mounted) _refreshMembers();
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to update: $e')));
@@ -121,16 +136,20 @@ class _CommunityManagePageState extends State<CommunityManagePage> {
     final colorScheme = Theme.of(context).colorScheme;
     final String inviteLink = 'helm://invite?communityId=${widget.communityId}';
 
-    return AppShell(
-      title: 'Manage ${widget.communityName}',
-      actions: [
-        IconButton(
-          icon: const Icon(Icons.close),
-          onPressed: () => Navigator.pop(context),
-          tooltip: 'Back to Tasks',
-        ),
-      ],
-      child: Column(
+    // A plain page, not a second AppShell: nesting the shell inside the tab
+    // shell duplicated the sidebar/header and created two navigation states.
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Manage ${widget.communityName}'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.close),
+            onPressed: () => Navigator.pop(context),
+            tooltip: 'Back to Tasks',
+          ),
+        ],
+      ),
+      body: Column(
         children: [
           Container(
             width: double.infinity,
@@ -210,7 +229,7 @@ class _CommunityManagePageState extends State<CommunityManagePage> {
           const SizedBox(height: 16),
           Expanded(
             child: FutureBuilder<List<Map<String, dynamic>>>(
-              future: _supabaseService.getCommunityMembers(widget.communityId),
+              future: _membersFuture,
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
                 final members = snapshot.data ?? [];

@@ -151,6 +151,33 @@ class _SettingPageState extends State<SettingPage> {
             value: settings.communityMentionsEnabled ?? true,
             onChanged: (v) => _handleNotificationToggle('communityMentions', v, themeProvider),
           ),
+          ValueListenableBuilder<String?>(
+            valueListenable: NotificationService().lastError,
+            builder: (context, error, _) {
+              if (error == null) return const SizedBox.shrink();
+              return Container(
+                margin: const EdgeInsets.only(top: 8),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.orange.withOpacity(0.3)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 18),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        error,
+                        style: const TextStyle(fontSize: 12, color: Colors.orange),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
           const Divider(height: 40),
           Text('System', style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: 16),

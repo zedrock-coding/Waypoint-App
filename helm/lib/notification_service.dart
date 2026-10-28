@@ -5,6 +5,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest_all.dart' as tz;
+import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:hive/hive.dart';
 import 'models/hive_models.dart';
 
@@ -16,6 +17,31 @@ class NotificationService {
   final FlutterLocalNotificationsPlugin _notificationsPlugin = FlutterLocalNotificationsPlugin();
   RealtimeChannel? _notificationChannel;
 
+  /// Last plugin failure, for the diagnostic shown in Settings (U16). Plugin
+  /// errors used to be swallowed into `debugPrint`, so a notification blackout
+  /// looked exactly like "no notifications happened".
+  final ValueNotifier<String?> lastError = ValueNotifier<String?>(null);
+
+  bool _timeZoneReady = false;
+
+  /// `initializeTimeZones()` only loads the database; without
+  /// `setLocalLocation`, `tz.local` stays UTC and every reminder fires at the
+  /// wrong hour for anyone not living on the prime meridian.
+  Future<void> _configureLocalTimeZone() async {
+    if (_timeZoneReady) return;
+    tz.initializeTimeZones();
+    if (!kIsWeb) {
+      try {
+        final info = await FlutterTimezone.getLocalTimezone();
+        tz.setLocalLocation(tz.getLocation(info.identifier));
+      } catch (e) {
+        debugPrint('Could not resolve the device timezone, reminders use UTC: $e');
+        lastError.value = 'Device timezone unavailable; reminders may fire at the wrong hour.';
+      }
+    }
+    _timeZoneReady = true;
+  }
+
   SupabaseClient? get _supabase {
     try {
       return Supabase.instance.client;
@@ -26,7 +52,7 @@ class NotificationService {
 
   Future<void> init() async {
     try {
-      tz.initializeTimeZones();
+      await _configureLocalTimeZone();
       
       const AndroidInitializationSettings androidSettings = AndroidInitializationSettings('@mipmap/launcher_icon');
       const DarwinInitializationSettings iosSettings = DarwinInitializationSettings(
@@ -50,6 +76,7 @@ class NotificationService {
       }
     } catch (e) {
       debugPrint('NotificationService init error: $e');
+      lastError.value = 'Notifications could not start on this device.';
     }
 
     // Initial setup for logged in user
@@ -162,7 +189,22 @@ class NotificationService {
       await _notificationsPlugin.show(id, title, body, notificationDetails, payload: payload);
     } catch (e) {
       debugPrint('Failed to show notification: $e');
+      lastError.value = 'A notification could not be displayed.';
     }
+  }
+
+  /// Deterministic id derived from a task id.
+  ///
+  /// `String.hashCode` is not stable across runs, so reminders scheduled before
+  /// a restart could not be cancelled afterwards. FNV-1a folded into a range
+  /// that leaves room for the +1/+2 reminder buckets.
+  static int notificationBaseId(String taskId) {
+    var hash = 0x811c9dc5;
+    for (final unit in taskId.codeUnits) {
+      hash ^= unit;
+      hash = (hash * 0x01000193) & 0x7fffffff;
+    }
+    return (hash % 700000000) * 3;
   }
 
   Future<bool> requestPermissions() async {
@@ -180,7 +222,8 @@ class NotificationService {
       return (androidGranted ?? false) || (iosGranted ?? false);
     } catch (e) {
       debugPrint('Failed to request notification permissions: $e');
-      return true;
+      lastError.value = 'Notification permission could not be requested.';
+      return false;
     }
   }
 
@@ -215,6 +258,7 @@ class NotificationService {
       );
     } catch (e) {
       debugPrint('Failed to schedule daily notification: $e');
+      lastError.value = 'A daily reminder could not be scheduled.';
     }
   }
 
@@ -246,7 +290,7 @@ class NotificationService {
       return;
     }
 
-    final int baseId = taskId.hashCode;
+    final int baseId = notificationBaseId(taskId);
     final now = DateTime.now();
 
     const details = NotificationDetails(
@@ -262,7 +306,7 @@ class NotificationService {
 
     try {
       try {
-        tz.initializeTimeZones();
+        await _configureLocalTimeZone();
       } catch (_) {}
 
       // 1. Exact due time
@@ -310,6 +354,7 @@ class NotificationService {
       }
     } catch (e) {
       debugPrint('Failed to schedule task due date notification: $e');
+      lastError.value = 'A task reminder could not be scheduled.';
     }
   }
 
@@ -318,12 +363,13 @@ class NotificationService {
       return;
     }
     try {
-      final int baseId = taskId.hashCode;
+      final int baseId = notificationBaseId(taskId);
       await _notificationsPlugin.cancel(baseId);
       await _notificationsPlugin.cancel(baseId + 1);
       await _notificationsPlugin.cancel(baseId + 2);
     } catch (e) {
       debugPrint('Failed to cancel task notification: $e');
+      lastError.value = 'A task reminder could not be cancelled.';
     }
   }
 

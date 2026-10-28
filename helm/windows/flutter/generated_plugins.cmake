@@ -6,6 +6,7 @@ list(APPEND FLUTTER_PLUGIN_LIST
   app_links
   connectivity_plus
   file_selector_windows
+  flutter_timezone
   record_windows
   speech_to_text_windows
   url_launcher_windows
