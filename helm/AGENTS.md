@@ -12,51 +12,94 @@
 - **STRICT RULE**: Do NOT upgrade, alter, or replace this model string under any circumstances.
 
 ## 3. Architecture & Directory Structure
-```
-helm/lib/
-├── main.dart                   # Application entry point, Provider initialization, routing setup
-├── app_shell.dart              # Main navigation shell (Sidebar/Drawer, Header, Navigation)
-├── models/                     # Data models
-│   ├── hive_models.dart        # Hive database entities & TypeAdapters
-│   ├── sync_model.dart         # Offline queue SyncAction entity & SyncActionType
-│   └── unified_task.dart       # Unified task model merging Hive + Supabase data
-├── services/                   # Service layer & APIs
-│   ├── ai_service.dart         # Gemini AI integration using gemini-3.5-flash-lite
-│   ├── supabase_service.dart   # Supabase RPCs, Auth, and Storage calls
-│   ├── sync_service.dart       # Offline queue execution & network listener
-│   └── navigation_provider.dart# App-wide routing & active tab state
-├── providers/
-│   └── task_provider.dart      # Task state management, local/remote sync orchestration
-└── widgets/                    # Reusable UI components
-    ├── command_bar.dart        # AI Voice & Text input bar
-    ├── user_avatar.dart        # Avatar rendering with initials fallback
-    └── task_item_card.dart     # Task card with 4px left priority accent line
+
+```text
+helm/
+├── lib/
+│   ├── main.dart                  # Entry point: Supabase/Hive init, routing, home shell wiring
+│   ├── app_shell.dart             # Navigation shell: sidebar/drawer, header, pending-sync badge
+│   ├── config/app_config.dart     # Public runtime config (Supabase URL + publishable key, AI function name)
+│   ├── models/
+│   │   ├── hive_models.dart       # Hive entities + generated TypeAdapters
+│   │   ├── sync_model.dart        # SyncAction / SyncActionType (offline queue rows)
+│   │   └── unified_task.dart      # Task view model merging Hive + Supabase rows
+│   ├── providers/
+│   │   └── task_provider.dart     # Task state, local/remote orchestration, single `_mutate()` write path
+│   ├── services/
+│   │   ├── ai_service.dart        # Calls the `ai` Edge Function; falls back to the local parser
+│   │   ├── needle_engine.dart     # `LocalHeuristicParser`: offline keyword/rule extraction
+│   │   ├── supabase_service.dart  # RPC, auth, storage helpers + roster cache
+│   │   ├── sync_service.dart      # Offline queue engine, connectivity listener, retry/backoff
+│   │   ├── task_merge.dart        # Pure last-write-wins + remote-delete rules
+│   │   ├── task_rules.dart        # Pure comment-quota and task-lookup rules
+│   │   ├── hive_database.dart     # Box/adapter registration, category key migration
+│   │   ├── invite_service.dart    # Deep-link invite handling
+│   │   ├── audio_recording_service.dart
+│   │   └── navigation_provider.dart
+│   ├── theme/app_theme.dart       # Material 3 colour scheme and typography
+│   ├── theme_provider.dart
+│   ├── notification_service.dart  # Local notifications: scheduling, ids, diagnostics
+│   ├── widgets/                   # Reusable UI (command bar, task card, bell, feed, search, …)
+│   └── *_page.dart                # Screens: auth, calendar, categories, settings, task detail, …
+├── web/
+│   ├── config.js                  # The only public runtime config; no secrets
+│   └── index.html
+├── test/                          # Unit/widget tests run by CI
+└── pubspec.yaml
+supabase/
+├── functions/ai/index.ts          # Sole holder of the Gemini credential
+└── migrations/                    # SQL migrations (see docs/database.md)
+tools/admin/                       # Local-only ops console; never copied into build/web
+docs/                              # Architecture, database and remediation docs
 ```
 
+**Rule:** the Flutter client must never contain a private key. The Gemini key
+exists only as an Edge Function secret (`supabase secrets set GEMINI_API_KEY=…`),
+and `web/config.js` may only hold values that are safe to publish.
+
 ## 4. CLI Commands
-- **Run Web (Cache-Busting on Port 3000)**:
+
+All commands run from `helm/` unless stated otherwise.
+
+- **Run Web (hot reload, port 3000)**:
   ```bash
-  flutter run -d web-server --web-port 3000 --web-renderer canvaskit
+  flutter run -d chrome --web-port 3000
   ```
-- **Build Web (Release with No PWA Cache)**:
+- **Build Web (release, no service worker)**:
   ```bash
-  flutter build web --release --pwa-strategy=none --web-renderer canvaskit
+  flutter build web --release --pwa-strategy=none
   ```
-- **Generate Hive Adapters**:
+  `--pwa-strategy` is deprecated but still honoured; without it the generated
+  service worker serves stale bundles. `--web-renderer` no longer exists in
+  current Flutter and must not be added back.
+- **Analyze / test (CI gate)**:
+  ```bash
+  flutter analyze --fatal-infos
+  flutter test
+  ```
+- **Generate Hive Adapters** (only after editing `@HiveType`/`@HiveField`):
   ```bash
   dart run build_runner build --delete-conflicting-outputs
   ```
-- **Deploy Prebuilt Web Output to Vercel (CLI)**:
+- **Deploy prebuilt web output to Vercel**:
   ```bash
   cd build/web && vercel deploy . --prod --yes
+  ```
+- **Deploy the AI Edge Function** (repo root):
+  ```bash
+  supabase functions deploy ai
+  supabase secrets set GEMINI_API_KEY=your_key_here
   ```
 
 ## 5. Business Logic & System Conventions
 
 ### Offline Data Synchronization
-- **Strategy**: Local-First with Last-Write-Wins conflict resolution.
-- **Queueing**: Mutations while offline are written immediately to Hive (`tasks` box) for instant UI updates, and an action is enqueued into the `sync_queue` box.
-- **Flushing**: When `connectivity_plus` detects connection restoration, `SyncService.processSyncQueue()` processes actions in FIFO order using Supabase `.upsert()`.
+- **Strategy**: Local-First with last-write-wins conflict resolution on `updated_at`.
+- **Queueing**: Mutations while offline are written immediately to Hive (`tasks` box) for instant UI updates, and one action is enqueued into the `sync_queue` box under the key `table:id` (so the same record never accumulates duplicates).
+- **Coalescing**: `create` + `update` merges into a single `create`; repeated `update`s merge payloads; `create` + `delete` cancels out; a queued `delete` swallows later `update`s.
+- **Flushing**: When `connectivity_plus` detects connection restoration, `SyncService.processSyncQueue()` drains the queue. `create` uses `.upsert()`, `update` uses a PATCH (filtered by id) so a partial payload can never insert a truncated row, `delete` uses `.delete()`. Failures retry with exponential backoff up to 5 attempts per record, then stay queued for the next cycle.
+- **Remote deletes**: the realtime pull diffs the server snapshot against the Hive mirror; rows with an unflushed write, or rows created offline, are never removed locally.
+- **Indicator**: `SyncService.pendingChanges` drives the header badge showing unflushed writes.
 
 ### Design System & Styling
 - **Primary Background (Dark Slate)**: `#1E2124` (surface `#2D2F31`)

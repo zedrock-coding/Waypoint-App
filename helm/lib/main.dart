@@ -53,7 +53,7 @@ void main() async {
   debugPrint('INIT: Starting Supabase...');
   await Supabase.initialize(
     url: AppConfig.supabaseUrl,
-    anonKey: AppConfig.supabaseAnonKey,
+    publishableKey: AppConfig.supabaseAnonKey,
   );
 
   debugPrint('INIT: Starting InviteService...');

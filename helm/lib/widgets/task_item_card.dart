@@ -82,7 +82,7 @@ class TaskItemCard extends StatelessWidget {
           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
-            side: BorderSide(color: colorScheme.outlineVariant.withOpacity(0.5)),
+            side: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.5)),
           ),
           clipBehavior: Clip.antiAlias, // Important for the left border line
           child: InkWell(
@@ -121,7 +121,7 @@ class TaskItemCard extends StatelessWidget {
                           index: index,
                           child: Icon(
                             Icons.drag_indicator_rounded,
-                            color: colorScheme.onSurface.withOpacity(0.2),
+                            color: colorScheme.onSurface.withValues(alpha: 0.2),
                             size: 20,
                           ),
                         ),
@@ -237,7 +237,7 @@ class TaskItemCard extends StatelessWidget {
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.bold,
               decoration: isDone ? TextDecoration.lineThrough : null,
-              color: isDone ? colorScheme.onSurface.withOpacity(0.5) : colorScheme.onSurface,
+              color: isDone ? colorScheme.onSurface.withValues(alpha: 0.5) : colorScheme.onSurface,
             ),
           ),
           const SizedBox(height: 4),
@@ -294,7 +294,7 @@ class TaskItemCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(16),
       ),
       child: Row(

@@ -1,16 +1,35 @@
 name: Deploy Helm Web to Vercel
 
+# Deploy only after the Quality Gate has passed for the same commit.
+#
+# `needs:` cannot reference a job in another workflow file, so the dependency is
+# expressed with `workflow_run` instead: this workflow fires when "Quality Gate"
+# finishes, and the job below refuses to run unless it concluded successfully.
 on:
-  push:
-    branches:
-      - highest
+  workflow_run:
+    workflows: ["Quality Gate"]
+    types: [completed]
+    branches: [highest]
+  workflow_dispatch:
+
+# Never deploy two builds of the same commit at once, and never cancel one that
+# is already uploading.
+concurrency:
+  group: deploy-web-${{ github.event.workflow_run.head_sha || github.sha }}
+  cancel-in-progress: false
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
     steps:
-      # 1. Check out the code
+      # 1. Check out the commit that passed the gate. On workflow_run the
+      #    default ref is the base branch, so the SHA must be explicit.
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
       # 2. Install Flutter
       - uses: subosito/flutter-action@v2
@@ -40,7 +59,12 @@ jobs:
             echo "::error::build/web/assets/.env exists — the .env asset came back."
             exit 1
           fi
-          if grep -rIlE "AIza[0-9A-Za-z_-]{20,}|service_role" build/web; then
+          found=0
+          while IFS= read -r file; do
+            found=1
+            echo "  $file"
+          done < <(grep -rIlE "AIza[0-9A-Za-z_-]{20,}|service_role|sb_secret_" build/web || true)
+          if [ "$found" -eq 1 ]; then
             echo "::error::A credential-like string was found in build/web."
             exit 1
           fi

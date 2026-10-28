@@ -21,12 +21,12 @@ class CustomTaskSearchDelegate extends SearchDelegate {
         iconTheme: IconThemeData(color: colorScheme.onSurface),
       ),
       inputDecorationTheme: InputDecorationTheme(
-        hintStyle: TextStyle(color: colorScheme.onSurface.withOpacity(0.5)),
+        hintStyle: TextStyle(color: colorScheme.onSurface.withValues(alpha: 0.5)),
         border: InputBorder.none,
       ),
       textSelectionTheme: TextSelectionThemeData(
         cursorColor: colorScheme.primary,
-        selectionColor: colorScheme.primary.withOpacity(0.3),
+        selectionColor: colorScheme.primary.withValues(alpha: 0.3),
         selectionHandleColor: colorScheme.primary,
       ),
       textTheme: theme.textTheme.copyWith(

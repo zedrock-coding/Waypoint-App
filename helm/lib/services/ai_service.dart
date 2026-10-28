@@ -26,7 +26,7 @@ class AiService {
   NeedleEngine get needleEngine => _needleEngine;
 
   AiService({NeedleEngine? needleEngine})
-      : _needleEngine = needleEngine ?? CactusNeedleEngine() {
+      : _needleEngine = needleEngine ?? LocalHeuristicParser() {
     _needleEngine.initialize();
   }
 
@@ -125,7 +125,7 @@ User Input: "$userInput"
     }
   }
 
-  /// Two-Tier Hybrid parsing: Fast on-device Needle 3 extraction + Cloud de-jumbling
+  /// Two-tier hybrid parsing: fast local heuristic first, cloud de-jumbling second.
   Future<Map<String, dynamic>?> parseHybridCommand({
     required String userInput,
     required List<Map<String, dynamic>> availableCommunities,
@@ -138,7 +138,7 @@ User Input: "$userInput"
     final wordCount = clean.split(RegExp(r'\s+')).length;
     final isSimple = wordCount <= 8;
 
-    // Fast Path: Direct simple commands run on edge Needle engine
+    // Fast path: short commands are parsed locally, no network round trip.
     if (!forceCloud && isSimple && _needleEngine.isReady) {
       try {
         final localResult = await _needleEngine.extractTask(
@@ -148,7 +148,7 @@ User Input: "$userInput"
         );
         if (localResult != null) return localResult;
       } catch (e) {
-        debugPrint('NeedleEngine Fast Path error: $e');
+        debugPrint('Local parser fast-path error: $e');
       }
     }
 
@@ -160,7 +160,7 @@ User Input: "$userInput"
         availableMembers: availableMembers,
       );
 
-      // Pass cloud blueprint through Needle Engine for deterministic schema enforcement
+      // Normalise the cloud answer through the local parser so the schema is fixed.
       return await _needleEngine.extractTask(
         input: clean,
         templateContext: cloudTemplate,
@@ -168,7 +168,7 @@ User Input: "$userInput"
         availableMembers: availableMembers,
       );
     } catch (e) {
-      debugPrint('Cloud Tier Fallback to NeedleEngine: $e');
+      debugPrint('Cloud tier failed, falling back to the local parser: $e');
       return await _needleEngine.extractTask(
         input: clean,
         availableCommunities: availableCommunities,
@@ -221,7 +221,7 @@ INSTRUCTIONS:
       final cleanJson = text.replaceAll('```json', '').replaceAll('```', '').trim();
       final Map<String, dynamic> cloudTemplate = jsonDecode(cleanJson);
 
-      // Enforce grammar constraints via NeedleEngine
+      // Normalise the cloud answer through the local parser
       return await _needleEngine.extractTask(
         input: cloudTemplate['title'] ?? (currentDraft?['title'] ?? 'Voice Task'),
         templateContext: cloudTemplate,
@@ -258,7 +258,7 @@ SCHEMA:
       final List<dynamic> parsed = jsonDecode(cleanJson);
       final hints = parsed.map((e) => e.toString()).toList();
 
-      // Needle Engine validates and expands subtasks
+      // Local parser validates and expands subtasks
       return await _needleEngine.expandSubtasks(
         title: title,
         templateHints: hints,

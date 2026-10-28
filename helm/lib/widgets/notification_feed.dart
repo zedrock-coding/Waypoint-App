@@ -54,7 +54,7 @@ class _NotificationFeedUIState extends State<NotificationFeedUI> {
         borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 20,
             offset: const Offset(0, -5),
           ),
@@ -69,7 +69,7 @@ class _NotificationFeedUIState extends State<NotificationFeedUI> {
             height: 4,
             margin: const EdgeInsets.symmetric(vertical: 12),
             decoration: BoxDecoration(
-              color: colorScheme.onSurface.withOpacity(0.1),
+              color: colorScheme.onSurface.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -110,9 +110,9 @@ class _NotificationFeedUIState extends State<NotificationFeedUI> {
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.notifications_none_rounded, size: 48, color: colorScheme.onSurface.withOpacity(0.2)),
+                          Icon(Icons.notifications_none_rounded, size: 48, color: colorScheme.onSurface.withValues(alpha: 0.2)),
                           const SizedBox(height: 16),
-                          Text('All caught up!', style: TextStyle(color: colorScheme.onSurface.withOpacity(0.5))),
+                          Text('All caught up!', style: TextStyle(color: colorScheme.onSurface.withValues(alpha: 0.5))),
                         ],
                       ),
                     ),
@@ -133,7 +133,7 @@ class _NotificationFeedUIState extends State<NotificationFeedUI> {
                     final body = item['body']?.toString() ?? '';
 
                     return Material(
-                      color: isRead ? Colors.transparent : colorScheme.primary.withOpacity(0.03),
+                      color: isRead ? Colors.transparent : colorScheme.primary.withValues(alpha: 0.03),
                       child: InkWell(
                         onTap: () async {
                           if (!isRead) {
@@ -168,7 +168,7 @@ class _NotificationFeedUIState extends State<NotificationFeedUI> {
                                         ),
                                         Text(
                                           DateFormat.jm().format(date),
-                                          style: TextStyle(fontSize: 11, color: colorScheme.onSurface.withOpacity(0.4)),
+                                          style: TextStyle(fontSize: 11, color: colorScheme.onSurface.withValues(alpha: 0.4)),
                                         ),
                                       ],
                                     ),
@@ -177,7 +177,7 @@ class _NotificationFeedUIState extends State<NotificationFeedUI> {
                                       body,
                                       style: TextStyle(
                                         fontSize: 13,
-                                        color: colorScheme.onSurface.withOpacity(0.7),
+                                        color: colorScheme.onSurface.withValues(alpha: 0.7),
                                       ),
                                     ),
                                   ],
@@ -237,7 +237,7 @@ class _NotificationFeedUIState extends State<NotificationFeedUI> {
     return Container(
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
-        color: iconColor.withOpacity(0.1),
+        color: iconColor.withValues(alpha: 0.1),
         shape: BoxShape.circle,
       ),
       child: Icon(iconData, size: 18, color: iconColor),

@@ -52,7 +52,7 @@ class _CalendarPageState extends State<CalendarPage> {
             elevation: 0,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(24),
-              side: BorderSide(color: colorScheme.outlineVariant.withOpacity(0.5)),
+              side: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.5)),
             ),
             child: TableCalendar(
               firstDay: DateTime.utc(2020, 1, 1),
@@ -74,7 +74,7 @@ class _CalendarPageState extends State<CalendarPage> {
               eventLoader: (day) => _getEventsForDay(day, allTasks),
               calendarStyle: CalendarStyle(
                 selectedDecoration: BoxDecoration(color: colorScheme.primary, shape: BoxShape.circle),
-                todayDecoration: BoxDecoration(color: colorScheme.primary.withOpacity(0.3), shape: BoxShape.circle),
+                todayDecoration: BoxDecoration(color: colorScheme.primary.withValues(alpha: 0.3), shape: BoxShape.circle),
                 markerDecoration: BoxDecoration(color: Colors.tealAccent.shade400, shape: BoxShape.circle),
                 markersMaxCount: 3,
               ),

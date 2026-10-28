@@ -121,7 +121,7 @@ class _AppShellState extends State<AppShell> {
             ),
             decoration: BoxDecoration(
               color: isActive
-                  ? colorScheme.primary.withOpacity(0.15)
+                  ? colorScheme.primary.withValues(alpha: 0.15)
                   : Colors.transparent,
               borderRadius: BorderRadius.circular(12),
             ),
@@ -131,7 +131,7 @@ class _AppShellState extends State<AppShell> {
                   icon,
                   color: isActive
                       ? colorScheme.primary
-                      : colorScheme.onSurface.withOpacity(0.6),
+                      : colorScheme.onSurface.withValues(alpha: 0.6),
                   size: isSubItem ? 18 : 22,
                 ),
                 const SizedBox(width: 16),
@@ -143,7 +143,7 @@ class _AppShellState extends State<AppShell> {
                     style: TextStyle(
                       color: isActive
                           ? colorScheme.primary
-                          : colorScheme.onSurface.withOpacity(0.6),
+                          : colorScheme.onSurface.withValues(alpha: 0.6),
                       fontWeight: isActive
                           ? FontWeight.bold
                           : FontWeight.normal,
@@ -181,7 +181,7 @@ class _AppShellState extends State<AppShell> {
               children: [
                 Icon(
                   icon,
-                  color: colorScheme.onSurface.withOpacity(0.6),
+                  color: colorScheme.onSurface.withValues(alpha: 0.6),
                   size: 22,
                 ),
                 const SizedBox(width: 16),
@@ -189,7 +189,7 @@ class _AppShellState extends State<AppShell> {
                   child: Text(
                     label,
                     style: TextStyle(
-                      color: colorScheme.onSurface.withOpacity(0.6),
+                      color: colorScheme.onSurface.withValues(alpha: 0.6),
                       fontSize: 15,
                     ),
                   ),
@@ -197,7 +197,7 @@ class _AppShellState extends State<AppShell> {
                 Icon(
                   Icons.open_in_new_rounded,
                   size: 14,
-                  color: colorScheme.onSurface.withOpacity(0.3),
+                  color: colorScheme.onSurface.withValues(alpha: 0.3),
                 ),
               ],
             ),
@@ -259,7 +259,7 @@ class _AppShellState extends State<AppShell> {
                         navProvider.currentRoute == '/';
                     final Color headerColor = isCommunitiesHubActive
                         ? colorScheme.primary
-                        : colorScheme.onSurface.withOpacity(0.6);
+                        : colorScheme.onSurface.withValues(alpha: 0.6);
 
                     return Theme(
                       data: Theme.of(
@@ -474,7 +474,7 @@ class _AppShellState extends State<AppShell> {
                           }
                         },
                         selectedItemColor: colorScheme.primary,
-                        unselectedItemColor: colorScheme.onSurface.withOpacity(
+                        unselectedItemColor: colorScheme.onSurface.withValues(alpha: 
                           0.5,
                         ),
                         items: const [
@@ -592,7 +592,7 @@ class _AppShellState extends State<AppShell> {
                                               icon: Icon(
                                                 Icons.search,
                                                 color: colorScheme.onSurface
-                                                    .withOpacity(0.7),
+                                                    .withValues(alpha: 0.7),
                                               ),
                                               onPressed: () => showSearch(
                                                 context: context,

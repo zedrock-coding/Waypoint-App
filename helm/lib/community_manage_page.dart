@@ -156,9 +156,9 @@ class _CommunityManagePageState extends State<CommunityManagePage> {
             margin: const EdgeInsets.all(24),
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              color: colorScheme.primaryContainer.withOpacity(0.2),
+              color: colorScheme.primaryContainer.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: colorScheme.primary.withOpacity(0.1)),
+              border: Border.all(color: colorScheme.primary.withValues(alpha: 0.1)),
             ),
             child: Column(
               children: [

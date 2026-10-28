@@ -44,7 +44,7 @@ class UserAvatar extends StatelessWidget {
     if (avatarUrl != null && avatarUrl!.isNotEmpty) {
       return CircleAvatar(
         radius: radius,
-        backgroundColor: bgColor.withOpacity(0.1),
+        backgroundColor: bgColor.withValues(alpha: 0.1),
         backgroundImage: NetworkImage(avatarUrl!),
         onBackgroundImageError: (exception, stackTrace) {
           // Fallback handled by the "child" when background image fails

@@ -95,7 +95,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     width: 300,
                     height: 300,
                     decoration: BoxDecoration(
-                      color: colorScheme.primary.withOpacity(0.05),
+                      color: colorScheme.primary.withValues(alpha: 0.05),
                       shape: BoxShape.circle,
                     ),
                   ),
@@ -123,7 +123,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         onPressed: _finishOnboarding,
                         child: Text(
                           "Skip Tutorial",
-                          style: TextStyle(color: colorScheme.onSurface.withOpacity(0.5)),
+                          style: TextStyle(color: colorScheme.onSurface.withValues(alpha: 0.5)),
                         ),
                       ),
                     ),
@@ -193,7 +193,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           Container(
             padding: const EdgeInsets.all(32),
             decoration: BoxDecoration(
-              color: colorScheme.primaryContainer.withOpacity(0.1),
+              color: colorScheme.primaryContainer.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
             child: Icon(
@@ -235,7 +235,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       height: 8,
       width: isActive ? 24 : 8,
       decoration: BoxDecoration(
-        color: isActive ? colorScheme.primary : colorScheme.onSurface.withOpacity(0.2),
+        color: isActive ? colorScheme.primary : colorScheme.onSurface.withValues(alpha: 0.2),
         borderRadius: BorderRadius.circular(4),
       ),
     );

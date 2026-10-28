@@ -33,7 +33,7 @@
 
 ## 🛠 Tech Stack
 *   **Framework**: Flutter (Material 3)
-*   **AI Engine**: Google Generative AI (Gemini 3.5 Flash lite)
+*   **AI Engine**: Supabase Edge Function proxying Gemini 3.5 Flash lite (the API key never reaches the client)
 *   **Cloud Backend**: Supabase (PostgreSQL, Realtime, RLS, Storage)
 *   **Local Storage**: Hive (Reactive high-speed NoSQL)
 *   **State Management**: Provider
@@ -43,27 +43,34 @@
 ## ⚙️ Quick Start
 
 ### Prerequisites
-*   **Flutter SDK**: ^3.38.4
-*   **Gemini API Key**: Required for AI features.
+*   **Flutter SDK**: ^3.41 (Dart ^3.11)
+*   **Supabase project**: the app signs in and syncs against it.
+*   **Gemini API key**: only for deploying the `ai` Edge Function, as a function secret.
 
 ### Steps
 1.  **Clone & Install**:
     ```bash
-    git clone https://github.com/your-repo/helm.git
+    git clone https://github.com/zedrock-coding/Helm.git
     cd helm
     flutter pub get
     ```
-2.  **Environment Setup**:
-    Create a `.env` file in the root directory:
-    ```text
-    GEMINI_API_KEY=your_key_here
-    ```
-3.  **Launch**:
+2.  **Public configuration**:
+    Edit `helm/web/config.js` and set the Supabase URL and the **publishable**
+    (`sb_publishable_…`) key. Both are public by design; RLS is what protects
+    the data.
+3.  **AI backend (optional but needed for AI features)**:
     ```bash
-    flutter run
+    supabase functions deploy ai
+    supabase secrets set GEMINI_API_KEY=your_key_here
+    ```
+    The key is read from the function environment only — never commit it, and
+    never add it to a Flutter asset.
+4.  **Launch**:
+    ```bash
+    flutter run -d chrome
     ```
 
 ---
 
 ## 🔐 Security & Integrity
-Helm 3.0 utilizes PostgreSQL Security Definer functions and strict Row Level Security (RLS) to ensure your team's data is isolated and protected against unauthorized access.
+Helm 0.3.3 utilizes PostgreSQL Security Definer functions and strict Row Level Security (RLS) to ensure your team's data is isolated and protected against unauthorized access.

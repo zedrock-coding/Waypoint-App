@@ -46,7 +46,7 @@ class _NotificationBellWidgetState extends State<NotificationBellWidget> {
           icon: Stack(
             clipBehavior: Clip.none,
             children: [
-              Icon(Icons.notifications_none_rounded, color: colorScheme.onSurface.withOpacity(0.7)),
+              Icon(Icons.notifications_none_rounded, color: colorScheme.onSurface.withValues(alpha: 0.7)),
               if (unreadCount > 0)
                 Positioned(
                   right: -2,

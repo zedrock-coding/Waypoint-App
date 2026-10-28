@@ -177,7 +177,7 @@ class _CommandBarWidgetState extends State<CommandBarWidget> with SingleTickerPr
       final communities = await supabaseService.fetchUserCommunities();
       final members = await supabaseService.fetchAllAccessibleMembers();
 
-      // Hybrid parse: Needle 3 on edge for fast paths, Gemini cloud for de-jumbling
+      // Hybrid parse: local rules for short commands, Gemini for the hard ones.
       final result = await aiService.parseHybridCommand(
         userInput: input,
         availableCommunities: communities,
@@ -268,13 +268,13 @@ class _CommandBarWidgetState extends State<CommandBarWidget> with SingleTickerPr
             borderRadius: BorderRadius.circular(32),
             boxShadow: [
               BoxShadow(
-                color: _isListening ? Colors.red.withOpacity(0.2) : colorScheme.primary.withOpacity(0.15 * glow),
+                color: _isListening ? Colors.red.withValues(alpha: 0.2) : colorScheme.primary.withValues(alpha: 0.15 * glow),
                 blurRadius: _isListening ? 15 : 10 * glow,
                 spreadRadius: _isListening ? 2 : 2 * glow,
               )
             ],
             border: Border.all(
-              color: _isListening ? Colors.red : (_isLoading ? colorScheme.primary : colorScheme.outlineVariant.withOpacity(0.5)),
+              color: _isListening ? Colors.red : (_isLoading ? colorScheme.primary : colorScheme.outlineVariant.withValues(alpha: 0.5)),
               width: (_isListening || _isLoading) ? 2 : 1,
             ),
           ),

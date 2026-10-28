@@ -218,9 +218,9 @@ class _AIVoiceOverlayState extends State<AIVoiceOverlay>
               margin: const EdgeInsets.only(bottom: 8),
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
               decoration: BoxDecoration(
-                color: Colors.tealAccent.withOpacity(0.12),
+                color: Colors.tealAccent.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.tealAccent.withOpacity(0.3)),
+                border: Border.all(color: Colors.tealAccent.withValues(alpha: 0.3)),
               ),
               child: Text(
                 'Task: "${_currentDraft!['title']}"',
@@ -254,9 +254,9 @@ class _AIVoiceOverlayState extends State<AIVoiceOverlay>
                 child: Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: color.withOpacity(0.18),
+                    color: color.withValues(alpha: 0.18),
                     shape: BoxShape.circle,
-                    border: Border.all(color: color.withOpacity(0.5), width: 2),
+                    border: Border.all(color: color.withValues(alpha: 0.5), width: 2),
                   ),
                   child: Icon(
                     Icons.mic,
@@ -294,7 +294,7 @@ class _AIVoiceOverlayState extends State<AIVoiceOverlay>
         return Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Colors.redAccent.withOpacity(0.2),
+            color: Colors.redAccent.withValues(alpha: 0.2),
             shape: BoxShape.circle,
           ),
           child: const Icon(

@@ -125,8 +125,8 @@ class _CommunityListViewState extends State<CommunityListView> {
             if (index == 0) {
               return Card(
                 elevation: 0,
-                color: colorScheme.primaryContainer.withOpacity(0.3),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: colorScheme.primary.withOpacity(0.2))),
+                color: colorScheme.primaryContainer.withValues(alpha: 0.3),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: colorScheme.primary.withValues(alpha: 0.2))),
                 child: InkWell(
                   onTap: _showCreateDialog,
                   borderRadius: BorderRadius.circular(16),
@@ -144,8 +144,8 @@ class _CommunityListViewState extends State<CommunityListView> {
             if (index == 1) {
               return Card(
                 elevation: 0,
-                color: colorScheme.secondaryContainer.withOpacity(0.3),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: colorScheme.secondary.withOpacity(0.2))),
+                color: colorScheme.secondaryContainer.withValues(alpha: 0.3),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: colorScheme.secondary.withValues(alpha: 0.2))),
                 child: InkWell(
                   onTap: _showJoinDialog,
                   borderRadius: BorderRadius.circular(16),
@@ -164,7 +164,7 @@ class _CommunityListViewState extends State<CommunityListView> {
             final comm = communities[index - 2];
             return Card(
               elevation: 0,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: colorScheme.outlineVariant.withOpacity(0.5))),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.5))),
               child: InkWell(
                 onTap: () => navProvider.selectCommunity(comm['id'], name: comm['name']),
                 borderRadius: BorderRadius.circular(16),
@@ -178,7 +178,7 @@ class _CommunityListViewState extends State<CommunityListView> {
                       Text(comm['name'], style: const TextStyle(fontWeight: FontWeight.bold), maxLines: 1, overflow: TextOverflow.ellipsis),
                       const SizedBox(height: 4),
                       Text(comm['community_members']?[0]['role']?.toString().toUpperCase() ?? 'MEMBER',
-                          style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: colorScheme.onSurface.withOpacity(0.4), letterSpacing: 1)),
+                          style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: colorScheme.onSurface.withValues(alpha: 0.4), letterSpacing: 1)),
                     ],
                   ),
                 ),

@@ -185,7 +185,7 @@ class _TaskDetailContentState extends State<TaskDetailContent> {
                 children: [
                   if (!_loadingPerms && _isReadOnly)
                     Container(
-                      color: Colors.orange.withOpacity(0.1),
+                      color: Colors.orange.withValues(alpha: 0.1),
                       padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 24),
                       child: const Row(
                         children: [
@@ -229,7 +229,7 @@ class _TaskDetailContentState extends State<TaskDetailContent> {
                           minHeight: MediaQuery.of(context).size.height * 0.6,
                         ),
                         decoration: BoxDecoration(
-                          color: colorScheme.surfaceVariant.withOpacity(0.2),
+                          color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.2),
                           borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
                         ),
                         child: Padding(
@@ -282,7 +282,7 @@ class _TaskDetailContentState extends State<TaskDetailContent> {
                                       sub['title'] ?? '',
                                       style: TextStyle(
                                         decoration: isCompleted ? TextDecoration.lineThrough : null,
-                                        color: isCompleted ? colorScheme.onSurface.withOpacity(0.5) : colorScheme.onSurface,
+                                        color: isCompleted ? colorScheme.onSurface.withValues(alpha: 0.5) : colorScheme.onSurface,
                                       ),
                                     ),
                                     value: isCompleted,
@@ -391,7 +391,7 @@ class _TaskDetailContentState extends State<TaskDetailContent> {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: colorScheme.primary.withOpacity(0.1),
+              color: colorScheme.primary.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(icon, size: 18, color: colorScheme.primary),
@@ -404,7 +404,7 @@ class _TaskDetailContentState extends State<TaskDetailContent> {
               children: [
                 Text(
                   label, 
-                  style: TextStyle(fontSize: 10, color: colorScheme.onSurface.withOpacity(0.5)),
+                  style: TextStyle(fontSize: 10, color: colorScheme.onSurface.withValues(alpha: 0.5)),
                 ),
                 const SizedBox(height: 2),
                 Text(
@@ -537,9 +537,9 @@ class _TaskCommentsSectionState extends State<_TaskCommentsSection> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.orange.withOpacity(0.1),
+                  color: Colors.orange.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.orange.withOpacity(0.3)),
+                  border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
                 ),
                 child: const Row(
                   children: [
@@ -592,13 +592,13 @@ class _CommentBubble extends StatelessWidget {
         children: [
           Text(
             '$userName • ${DateFormat.jm().format(time)}',
-            style: TextStyle(fontSize: 10, color: colorScheme.onSurface.withOpacity(0.4)),
+            style: TextStyle(fontSize: 10, color: colorScheme.onSurface.withValues(alpha: 0.4)),
           ),
           const SizedBox(height: 4),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             decoration: BoxDecoration(
-              color: isMe ? colorScheme.primaryContainer.withOpacity(0.3) : colorScheme.surfaceVariant.withOpacity(0.3),
+              color: isMe ? colorScheme.primaryContainer.withValues(alpha: 0.3) : colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
               borderRadius: BorderRadius.only(
                 topLeft: const Radius.circular(16),
                 topRight: const Radius.circular(16),

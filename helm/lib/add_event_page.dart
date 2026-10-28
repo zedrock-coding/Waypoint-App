@@ -359,7 +359,7 @@ class _AddEventPageState extends State<AddEventPage> {
       children: [
         Expanded(
           child: DropdownButtonFormField<Status>(
-            value: _selectedStatus,
+            initialValue: _selectedStatus,
             decoration: const InputDecoration(
               labelText: 'Status',
               border: OutlineInputBorder(),
@@ -381,7 +381,7 @@ class _AddEventPageState extends State<AddEventPage> {
         const SizedBox(width: 16),
         Expanded(
           child: DropdownButtonFormField<Priority>(
-            value: _selectedPriority,
+            initialValue: _selectedPriority,
             decoration: const InputDecoration(
               labelText: 'Priority',
               border: OutlineInputBorder(),
@@ -545,7 +545,8 @@ class _AddEventPageState extends State<AddEventPage> {
         ),
         const SizedBox(height: 8),
         DropdownButtonFormField<String?>(
-          value: effectiveValue,
+          key: ValueKey('destination_$effectiveValue'),
+          initialValue: effectiveValue,
           decoration: const InputDecoration(
             border: OutlineInputBorder(),
             contentPadding: EdgeInsets.symmetric(horizontal: 12),

@@ -38,7 +38,7 @@ class CategoryChipBar extends StatelessWidget {
                     onSelected: (selected) {
                       if (selected) onSelected(null);
                     },
-                    selectedColor: colorScheme.primary.withOpacity(0.2),
+                    selectedColor: colorScheme.primary.withValues(alpha: 0.2),
                     checkmarkColor: colorScheme.primary,
                   ),
                 );
@@ -56,7 +56,7 @@ class CategoryChipBar extends StatelessWidget {
                   onSelected: (selected) {
                     onSelected(selected ? catId : null);
                   },
-                  selectedColor: colorScheme.primary.withOpacity(0.2),
+                  selectedColor: colorScheme.primary.withValues(alpha: 0.2),
                   checkmarkColor: colorScheme.primary,
                 ),
               );

@@ -18,7 +18,7 @@ class LegalDialog extends StatelessWidget {
         decoration: BoxDecoration(
           color: colorScheme.surface,
           borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: colorScheme.outlineVariant.withOpacity(0.5)),
+          border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.5)),
         ),
         child: DefaultTabController(
           length: 2,
@@ -41,7 +41,7 @@ class LegalDialog extends StatelessWidget {
               ),
               TabBar(
                 labelColor: colorScheme.primary,
-                unselectedLabelColor: colorScheme.onSurface.withOpacity(0.6),
+                unselectedLabelColor: colorScheme.onSurface.withValues(alpha: 0.6),
                 indicatorColor: colorScheme.primary,
                 indicatorWeight: 3,
                 dividerColor: Colors.transparent,
@@ -138,7 +138,7 @@ class _MarkdownView extends StatelessWidget {
           data: snapshot.data ?? 'No content found.',
           padding: const EdgeInsets.all(24),
           styleSheet: MarkdownStyleSheet(
-            p: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.8)),
+            p: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8)),
             h1: const TextStyle(fontWeight: FontWeight.bold),
             h2: const TextStyle(fontWeight: FontWeight.bold),
           ),
