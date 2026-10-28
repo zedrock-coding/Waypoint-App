@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Repository** | `zedrock-coding/EventsManagerTaskApp` (branch `highest`, HEAD `338723c`) |
+| **Repository** | `zedrock-coding/Helm` (formerly `EventsManagerTaskApp`), branch `highest`, HEAD `338723c` |
 | **App version** | Helm `0.3.3+8` (`helm/`) |
 | **Plan date** | 2026-10-28 |
 | **Scope** | All P0–P3 findings from the 2026-10-28 static analysis, plus 4 findings discovered during planning recon |
