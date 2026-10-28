@@ -1,16 +1,44 @@
 # gitleaks configuration for Helm.
 #
-# The only allowlisted path is the historical `helm/.env`, which was committed
-# before the remediation work (commit 273bf39). That key is being revoked and
-# the file is no longer tracked. Re-adding the file is blocked independently by
-# the `no-committed-secrets` job in .github/workflows/quality.yml, so this
-# allowlist cannot silently re-open the hole.
+# Goal: fail a change that introduces a *new* credential, without permanently
+# failing on the two things that are already true of this repository.
 #
-# Everything else is scanned with the default rule set. Once the key has been
-# revoked *and* (optionally) purged from history, this allowlist can be deleted.
+# Rule set: gitleaks defaults, plus three narrow allowlists.
 [extend]
 useDefault = true
 
-[allowlist]
-description = "Historical helm/.env (key revoked; file untracked since 2026-10-28)"
+# 1. Supabase publishable keys (`sb_publishable_...`) are public by design.
+#    They are shipped inside every web bundle and every APK on purpose; Row-Level
+#    Security is what protects the data, not key secrecy. A legacy anon JWT is
+#    the same thing in a different encoding (see entry 2).
+[[allowlists]]
+description = "Supabase publishable key (public client key, RLS-protected)"
+regexTarget = "secret"
+regexes = ['''^sb_publishable_[A-Za-z0-9_-]{20,}$''']
+
+# 2. Legacy anon JWTs committed before the 2026-10-28 remediation. The same
+#    public client key, in the older encoding, in history only. It was replaced
+#    by a publishable key in helm/web/config.js, so no current file contains a
+#    JWT. Pinned by commit so a service_role JWT anywhere is still caught.
+[[allowlists]]
+description = "Legacy anon JWT in pre-remediation commits (public client key)"
+commits = [
+  "924a57a7ada824f0cf6a24aaa699a3253e732af1",
+  "fac46de0b43bce4cd70a49201af1d2673df1b89b",
+  "640e0cdae4ba6c6ba89432dab1f1430853d28636",
+]
+
+# 3. The historical helm/.env (Gemini key, committed in 273bf39). The key was
+#    revoked on 2026-10-28 and the file is untracked, so this only ever matches
+#    history. Re-adding the file is blocked independently by the
+#    `no-committed-secrets` job in .github/workflows/quality.yml.
+[[allowlists]]
+description = "Historical helm/.env (key revoked 2026-10-28; file untracked)"
 paths = ['''^helm/\.env$''']
+
+# 4. IntelliJ state files. `.idea/` is git-ignored; the one historical entry is a
+#    planning-mode session UUID that the generic-api-key rule mistakes for a
+#    credential. No application configuration lives here.
+[[allowlists]]
+description = "IDE state files (session UUIDs, not credentials)"
+paths = ['''^\.idea/''']
