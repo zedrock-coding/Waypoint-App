@@ -432,10 +432,10 @@ curl -s -X PATCH "$SUPABASE_URL/rest/v1/tasks?id=eq.$TASK_ID" -H "apikey: $ANON"
 ## 7. Deliverables checklist
 
 - [ ] Rotated Gemini key (owner) + revoked old key
-- [ ] `tools/admin/admin.html` (no longer deployed) with escaped rendering
-- [ ] `helm/.env` untracked; `.env.example`; `AppConfig`
-- [ ] `supabase/functions/ai/index.ts` + rate limiting
-- [ ] `supabase/migrations/0001_baseline.sql` … `0005_rbac_triggers.sql`
+- [x] `tools/admin/admin.html` (no longer deployed) with escaped rendering
+- [x] `helm/.env` untracked; `.env.example`; `AppConfig`
+- [x] `supabase/functions/ai/index.ts` + rate limiting (code complete; deploy pending)
+- [ ] `supabase/migrations/0001_baseline.sql` … `0005_rbac_triggers.sql` (`20261028120000_ai_rate_limit.sql` landed)
 - [ ] pgTAP tests for comment quota + RBAC
 - [ ] `TaskRepository` + ≥12 sync tests
 - [ ] Phase 5 UX fixes + 3 widget tests

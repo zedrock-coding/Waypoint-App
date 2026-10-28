@@ -10,26 +10,44 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       # 1. Check out the code
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       # 2. Install Flutter
       - uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
 
-      # 3. Handle Environment Variables
-      # We create the .env file for local asset fallback AND use --dart-define for web stability
-      - name: Create .env file
-        run: echo "GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}" > helm/.env
-
-      # 4. Build the Web App
+      # 3. Build the Web App
+      # No .env asset is created and no API key is passed as a --dart-define:
+      # the Gemini credential lives in the Supabase Edge Function, and the
+      # Supabase URL/publishable key come from lib/config/app_config.dart.
+      # To target another Supabase project, add --dart-define=SUPABASE_URL=...
+      # and --dart-define=SUPABASE_ANON_KEY=... here.
       - name: Build Web
         working-directory: ./helm
         run: |
           flutter pub get
-          flutter build web --release --base-href "/" --dart-define=GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}
+          flutter build web --release --base-href "/" --pwa-strategy=none
           # Ensure vercel.json is in the build directory for routing rules
           cp vercel.json build/web/
+
+      # 4. Fail the deploy if a credential ever reaches the bundle again.
+      - name: Verify no secrets in the bundle
+        working-directory: ./helm
+        run: |
+          set -euo pipefail
+          if [ -e build/web/assets/.env ]; then
+            echo "::error::build/web/assets/.env exists — the .env asset came back."
+            exit 1
+          fi
+          if grep -rIlE "AIza[0-9A-Za-z_-]{20,}|service_role" build/web; then
+            echo "::error::A credential-like string was found in build/web."
+            exit 1
+          fi
+          if [ -e build/web/admin.html ]; then
+            echo "::error::admin.html is being deployed again."
+            exit 1
+          fi
 
       # 5. Deploy to Vercel
       - name: Install Vercel CLI

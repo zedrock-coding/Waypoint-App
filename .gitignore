@@ -1,0 +1,13 @@
+# Local environment files — never commit secrets.
+.env
+.env.local
+.env.*.local
+
+# Supabase Edge Function local secrets
+supabase/functions/.env.local
+
+# Tooling / IDE artifacts
+.idea/
+.artifacts/
+.vercel/
+*.log

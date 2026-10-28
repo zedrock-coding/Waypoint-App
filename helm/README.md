@@ -14,7 +14,7 @@
 *   **WhatsApp Priority Support**: One-tap access to chat for urgent workspace issues.
 
 ### 🤖 Generative AI Command Center
-*   **Voice & Text Orchestration**: Create complex tasks using natural language. Powered by **Gemini 1.5 Flash**.
+*   **Voice & Text Orchestration**: Create complex tasks using natural language. Powered by **Gemini** (`gemini-3.5-flash-lite`) through a server-side proxy.
 *   **Context-Aware Parsing**: The AI understands your communities and team members, allowing commands like *"Assign a high priority bug fix to Shivam by Friday"*.
 
 ### 📅 Interactive Task Calendar
@@ -38,7 +38,7 @@
 
 ## 🛠 Tech Stack
 *   **Framework**: Flutter (Material 3)
-*   **AI Engine**: Google Generative AI (Gemini 1.5 Flash)
+*   **AI Engine**: Google Gemini (`gemini-3.5-flash-lite`), called through the `ai` Supabase Edge Function
 *   **Cloud Backend**: Supabase (PostgreSQL, Realtime, RLS, Storage)
 *   **Local Storage**: Hive (Reactive high-speed NoSQL)
 *   **State Management**: Provider
@@ -49,7 +49,6 @@
 
 ### Prerequisites
 *   **Flutter SDK**: ^3.38.4
-*   **Gemini API Key**: Required for AI features.
 
 ### Steps
 1.  **Clone & Install**:
@@ -59,13 +58,24 @@
     flutter pub get
     ```
 2.  **Environment Setup**:
-    Create a `.env` file in the root directory:
-    ```text
-    GEMINI_API_KEY=your_key_here
+    Copy `.env.example` to `.env` and fill in the **public** Supabase values
+    (the publishable/anon key is safe to ship; RLS is what protects the data):
+    ```bash
+    cp .env.example .env
+    ```
+    No Gemini key belongs in this file. AI commands are proxied through the
+    `ai` Edge Function, which holds `GEMINI_API_KEY` as a server secret:
+    ```bash
+    supabase secrets set GEMINI_API_KEY=... --project-ref <ref>
+    supabase functions deploy ai --project-ref <ref>
     ```
 3.  **Launch**:
     ```bash
-    flutter run
+    flutter run --dart-define-from-file=.env
+    ```
+    For local AI development without deploying, run the function locally:
+    ```bash
+    supabase functions serve ai --env-file supabase/functions/.env.local
     ```
 
 ---

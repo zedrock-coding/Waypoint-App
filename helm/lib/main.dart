@@ -3,10 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import 'models/unified_task.dart';
 
+import 'config/app_config.dart';
 import 'services/invite_service.dart';
 import 'services/navigation_provider.dart';
 import 'services/hive_database.dart';
@@ -40,13 +40,17 @@ import 'theme/app_theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
-  await dotenv.load(fileName: ".env");
+
+  if (!AppConfig.isSupabaseConfigured) {
+    debugPrint('INIT: Supabase configuration missing.');
+    runApp(const _MisconfiguredApp());
+    return;
+  }
 
   debugPrint('INIT: Starting Supabase...');
   await Supabase.initialize(
-    url: 'https://eknzdxexfcfdmqvbyvxt.supabase.co', 
-    anonKey: 'sb_publishable_fUoY96CXli7DwbZayu8pFQ_4yExvoJg',
+    url: AppConfig.supabaseUrl,
+    anonKey: AppConfig.supabaseAnonKey,
   );
 
   debugPrint('INIT: Starting InviteService...');
@@ -82,6 +86,30 @@ void main() async {
     runApp(MaterialApp(
       home: Scaffold(body: Center(child: Text('Failed to initialize: $e'))),
     ));
+  }
+}
+
+class _MisconfiguredApp extends StatelessWidget {
+  const _MisconfiguredApp();
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Helm',
+      theme: AppTheme.darkTheme,
+      home: Scaffold(
+        body: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: SelectableText(
+              AppConfig.misconfiguredMessage,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 14, height: 1.5),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 
