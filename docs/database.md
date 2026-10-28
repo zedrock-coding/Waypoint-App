@@ -96,11 +96,21 @@ Primary key should be `(community_id, user_id)`.
 | `title` | `text` | |
 | `body` | `text` | |
 | `type` | `text` | Drives the feed icon. |
+| `related_id` | `uuid` | Task id the client opens when the notification is tapped. |
 | `is_read` | `boolean` | Bell counts `is_read = false`. |
 | `created_at` | `timestamptz` | Feed sorts descending, limit 20. |
 
 Clients only ever `update({is_read: true})` filtered by `user_id`; they never
-insert. Row creation belongs to server-side triggers.
+insert. Row creation belongs to server-side triggers (`notify_task_assignees`).
+
+### `feedback`
+
+Public form table written by `helm/web/feedback.html` with the publishable key
+as `anon`. Columns: `id`, `name`, `email`, `message`, `created_at`.
+
+⚠️ Open: `anon` still has `insert`. Closing it means moving submission behind an
+Edge Function; see `supabase/migrations/20261029110200_task_triggers.sql` (the
+revoke is present but commented out).
 
 ### `ai_usage` (from `supabase/migrations/20261028120000_ai_rate_limit.sql`)
 
@@ -234,15 +244,41 @@ as a stuck queue entry rather than an error dialog. The header badge
   confirmed applied** — verify with `select * from supabase_migrations.schema_migrations;`
   before assuming the quota exists.
 
+### 7.1 Authored, not applied
+
+| File | Contents |
+|---|---|
+| `20261029110000_internal_helpers.sql` | `internal` schema, `role_weight()`, `is_member()`, `communities.creator_id` default |
+| `20261029110100_rls_policies.sql` | RLS enable + policies for tasks, comments, communities, members, categories, notifications |
+| `20261029110200_task_triggers.sql` | `updated_at` stamping, comment quota, owner-demotion guard, assignment notifications |
+| `20261029110300_storage_avatars.sql` | Public read, owner-only write under `<uid>/` |
+| `supabase/tests/rls_test.sql` | pgTAP coverage for the above |
+
+### 7.2 How to apply (branch database first)
+
+```bash
+supabase link --project-ref <ref>
+supabase db push --dry-run        # review what will change
+supabase db push                  # branch/preview database only
+supabase test db                  # pgTAP must be green
+supabase db lint
+```
+
+Only then promote to production. Keep the previous policy set so a wrong policy
+can be rolled back within minutes; a bad policy locks users out of their own
+data.
+
 ---
 
 ## 8. Open verification items
 
 1. Dump the live schema (`supabase db dump --schema public`) and reconcile it
-   with §2.
-2. Confirm RLS is enabled on all eight tables and that no table has a
-   permissive `using (true)` policy.
-3. Confirm `ai_usage` and `consume_ai_quota` exist in production.
-4. Confirm the `avatars` bucket policies restrict writes to the owner prefix.
-5. Add a regression test (pgTAP or a scripted SQL check) for the comment quota
-   and the role-weight update rule.
+   with §2. `supabase/migrations/0001_baseline.sql` does not exist yet.
+2. Confirm RLS is enabled on every table and that no table has a permissive
+   `using (true)` policy.
+3. Apply the four migrations in §7.1 and run `supabase test db`.
+4. Confirm `ai_usage` and `consume_ai_quota` exist in production.
+5. Confirm the `avatars` bucket policies restrict writes to the owner prefix.
+6. Verify at the API, not in the UI: two accounts (one Owner, one Member) — the
+   Member's edit must fail with `curl`, not just be hidden by `AbsorbPointer`.
+7. Decide the `feedback` path: Edge Function + captcha, or keep `anon` insert.
