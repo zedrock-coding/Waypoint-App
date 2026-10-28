@@ -424,7 +424,7 @@ class _AppShellState extends State<AppShell> {
                                       if (!isDesktop) const SizedBox(width: 8),
                                       Expanded(
                                         child: Text(
-                                          navProvider.selectedIndex == 0 ? 'Personal Tasks' : 'Communities',
+                                          widget.title,
                                           overflow: TextOverflow.ellipsis,
                                           style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                                             fontWeight: FontWeight.bold,

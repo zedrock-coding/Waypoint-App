@@ -72,11 +72,6 @@ class VelocityDashboardCard extends StatelessWidget {
                 "Today's Velocity",
                 style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
               ),
-              IconButton(
-                visualDensity: VisualDensity.compact,
-                icon: const Icon(Icons.edit_note, size: 18),
-                onPressed: () => _showAdjustGoalDialog(context),
-              ),
             ],
           ),
           const SizedBox(height: 8),
@@ -218,12 +213,16 @@ class VelocityDashboardCard extends StatelessWidget {
                   ButtonSegment(value: 2, label: Text('L', style: TextStyle(fontSize: 10))),
                 ],
                 selected: <int>{
-                  (settings.fontSizeIndex ?? 2) <= 1 ? 0 : ((settings.fontSizeIndex ?? 2) >= 4 ? 2 : 1)
+                  (settings.fontSizeIndex ?? 2) <= 1
+                      ? 0
+                      : ((settings.fontSizeIndex ?? 2) == 2 ? 1 : 2)
                 },
                 onSelectionChanged: (val) {
                   HapticFeedback.selectionClick();
+                  // S/M/L map onto the shared scale [0.7, 0.85, 1.0, 1.2, 1.4]:
+                  // S = 0.85, M = 1.0 (the default), L = 1.2.
                   final quickIndex = val.first;
-                  themeProvider.updateFontSize(quickIndex == 0 ? 1 : (quickIndex == 1 ? 3 : 4));
+                  themeProvider.updateFontSize(quickIndex + 1);
                 },
               ),
             ),
@@ -250,22 +249,5 @@ class VelocityDashboardCard extends StatelessWidget {
       await ns.cancelAllNotifications();
     }
     await provider.updateNotificationSetting('dailyBriefing', enabled);
-  }
-
-  void _showAdjustGoalDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text("Adjust Daily Goal"),
-        content: const TextField(
-          decoration: InputDecoration(labelText: "Daily Target", border: OutlineInputBorder()),
-          keyboardType: TextInputType.number,
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("CANCEL")),
-          ElevatedButton(onPressed: () => Navigator.pop(ctx), child: const Text("SAVE")),
-        ],
-      ),
-    );
   }
 }

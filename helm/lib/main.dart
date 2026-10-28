@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -144,7 +145,10 @@ class _MyAppState extends State<MyApp> {
       final tp = Provider.of<ThemeProvider>(context, listen: false);
       
       // 1. Legal Check
-      if (tp.settings.legalAccepted != true) {
+      // On mobile/desktop, declining closes the app. A browser tab cannot be
+      // closed by SystemNavigator.pop(), so on web the gate simply stays up:
+      // accepting is the only way into the app.
+      while (tp.settings.legalAccepted != true) {
         final bool? accepted = await showDialog<bool>(
           context: _navigatorKey.currentContext!,
           barrierDismissible: false,
@@ -153,7 +157,10 @@ class _MyAppState extends State<MyApp> {
 
         if (accepted == true) {
           await tp.acceptLegal();
-        } else {
+          break;
+        }
+
+        if (!kIsWeb) {
           await SystemNavigator.pop();
           return;
         }
