@@ -24,14 +24,13 @@ dependencies:
   app_links: ^6.3.2
   uuid: ^4.4.0
   flutter_markdown: ^0.7.3
-  google_generative_ai: ^0.4.6
-  flutter_dotenv: ^5.1.0
   speech_to_text: ^7.0.0
   table_calendar: ^3.1.2
   image_picker: ^1.1.2
   url_launcher: ^6.3.0
   connectivity_plus: ^6.0.3
   record: ^6.2.1
+  flutter_timezone: ^5.1.1
 
 dev_dependencies:
   flutter_test:
@@ -52,7 +51,6 @@ flutter_launcher_icons:
 flutter:
   uses-material-design: true
   assets:
-    - .env
     - assets/icon/
     - assets/EULA.md
     - assets/Privacy_policy.md

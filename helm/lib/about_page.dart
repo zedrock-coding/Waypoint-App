@@ -31,7 +31,7 @@ class AboutScreen extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: colorScheme.primaryContainer.withOpacity(0.2),
+                    color: colorScheme.primaryContainer.withValues(alpha: 0.2),
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
@@ -89,7 +89,7 @@ class AboutScreen extends StatelessWidget {
                 Text(
                   'Made with ♥ by',
                   style: textTheme.labelSmall?.copyWith(
-                    color: colorScheme.onSurface.withOpacity(0.4),
+                    color: colorScheme.onSurface.withValues(alpha: 0.4),
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -97,7 +97,7 @@ class AboutScreen extends StatelessWidget {
                   'Lakshya Jadhav & Shivam Chauhan',
                   style: textTheme.labelMedium?.copyWith(
                     fontWeight: FontWeight.bold,
-                    color: colorScheme.onSurface.withOpacity(0.6),
+                    color: colorScheme.onSurface.withValues(alpha: 0.6),
                   ),
                 ),
               ],
@@ -118,7 +118,7 @@ class AboutScreen extends StatelessWidget {
         style: ElevatedButton.styleFrom(
           padding: const EdgeInsets.symmetric(vertical: 16),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          backgroundColor: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
+          backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
           foregroundColor: Theme.of(context).colorScheme.onSurface,
           elevation: 0,
         ),

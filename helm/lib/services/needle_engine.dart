@@ -1,11 +1,14 @@
 import 'package:flutter/foundation.dart';
 
-/// Abstract contract for on-device Cactus Needle 3 inference engine
+/// Abstract contract for the on-device fallback extractor.
 abstract class NeedleEngine {
   Future<bool> initialize();
   bool get isReady;
-  
-  /// Transcribes raw audio locally using on-device ASR when offline
+
+  /// Transcribes raw audio locally when offline.
+  ///
+  /// No on-device ASR model ships with Helm, so the implementation returns
+  /// `null`; callers fall back to typed or speech-to-text input.
   Future<String?> transcribeAudioLocally(Uint8List audioBytes);
 
   /// Performs fast, grammar-constrained task slot filling
@@ -23,8 +26,13 @@ abstract class NeedleEngine {
   });
 }
 
-/// Production on-device Needle 3 implementation with grammar-constrained schema enforcement
-class CactusNeedleEngine implements NeedleEngine {
+/// Deterministic grammar/rule parser used when the AI backend is unavailable.
+///
+/// This is a keyword heuristic, not a neural model: it recognises a small
+/// vocabulary (priority words, today/tomorrow/weekday names, community and
+/// member names) and fills a fixed schema. It is fast, offline, and
+/// predictable, and it is the reason the app still works with no network.
+class LocalHeuristicParser implements NeedleEngine {
   bool _initialized = false;
 
   @override
@@ -33,14 +41,14 @@ class CactusNeedleEngine implements NeedleEngine {
   @override
   Future<bool> initialize() async {
     try {
-      // In a production environment with Cactus C runtime (.cact model loaded into memory),
-      // native FFI bindings initialize here. For cross-platform & web targets,
-      // we initialize the fast grammar parser.
+      // Nothing to load: the parser is pure Dart with no weights or FFI
+      // bindings. Kept async so a real on-device model can drop in later
+      // without changing callers.
       _initialized = true;
-      debugPrint('CactusNeedleEngine initialized (121M params, grammar-constrained)');
+      debugPrint('LocalHeuristicParser ready');
       return true;
     } catch (e) {
-      debugPrint('Failed to initialize CactusNeedleEngine: $e');
+      debugPrint('Failed to initialize LocalHeuristicParser: $e');
       _initialized = false;
       return false;
     }
@@ -49,7 +57,8 @@ class CactusNeedleEngine implements NeedleEngine {
   @override
   Future<String?> transcribeAudioLocally(Uint8List audioBytes) async {
     if (audioBytes.length < 100) return null;
-    // Edge ASR stub for offline speech recognition
+    // No on-device ASR is bundled. Returning null tells the caller to use the
+    // text it already has (STT transcript or typed input).
     return null;
   }
 
@@ -73,7 +82,7 @@ class CactusNeedleEngine implements NeedleEngine {
 
     final lower = cleanInput.toLowerCase();
 
-    // 2. Grammar-Constrained Priority Extraction
+    // 2. Rule-based priority extraction
     if (templateContext?['priority'] == null) {
       if (lower.contains('urgent') || lower.contains('high priority') || lower.contains('asap')) {
         priorityStr = 'HIGH';
@@ -84,7 +93,7 @@ class CactusNeedleEngine implements NeedleEngine {
       }
     }
 
-    // 3. Grammar-Constrained Date Parsing
+    // 3. Rule-based date parsing
     if (dueDateStr == null) {
       final now = DateTime.now();
       if (lower.contains('today')) {
@@ -105,7 +114,7 @@ class CactusNeedleEngine implements NeedleEngine {
       }
     }
 
-    // 4. Grammar-Constrained Entity Matching (Communities & Members)
+    // 4. Entity matching (communities and members)
     if (communityId == null && availableCommunities.isNotEmpty) {
       for (final comm in availableCommunities) {
         final name = (comm['name'] ?? '').toString().toLowerCase();
@@ -144,7 +153,7 @@ class CactusNeedleEngine implements NeedleEngine {
     final bool clarificationNeeded = templateContext?['clarification_needed'] == true;
     final String? clarificationMessage = templateContext?['clarification_message']?.toString();
 
-    // Guaranteed schema conformance
+    // Guaranteed schema conformance for the caller
     return {
       'title': title,
       'description': description,

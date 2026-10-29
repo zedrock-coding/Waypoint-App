@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../models/unified_task.dart';
 import '../providers/task_provider.dart';
+import '../services/navigation_provider.dart';
 import 'task_item_card.dart';
 import '../task_detail_page.dart';
 
@@ -19,12 +21,12 @@ class CustomTaskSearchDelegate extends SearchDelegate {
         iconTheme: IconThemeData(color: colorScheme.onSurface),
       ),
       inputDecorationTheme: InputDecorationTheme(
-        hintStyle: TextStyle(color: colorScheme.onSurface.withOpacity(0.5)),
+        hintStyle: TextStyle(color: colorScheme.onSurface.withValues(alpha: 0.5)),
         border: InputBorder.none,
       ),
       textSelectionTheme: TextSelectionThemeData(
         cursorColor: colorScheme.primary,
-        selectionColor: colorScheme.primary.withOpacity(0.3),
+        selectionColor: colorScheme.primary.withValues(alpha: 0.3),
         selectionHandleColor: colorScheme.primary,
       ),
       textTheme: theme.textTheme.copyWith(
@@ -52,13 +54,14 @@ class CustomTaskSearchDelegate extends SearchDelegate {
     );
   }
 
-  @override
-  Widget buildResults(BuildContext context) {
+  bool _matches(UnifiedTask task) {
+    final needle = query.toLowerCase();
+    return task.title.toLowerCase().contains(needle) ||
+        task.description.toLowerCase().contains(needle);
+  }
+
+  Widget _buildResultList(BuildContext context, List<UnifiedTask> results) {
     final taskProvider = context.read<TaskProvider>();
-    final results = taskProvider.personalTasks.where((t) {
-      return t.title.toLowerCase().contains(query.toLowerCase()) || 
-             t.description.toLowerCase().contains(query.toLowerCase());
-    }).toList();
 
     if (results.isEmpty) {
       return Center(
@@ -89,6 +92,34 @@ class CustomTaskSearchDelegate extends SearchDelegate {
           onToggle: () => taskProvider.toggleTask(unifiedTask),
           onDismiss: (direction) => taskProvider.deleteTask(unifiedTask.id),
         );
+      },
+    );
+  }
+
+  @override
+  Widget buildResults(BuildContext context) {
+    final taskProvider = context.read<TaskProvider>();
+    final navProvider = context.read<NavigationProvider>();
+    final communityId = navProvider.selectedCommunityId;
+
+    final personal = taskProvider.personalTasks.where(_matches).toList();
+    if (communityId == null) {
+      return _buildResultList(context, personal);
+    }
+
+    // Search used to be personal-only, so community tasks were unreachable from
+    // the search field. Merge the selected community's live tasks in, keyed by
+    // id so a mirrored copy cannot appear twice.
+    return StreamBuilder<List<UnifiedTask>>(
+      stream: taskProvider.communityTasksStream(communityId),
+      builder: (context, snapshot) {
+        final merged = <UnifiedTask>[...personal];
+        for (final task in snapshot.data ?? const <UnifiedTask>[]) {
+          if (_matches(task) && !merged.any((t) => t.id == task.id)) {
+            merged.add(task);
+          }
+        }
+        return _buildResultList(context, merged);
       },
     );
   }

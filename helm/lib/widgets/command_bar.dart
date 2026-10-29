@@ -21,6 +21,9 @@ class _CommandBarWidgetState extends State<CommandBarWidget> with SingleTickerPr
   final _audioService = AudioRecordingService();
   bool _isListening = false;
   bool _isLoading = false;
+  /// True when the current capture is the audio recorder (multimodal path);
+  /// false when we fell back to speech-to-text only.
+  bool _capturingAudio = false;
   late AnimationController _glowController;
 
   @override
@@ -42,50 +45,29 @@ class _CommandBarWidgetState extends State<CommandBarWidget> with SingleTickerPr
 
   Future<void> _toggleListening() async {
     try {
-      if (!_isListening) {
-        // 1. Start Audio Recording stream for Direct Multimodal ingestion
-        final startedAudio = await _audioService.startRecording();
-        
-        // 2. Start STT for live visual preview in text field
-        bool sttAvailable = false;
-        try {
-          sttAvailable = await _stt.initialize(
-            onStatus: (status) {
-              if (status == 'notListening' && mounted && _isListening) {
-                // If STT stops on silence, trigger command completion
-                _stopAndProcessVoice();
-              }
-            },
-            onError: (error) {
-              debugPrint('STT Preview Error: $error');
-            },
-          );
-          if (sttAvailable) {
-            _stt.listen(
-              onResult: (result) {
-                if (mounted) {
-                  setState(() {
-                    _textController.text = result.recognizedWords;
-                  });
-                }
-              },
-            );
-          }
-        } catch (e) {
-          debugPrint('STT fallback init failed: $e');
-        }
-
-        if (startedAudio || sttAvailable) {
-          setState(() => _isListening = true);
-        } else {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Audio recording is not available.')),
-            );
-          }
-        }
-      } else {
+      if (_isListening) {
         await _stopAndProcessVoice();
+        return;
+      }
+
+      // One capture source at a time. Running `record` and `speech_to_text`
+      // together meant two consumers fought over the microphone, which on
+      // Android truncates or corrupts both streams. Prefer the recorder (the
+      // AI path takes audio directly); fall back to STT only if recording is
+      // unavailable.
+      _capturingAudio = await _audioService.startRecording();
+      if (_capturingAudio) {
+        setState(() => _isListening = true);
+        return;
+      }
+
+      final sttAvailable = await _startSttOnly();
+      if (sttAvailable) {
+        setState(() => _isListening = true);
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Audio recording is not available.')),
+        );
       }
     } catch (e) {
       debugPrint('Voice toggle error: $e');
@@ -93,20 +75,52 @@ class _CommandBarWidgetState extends State<CommandBarWidget> with SingleTickerPr
     }
   }
 
+  Future<bool> _startSttOnly() async {
+    try {
+      final available = await _stt.initialize(
+        onStatus: (status) {
+          if (status == 'notListening' && mounted && _isListening) {
+            _stopAndProcessVoice();
+          }
+        },
+        onError: (error) => debugPrint('STT Error: $error'),
+      );
+      if (!available) return false;
+
+      await _stt.listen(
+        onResult: (result) {
+          if (mounted) {
+            setState(() => _textController.text = result.recognizedWords);
+          }
+        },
+      );
+      return true;
+    } catch (e) {
+      debugPrint('STT init failed: $e');
+      return false;
+    }
+  }
+
   Future<void> _stopAndProcessVoice() async {
     if (!_isListening) return;
 
     setState(() => _isListening = false);
-    _stt.stop();
-    final audioBytes = await _audioService.stopRecording();
 
-    if (audioBytes != null && audioBytes.length > 500) {
-      // Direct Multimodal audio pipeline
-      await _handleVoiceCommand(audioBytes);
+    if (_capturingAudio) {
+      _capturingAudio = false;
+      final audioBytes = await _audioService.stopRecording();
+      if (audioBytes != null && audioBytes.length > 500) {
+        // Direct Multimodal audio pipeline
+        await _handleVoiceCommand(audioBytes);
+        return;
+      }
     } else {
-      // Fallback to text in controller
-      await _handleCommand();
+      await _stt.stop();
     }
+
+    // No usable audio: process whatever the text field holds (STT transcript,
+    // or something the user typed before pressing the mic).
+    await _handleCommand();
   }
 
   Future<void> _handleVoiceCommand(Uint8List audioBytes) async {
@@ -163,7 +177,7 @@ class _CommandBarWidgetState extends State<CommandBarWidget> with SingleTickerPr
       final communities = await supabaseService.fetchUserCommunities();
       final members = await supabaseService.fetchAllAccessibleMembers();
 
-      // Hybrid parse: Needle 3 on edge for fast paths, Gemini cloud for de-jumbling
+      // Hybrid parse: local rules for short commands, Gemini for the hard ones.
       final result = await aiService.parseHybridCommand(
         userInput: input,
         availableCommunities: communities,
@@ -254,13 +268,13 @@ class _CommandBarWidgetState extends State<CommandBarWidget> with SingleTickerPr
             borderRadius: BorderRadius.circular(32),
             boxShadow: [
               BoxShadow(
-                color: _isListening ? Colors.red.withOpacity(0.2) : colorScheme.primary.withOpacity(0.15 * glow),
+                color: _isListening ? Colors.red.withValues(alpha: 0.2) : colorScheme.primary.withValues(alpha: 0.15 * glow),
                 blurRadius: _isListening ? 15 : 10 * glow,
                 spreadRadius: _isListening ? 2 : 2 * glow,
               )
             ],
             border: Border.all(
-              color: _isListening ? Colors.red : (_isLoading ? colorScheme.primary : colorScheme.outlineVariant.withOpacity(0.5)),
+              color: _isListening ? Colors.red : (_isLoading ? colorScheme.primary : colorScheme.outlineVariant.withValues(alpha: 0.5)),
               width: (_isListening || _isLoading) ? 2 : 1,
             ),
           ),

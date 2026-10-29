@@ -113,7 +113,9 @@
         <label style="font-size: 12px; font-weight: bold;">SUPABASE SERVICE ROLE KEY</label>
         <input type="password" id="service-key" placeholder="Paste your service_role key here to bypass RLS">
         <p style="font-size: 11px; color: var(--text-secondary); margin-top: 8px;">
-            This file is local-only. Your key is not saved online. Use the <b>service_role</b> key from your Supabase Project Settings > API.
+            Operator tool. Open this file locally from <code>tools/admin/</code> — it is not part of the
+            Flutter web build and must never be deployed. Use the <b>service_role</b> key from your
+            Supabase Project Settings &gt; API; it is held in memory only and never persisted.
         </p>
     </div>
 
@@ -123,6 +125,44 @@
 
     <script>
         const supabaseUrl = 'https://eknzdxexfcfdmqvbyvxt.supabase.co';
+
+        // Feedback rows are attacker-controlled (anyone can insert through the
+        // public feedback form). Never interpolate them into innerHTML: build
+        // DOM nodes and assign textContent so a malicious payload is rendered
+        // as inert text instead of executing and stealing the service_role key.
+        const EMAIL_PATTERN = /^[^\s@<>"']+@[^\s@<>"']+\.[^\s@<>"']+$/;
+
+        function el(tag, className, text) {
+            const node = document.createElement(tag);
+            if (className) node.className = className;
+            if (text !== undefined && text !== null) node.textContent = String(text);
+            return node;
+        }
+
+        function renderCard(item) {
+            const card = el('div', 'card');
+
+            const header = el('div', 'card-header');
+            header.appendChild(el('span', 'name', item.name || 'Anonymous'));
+            header.appendChild(el(
+                'span',
+                'date',
+                item.created_at ? new Date(item.created_at).toLocaleString() : 'unknown date',
+            ));
+            card.appendChild(header);
+
+            const email = typeof item.email === 'string' ? item.email.trim() : '';
+            if (email && EMAIL_PATTERN.test(email)) {
+                const link = el('a', 'email', email);
+                link.href = 'mailto:' + encodeURIComponent(email);
+                card.appendChild(link);
+            } else {
+                card.appendChild(el('span', 'email', email || '(no email)'));
+            }
+
+            card.appendChild(el('div', 'message', item.message || '(empty message)'));
+            return card;
+        }
 
         async function fetchFeedback() {
             const serviceKey = document.getElementById('service-key').value.trim();
@@ -163,20 +203,7 @@
                     return;
                 }
 
-                data.forEach(item => {
-                    const date = new Date(item.created_at).toLocaleString();
-                    const card = document.createElement('div');
-                    card.className = 'card';
-                    card.innerHTML = `
-                        <div class="card-header">
-                            <span class="name">${item.name || 'Anonymous'}</span>
-                            <span class="date">${date}</span>
-                        </div>
-                        <a href="mailto:${item.email}" class="email">${item.email}</a>
-                        <div class="message">${item.message}</div>
-                    `;
-                    grid.appendChild(card);
-                });
+                data.forEach(item => grid.appendChild(renderCard(item)));
             } catch (err) {
                 loading.style.display = 'none';
                 errorBanner.style.display = 'block';

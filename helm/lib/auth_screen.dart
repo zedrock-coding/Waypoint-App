@@ -50,12 +50,27 @@ class _AuthScreenState extends State<AuthScreen> {
           data: {'full_name': fullName},
         );
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Account created! Please check your email for verification.'),
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
+          // If email confirmation is enabled there is no session yet, so the
+          // user must sign in. Sending them back to a blank sign-up form (the
+          // old behaviour) left them stuck.
+          if (Supabase.instance.client.auth.currentSession == null) {
+            setState(() => _isSignUp = false);
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  'Account created. Check $email to verify, then sign in.',
+                ),
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Account created!'),
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          }
         }
       } else {
         await Supabase.instance.client.auth.signInWithPassword(
@@ -99,8 +114,8 @@ class _AuthScreenState extends State<AuthScreen> {
                       padding: const EdgeInsets.all(12),
                       margin: const EdgeInsets.only(bottom: 16),
                       decoration: BoxDecoration(
-                        color: Colors.redAccent.withOpacity(0.1),
-                        border: Border.all(color: Colors.redAccent.withOpacity(0.5)),
+                        color: Colors.redAccent.withValues(alpha: 0.1),
+                        border: Border.all(color: Colors.redAccent.withValues(alpha: 0.5)),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
@@ -112,7 +127,7 @@ class _AuthScreenState extends State<AuthScreen> {
                   Container(
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
-                      color: colorScheme.primaryContainer.withOpacity(0.1),
+                      color: colorScheme.primaryContainer.withValues(alpha: 0.1),
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
@@ -160,7 +175,15 @@ class _AuthScreenState extends State<AuthScreen> {
                       hintText: 'name@example.com',
                     ),
                     keyboardType: TextInputType.emailAddress,
-                    validator: (v) => v?.isEmpty ?? true ? 'Enter email' : null,
+                    validator: (v) {
+                final value = v?.trim() ?? '';
+                if (value.isEmpty) return 'Enter email';
+                final looksLikeEmail = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
+                if (!looksLikeEmail.hasMatch(value)) {
+                  return 'Enter a valid email address';
+                }
+                return null;
+              },
                     onFieldSubmitted: (_) => FocusScope.of(context).nextFocus(),
                   ),
                   const SizedBox(height: 16),

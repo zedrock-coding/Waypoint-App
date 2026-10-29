@@ -59,7 +59,7 @@ class VelocityDashboardCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: colorScheme.outlineVariant.withOpacity(0.5), width: 1),
+        border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.5), width: 1),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -71,11 +71,6 @@ class VelocityDashboardCard extends StatelessWidget {
               const Text(
                 "Today's Velocity",
                 style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-              ),
-              IconButton(
-                visualDensity: VisualDensity.compact,
-                icon: const Icon(Icons.edit_note, size: 18),
-                onPressed: () => _showAdjustGoalDialog(context),
               ),
             ],
           ),
@@ -107,7 +102,7 @@ class VelocityDashboardCard extends StatelessWidget {
           child: CircularProgressIndicator(
             value: progress,
             strokeWidth: 6,
-            backgroundColor: colorScheme.primary.withOpacity(0.1),
+            backgroundColor: colorScheme.primary.withValues(alpha: 0.1),
             valueColor: AlwaysStoppedAnimation<Color>(colorScheme.primary),
           ),
         ),
@@ -135,13 +130,13 @@ class VelocityDashboardCard extends StatelessWidget {
             ),
             Text(
               ' / $totalTasksToday',
-              style: TextStyle(fontSize: 12, color: colorScheme.onSurface.withOpacity(0.5), fontWeight: FontWeight.bold),
+              style: TextStyle(fontSize: 12, color: colorScheme.onSurface.withValues(alpha: 0.5), fontWeight: FontWeight.bold),
             ),
           ],
         ),
         Text(
           'Tasks Done',
-          style: TextStyle(fontSize: 10, color: colorScheme.onSurface.withOpacity(0.5)),
+          style: TextStyle(fontSize: 10, color: colorScheme.onSurface.withValues(alpha: 0.5)),
         ),
       ],
     );
@@ -159,7 +154,7 @@ class VelocityDashboardCard extends StatelessWidget {
         const SizedBox(width: 4),
         Text(
           '$streak-Day Streak',
-          style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: colorScheme.onSurface.withOpacity(0.6)),
+          style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: colorScheme.onSurface.withValues(alpha: 0.6)),
         ),
       ],
     );
@@ -173,7 +168,7 @@ class VelocityDashboardCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: colorScheme.outlineVariant.withOpacity(0.5), width: 1),
+        border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.5), width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -194,10 +189,10 @@ class VelocityDashboardCard extends StatelessWidget {
               'Reminders',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(fontSize: 11, color: colorScheme.onSurface.withOpacity(0.7)),
+              style: TextStyle(fontSize: 11, color: colorScheme.onSurface.withValues(alpha: 0.7)),
             ),
             value: settings.dailyBriefingEnabled ?? true,
-            activeColor: colorScheme.primary,
+            activeThumbColor: colorScheme.primary,
             onChanged: (enabled) => _toggleReminders(context, enabled, themeProvider),
           ),
           const SizedBox(height: 4),
@@ -218,12 +213,16 @@ class VelocityDashboardCard extends StatelessWidget {
                   ButtonSegment(value: 2, label: Text('L', style: TextStyle(fontSize: 10))),
                 ],
                 selected: <int>{
-                  (settings.fontSizeIndex ?? 2) <= 1 ? 0 : ((settings.fontSizeIndex ?? 2) >= 4 ? 2 : 1)
+                  (settings.fontSizeIndex ?? 2) <= 1
+                      ? 0
+                      : ((settings.fontSizeIndex ?? 2) == 2 ? 1 : 2)
                 },
                 onSelectionChanged: (val) {
                   HapticFeedback.selectionClick();
+                  // S/M/L map onto the shared scale [0.7, 0.85, 1.0, 1.2, 1.4]:
+                  // S = 0.85, M = 1.0 (the default), L = 1.2.
                   final quickIndex = val.first;
-                  themeProvider.updateFontSize(quickIndex == 0 ? 1 : (quickIndex == 1 ? 3 : 4));
+                  themeProvider.updateFontSize(quickIndex + 1);
                 },
               ),
             ),
@@ -250,22 +249,5 @@ class VelocityDashboardCard extends StatelessWidget {
       await ns.cancelAllNotifications();
     }
     await provider.updateNotificationSetting('dailyBriefing', enabled);
-  }
-
-  void _showAdjustGoalDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text("Adjust Daily Goal"),
-        content: const TextField(
-          decoration: InputDecoration(labelText: "Daily Target", border: OutlineInputBorder()),
-          keyboardType: TextInputType.number,
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("CANCEL")),
-          ElevatedButton(onPressed: () => Navigator.pop(ctx), child: const Text("SAVE")),
-        ],
-      ),
-    );
   }
 }

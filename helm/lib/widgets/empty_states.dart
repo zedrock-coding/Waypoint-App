@@ -15,13 +15,13 @@ class DashboardEmptyState extends StatelessWidget {
             Icon(
               Icons.done_all_rounded,
               size: 80,
-              color: colorScheme.onSurface.withOpacity(0.1),
+              color: colorScheme.onSurface.withValues(alpha: 0.1),
             ),
             const SizedBox(height: 16),
             Text(
               'All caught up!',
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                color: colorScheme.onSurface.withOpacity(0.5),
+                color: colorScheme.onSurface.withValues(alpha: 0.5),
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -29,7 +29,7 @@ class DashboardEmptyState extends StatelessWidget {
             Text(
               'Tap the + button to add a task',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: colorScheme.onSurface.withOpacity(0.4),
+                color: colorScheme.onSurface.withValues(alpha: 0.4),
               ),
             ),
           ],
@@ -56,7 +56,7 @@ class CommunityEmptyState extends StatelessWidget {
           Icon(
             Icons.inventory_2_outlined,
             size: 100,
-            color: colorScheme.onSurface.withOpacity(0.2),
+            color: colorScheme.onSurface.withValues(alpha: 0.2),
           ),
           const SizedBox(height: 24),
           Text(

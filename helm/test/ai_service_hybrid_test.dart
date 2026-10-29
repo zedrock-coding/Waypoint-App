@@ -3,11 +3,11 @@ import 'package:helm/services/needle_engine.dart';
 import 'package:helm/services/ai_service.dart';
 
 void main() {
-  group('CactusNeedleEngine Tests', () {
-    late CactusNeedleEngine engine;
+  group('LocalHeuristicParser Tests', () {
+    late LocalHeuristicParser engine;
 
     setUp(() async {
-      engine = CactusNeedleEngine();
+      engine = LocalHeuristicParser();
       await engine.initialize();
     });
 
@@ -97,7 +97,7 @@ void main() {
 
   group('AiService Hybrid Fast-Path Tests', () {
     test('Fast path runs through needle engine without cloud failure', () async {
-      final aiService = AiService(needleEngine: CactusNeedleEngine());
+      final aiService = AiService(needleEngine: LocalHeuristicParser());
       final result = await aiService.parseHybridCommand(
         userInput: 'Urgent fix tomorrow',
         availableCommunities: [],

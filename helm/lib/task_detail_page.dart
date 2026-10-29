@@ -9,6 +9,7 @@ import 'widgets/task_form_utils.dart';
 import 'providers/task_provider.dart';
 import 'services/supabase_service.dart';
 import 'services/ai_service.dart';
+import 'services/task_rules.dart';
 
 class TaskDetailScreen extends StatelessWidget {
   final UnifiedTask task;
@@ -67,6 +68,18 @@ class _TaskDetailContentState extends State<TaskDetailContent> {
       final myId = Supabase.instance.client.auth.currentUser?.id;
       final creatorId = widget.task.userId;
 
+      // The creator always owns their task, even if the roster fetch has not
+      // caught up with a recent membership change.
+      if (myId != null && creatorId == myId) {
+        if (mounted) {
+          setState(() {
+            _isReadOnly = false;
+            _loadingPerms = false;
+          });
+        }
+        return;
+      }
+
       final me = members.firstWhere((m) => m['user_id'] == myId, orElse: () => {});
       final creator = members.firstWhere((m) => m['user_id'] == creatorId, orElse: () => {});
 
@@ -76,17 +89,28 @@ class _TaskDetailContentState extends State<TaskDetailContent> {
         return 1;
       }
 
-      final myWeight = getWeight(me['role']);
-      final creatorWeight = getWeight(creator['role']);
+      // Fail closed. Previously an unknown creator fell through to weight 1,
+      // which let any member edit an Owner's task whenever the roster lookup
+      // missed — exactly the bypass the client lock is meant to hint at.
+      final isMember = me.isNotEmpty;
+      final myWeight = isMember ? getWeight(me['role']?.toString()) : 0;
+      final creatorWeight = creator.isEmpty ? 3 : getWeight(creator['role']?.toString());
 
       if (mounted) {
         setState(() {
-          _isReadOnly = myWeight < creatorWeight;
+          _isReadOnly = !isMember || myWeight < creatorWeight;
           _loadingPerms = false;
         });
       }
     } catch (e) {
-      if (mounted) setState(() => _loadingPerms = false);
+      // Could not prove permission: stay read-only rather than exposing writes.
+      debugPrint('RBAC check failed, defaulting to read-only: $e');
+      if (mounted) {
+        setState(() {
+          _isReadOnly = true;
+          _loadingPerms = false;
+        });
+      }
     }
   }
 
@@ -161,7 +185,7 @@ class _TaskDetailContentState extends State<TaskDetailContent> {
                 children: [
                   if (!_loadingPerms && _isReadOnly)
                     Container(
-                      color: Colors.orange.withOpacity(0.1),
+                      color: Colors.orange.withValues(alpha: 0.1),
                       padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 24),
                       child: const Row(
                         children: [
@@ -205,7 +229,7 @@ class _TaskDetailContentState extends State<TaskDetailContent> {
                           minHeight: MediaQuery.of(context).size.height * 0.6,
                         ),
                         decoration: BoxDecoration(
-                          color: colorScheme.surfaceVariant.withOpacity(0.2),
+                          color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.2),
                           borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
                         ),
                         child: Padding(
@@ -258,7 +282,7 @@ class _TaskDetailContentState extends State<TaskDetailContent> {
                                       sub['title'] ?? '',
                                       style: TextStyle(
                                         decoration: isCompleted ? TextDecoration.lineThrough : null,
-                                        color: isCompleted ? colorScheme.onSurface.withOpacity(0.5) : colorScheme.onSurface,
+                                        color: isCompleted ? colorScheme.onSurface.withValues(alpha: 0.5) : colorScheme.onSurface,
                                       ),
                                     ),
                                     value: isCompleted,
@@ -367,7 +391,7 @@ class _TaskDetailContentState extends State<TaskDetailContent> {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: colorScheme.primary.withOpacity(0.1),
+              color: colorScheme.primary.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(icon, size: 18, color: colorScheme.primary),
@@ -380,7 +404,7 @@ class _TaskDetailContentState extends State<TaskDetailContent> {
               children: [
                 Text(
                   label, 
-                  style: TextStyle(fontSize: 10, color: colorScheme.onSurface.withOpacity(0.5)),
+                  style: TextStyle(fontSize: 10, color: colorScheme.onSurface.withValues(alpha: 0.5)),
                 ),
                 const SizedBox(height: 2),
                 Text(
@@ -428,6 +452,16 @@ class _TaskCommentsSectionState extends State<_TaskCommentsSection> {
   final _commentController = TextEditingController();
   bool _isSubmitting = false;
 
+  /// Cached once per task instead of being requested during every build.
+  late final Stream<List<Map<String, dynamic>>> _commentsStream;
+
+  @override
+  void initState() {
+    super.initState();
+    _commentsStream =
+        context.read<TaskProvider>().streamTaskComments(widget.task.id);
+  }
+
   @override
   void dispose() {
     _commentController.dispose();
@@ -453,11 +487,10 @@ class _TaskCommentsSectionState extends State<_TaskCommentsSection> {
 
   @override
   Widget build(BuildContext context) {
-    final taskProvider = context.read<TaskProvider>();
     final userId = Supabase.instance.client.auth.currentUser?.id;
 
     return StreamBuilder<List<Map<String, dynamic>>>(
-      stream: taskProvider.streamTaskComments(widget.task.id),
+      stream: _commentsStream,
       builder: (context, snapshot) {
         final List<Map<String, dynamic>> rawComments = snapshot.data ?? [];
         
@@ -470,13 +503,13 @@ class _TaskCommentsSectionState extends State<_TaskCommentsSection> {
         }
         final comments = uniqueComments.values.toList();
         
-        // Calculate 2-comment limit logic
-        final myRecentComments = comments.where((c) {
-          final createdAt = DateTime.parse(c['created_at']);
-          return c['user_id'] == userId && createdAt.isAfter(widget.task.updatedAt.subtract(const Duration(seconds: 1)));
-        }).toList();
-
-        final bool limitReached = myRecentComments.length >= 2;
+        // 2-comment limit, exactly as documented (AGENTS.md §5). Entries with an
+        // unparseable timestamp are displayed but never counted.
+        final bool limitReached = isCommentLimitReached(
+          comments: comments,
+          userId: userId,
+          updatedAt: widget.task.updatedAt,
+        );
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -495,7 +528,7 @@ class _TaskCommentsSectionState extends State<_TaskCommentsSection> {
                     userName: c['user_name'] ?? 'User',
                     text: c['comment_text'] ?? '',
                     isMe: isMe,
-                    time: DateTime.parse(c['created_at']),
+                    time: DateTime.tryParse(c['created_at']?.toString() ?? '') ?? DateTime.now(),
                   );
                 },
               ),
@@ -504,9 +537,9 @@ class _TaskCommentsSectionState extends State<_TaskCommentsSection> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.orange.withOpacity(0.1),
+                  color: Colors.orange.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.orange.withOpacity(0.3)),
+                  border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
                 ),
                 child: const Row(
                   children: [
@@ -559,13 +592,13 @@ class _CommentBubble extends StatelessWidget {
         children: [
           Text(
             '$userName • ${DateFormat.jm().format(time)}',
-            style: TextStyle(fontSize: 10, color: colorScheme.onSurface.withOpacity(0.4)),
+            style: TextStyle(fontSize: 10, color: colorScheme.onSurface.withValues(alpha: 0.4)),
           ),
           const SizedBox(height: 4),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             decoration: BoxDecoration(
-              color: isMe ? colorScheme.primaryContainer.withOpacity(0.3) : colorScheme.surfaceVariant.withOpacity(0.3),
+              color: isMe ? colorScheme.primaryContainer.withValues(alpha: 0.3) : colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
               borderRadius: BorderRadius.only(
                 topLeft: const Radius.circular(16),
                 topRight: const Radius.circular(16),

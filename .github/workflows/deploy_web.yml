@@ -1,35 +1,77 @@
 name: Deploy Helm Web to Vercel
 
+# Deploy only after the Quality Gate has passed for the same commit.
+#
+# `needs:` cannot reference a job in another workflow file, so the dependency is
+# expressed with `workflow_run` instead: this workflow fires when "Quality Gate"
+# finishes, and the job below refuses to run unless it concluded successfully.
 on:
-  push:
-    branches:
-      - highest
+  workflow_run:
+    workflows: ["Quality Gate"]
+    types: [completed]
+    branches: [highest]
+  workflow_dispatch:
+
+# Never deploy two builds of the same commit at once, and never cancel one that
+# is already uploading.
+concurrency:
+  group: deploy-web-${{ github.event.workflow_run.head_sha || github.sha }}
+  cancel-in-progress: false
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
     steps:
-      # 1. Check out the code
-      - uses: actions/checkout@v3
+      # 1. Check out the commit that passed the gate. On workflow_run the
+      #    default ref is the base branch, so the SHA must be explicit.
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
       # 2. Install Flutter
       - uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
 
-      # 3. Handle Environment Variables
-      # We create the .env file for local asset fallback AND use --dart-define for web stability
-      - name: Create .env file
-        run: echo "GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}" > helm/.env
-
-      # 4. Build the Web App
+      # 3. Build the Web App
+      # No .env asset is created and no API key is passed as a --dart-define:
+      # the Gemini credential lives in the Supabase Edge Function, and the
+      # Supabase URL/publishable key come from lib/config/app_config.dart.
+      # To target another Supabase project, add --dart-define=SUPABASE_URL=...
+      # and --dart-define=SUPABASE_ANON_KEY=... here.
       - name: Build Web
         working-directory: ./helm
         run: |
           flutter pub get
-          flutter build web --release --base-href "/" --dart-define=GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}
+          flutter build web --release --base-href "/" --pwa-strategy=none
           # Ensure vercel.json is in the build directory for routing rules
           cp vercel.json build/web/
+
+      # 4. Fail the deploy if a credential ever reaches the bundle again.
+      - name: Verify no secrets in the bundle
+        working-directory: ./helm
+        run: |
+          set -euo pipefail
+          if [ -e build/web/assets/.env ]; then
+            echo "::error::build/web/assets/.env exists — the .env asset came back."
+            exit 1
+          fi
+          found=0
+          while IFS= read -r file; do
+            found=1
+            echo "  $file"
+          done < <(grep -rIlE "AIza[0-9A-Za-z_-]{20,}|service_role|sb_secret_" build/web || true)
+          if [ "$found" -eq 1 ]; then
+            echo "::error::A credential-like string was found in build/web."
+            exit 1
+          fi
+          if [ -e build/web/admin.html ]; then
+            echo "::error::admin.html is being deployed again."
+            exit 1
+          fi
 
       # 5. Deploy to Vercel
       - name: Install Vercel CLI

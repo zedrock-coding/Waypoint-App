@@ -12,6 +12,20 @@ class NotificationFeedUI extends StatefulWidget {
 class _NotificationFeedUIState extends State<NotificationFeedUI> {
   final _supabase = Supabase.instance.client;
 
+  /// Created once per screen open; building it in `build` re-subscribed on
+  /// every rebuild.
+  late final Stream<List<Map<String, dynamic>>> _feedStream;
+
+  @override
+  void initState() {
+    super.initState();
+    _feedStream = _supabase
+        .from('notifications')
+        .stream(primaryKey: ['id'])
+        .order('created_at', ascending: false)
+        .limit(20);
+  }
+
   Future<void> _markAllAsRead() async {
     final userId = _supabase.auth.currentUser?.id;
     if (userId == null) return;
@@ -40,7 +54,7 @@ class _NotificationFeedUIState extends State<NotificationFeedUI> {
         borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 20,
             offset: const Offset(0, -5),
           ),
@@ -55,7 +69,7 @@ class _NotificationFeedUIState extends State<NotificationFeedUI> {
             height: 4,
             margin: const EdgeInsets.symmetric(vertical: 12),
             decoration: BoxDecoration(
-              color: colorScheme.onSurface.withOpacity(0.1),
+              color: colorScheme.onSurface.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -79,11 +93,7 @@ class _NotificationFeedUIState extends State<NotificationFeedUI> {
           const Divider(height: 1),
           Flexible(
             child: StreamBuilder<List<Map<String, dynamic>>>(
-              stream: _supabase
-                  .from('notifications')
-                  .stream(primaryKey: ['id'])
-                  .order('created_at', ascending: false)
-                  .limit(20),
+              stream: _feedStream,
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: Padding(
@@ -100,9 +110,9 @@ class _NotificationFeedUIState extends State<NotificationFeedUI> {
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.notifications_none_rounded, size: 48, color: colorScheme.onSurface.withOpacity(0.2)),
+                          Icon(Icons.notifications_none_rounded, size: 48, color: colorScheme.onSurface.withValues(alpha: 0.2)),
                           const SizedBox(height: 16),
-                          Text('All caught up!', style: TextStyle(color: colorScheme.onSurface.withOpacity(0.5))),
+                          Text('All caught up!', style: TextStyle(color: colorScheme.onSurface.withValues(alpha: 0.5))),
                         ],
                       ),
                     ),
@@ -114,11 +124,16 @@ class _NotificationFeedUIState extends State<NotificationFeedUI> {
                   itemCount: notifications.length,
                   itemBuilder: (context, index) {
                     final item = notifications[index];
-                    final isRead = item['is_read'] as bool;
-                    final date = DateTime.parse(item['created_at']);
+                    // Realtime payloads are untyped JSON: `as bool` on a null
+                    // and `DateTime.parse` on a missing value both threw inside
+                    // the builder and blanked the whole feed.
+                    final isRead = item['is_read'] == true;
+                    final date = DateTime.tryParse(item['created_at']?.toString() ?? '') ?? DateTime.now();
+                    final title = item['title']?.toString() ?? 'Notification';
+                    final body = item['body']?.toString() ?? '';
 
                     return Material(
-                      color: isRead ? Colors.transparent : colorScheme.primary.withOpacity(0.03),
+                      color: isRead ? Colors.transparent : colorScheme.primary.withValues(alpha: 0.03),
                       child: InkWell(
                         onTap: () async {
                           if (!isRead) {
@@ -134,7 +149,7 @@ class _NotificationFeedUIState extends State<NotificationFeedUI> {
                           child: Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              _buildIcon(context, item['type']),
+                              _buildIcon(context, item['type']?.toString() ?? ''),
                               const SizedBox(width: 16),
                               Expanded(
                                 child: Column(
@@ -144,7 +159,7 @@ class _NotificationFeedUIState extends State<NotificationFeedUI> {
                                       children: [
                                         Expanded(
                                           child: Text(
-                                            item['title'],
+                                            title,
                                             style: TextStyle(
                                               fontSize: 14,
                                               fontWeight: isRead ? FontWeight.normal : FontWeight.bold,
@@ -153,16 +168,16 @@ class _NotificationFeedUIState extends State<NotificationFeedUI> {
                                         ),
                                         Text(
                                           DateFormat.jm().format(date),
-                                          style: TextStyle(fontSize: 11, color: colorScheme.onSurface.withOpacity(0.4)),
+                                          style: TextStyle(fontSize: 11, color: colorScheme.onSurface.withValues(alpha: 0.4)),
                                         ),
                                       ],
                                     ),
                                     const SizedBox(height: 4),
                                     Text(
-                                      item['body'],
+                                      body,
                                       style: TextStyle(
                                         fontSize: 13,
-                                        color: colorScheme.onSurface.withOpacity(0.7),
+                                        color: colorScheme.onSurface.withValues(alpha: 0.7),
                                       ),
                                     ),
                                   ],
@@ -222,7 +237,7 @@ class _NotificationFeedUIState extends State<NotificationFeedUI> {
     return Container(
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
-        color: iconColor.withOpacity(0.1),
+        color: iconColor.withValues(alpha: 0.1),
         shape: BoxShape.circle,
       ),
       child: Icon(iconData, size: 18, color: iconColor),

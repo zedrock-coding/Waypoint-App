@@ -1,0 +1,123 @@
+name: Quality Gate
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    # Weekly full-history audit (Mondays 06:00 UTC).
+    - cron: '0 6 * * 1'
+
+# Cancel superseded runs on the same ref.
+concurrency:
+  group: quality-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze-and-test:
+    name: Analyze & test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: helm
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Analyze
+        run: flutter analyze --fatal-infos
+
+      - name: Test
+        run: flutter test --reporter expanded
+
+  no-committed-secrets:
+    name: No secrets in the tree
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # The .env asset removal is only durable if something fails when it comes
+      # back. `git ls-files` checks what is actually committed, not the working
+      # tree (where a developer's local .env legitimately lives).
+      - name: Tracked env files must not exist
+        run: |
+          set -euo pipefail
+          pattern='(^|/)\.env$|(^|/)\.env\.local$'
+          if git ls-files | grep -qE "$pattern"; then
+            echo "::error::A .env file is tracked. It must stay untracked (use .env.example)."
+            git ls-files | grep -E "$pattern"
+            exit 1
+          fi
+
+      - name: No credential-shaped strings in source
+        run: |
+          set -euo pipefail
+          if git grep -nIiE 'AIza[0-9A-Za-z_-]{20,}|sk-[A-Za-z0-9]{20,}|sb_secret_' \
+               -- . ':!*.lock' ':!docs/*' ':!*.md'; then
+            echo "::error::A credential-shaped string was found in the source tree."
+            exit 1
+          fi
+
+  gitleaks:
+    name: gitleaks (changed commits)
+    runs-on: ubuntu-latest
+    steps:
+      # Full history so the base/head SHAs of a pull request are resolvable.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Pinned to the same version used to validate .gitleaks.toml locally.
+      - name: Install gitleaks
+        env:
+          GITLEAKS_VERSION: "8.30.1"
+        run: |
+          set -euo pipefail
+          curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" \
+            | sudo tar -xz -C /usr/local/bin gitleaks
+          gitleaks version
+
+      # Scan only the commits introduced by this push/PR. A working-tree scan is
+      # useless here: it walks build artifacts, and old builds still contain
+      # copies of the pre-remediation .env.
+      - name: Scan changed commits
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            range="${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}"
+          elif [ -n "${{ github.event.before }}" ] && [ "${{ github.event.before }}" != "0000000000000000000000000000000000000000" ]; then
+            range="${{ github.event.before }}..${{ github.sha }}"
+          else
+            range="-1"
+          fi
+          echo "Scanning: $range"
+          gitleaks git . --log-opts="$range" --config .gitleaks.toml --redact --verbose
+
+  secret-history-audit:
+    name: gitleaks (full history audit)
+    # Non-gating standing audit: run it on demand or weekly. Everything it can
+    # legitimately find is allowlisted in .gitleaks.toml with a reason; anything
+    # else means a credential reached history and needs rotation.
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install gitleaks
+        env:
+          GITLEAKS_VERSION: "8.30.1"
+        run: |
+          set -euo pipefail
+          curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" \
+            | sudo tar -xz -C /usr/local/bin gitleaks
+      - name: Scan all history
+        run: gitleaks git . --config .gitleaks.toml --redact --verbose

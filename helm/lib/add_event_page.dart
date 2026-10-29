@@ -15,8 +15,8 @@ class AddEventPage extends StatefulWidget {
   final bool isDialog;
 
   const AddEventPage({
-    super.key, 
-    this.taskToEdit, 
+    super.key,
+    this.taskToEdit,
     this.initialCategory,
     this.initialCommunityId,
     this.isDialog = false,
@@ -30,19 +30,23 @@ class _AddEventPageState extends State<AddEventPage> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _titleController;
   late TextEditingController _descriptionController;
-  late DateTime _selectedDate;
+  DateTime? _selectedDate;
   TimeOfDay? _selectedTime;
-  
+
   late Priority _selectedPriority;
   late Status _selectedStatus;
-  
+
   List<hive_model.Category> _availableHiveCategories = [];
   final List<String> _selectedCategoryIds = [];
   final List<String> _selectedAssigneeIds = [];
   final List<TextEditingController> _subtaskControllers = [];
+
+  /// Subtasks as loaded from the task being edited, used to restore
+  /// `is_completed` (and any other metadata) when the list is rebuilt on save.
+  final List<Map<String, dynamic>> _originalSubtasks = [];
   bool _hasUnsavedChanges = false;
-  
-  String? _selectedDestination; 
+
+  String? _selectedDestination;
   List<Map<String, dynamic>> _userCommunities = [];
   List<Map<String, dynamic>> _communityMembers = [];
   bool _isUserLoggedIn = false;
@@ -52,33 +56,45 @@ class _AddEventPageState extends State<AddEventPage> {
   void initState() {
     super.initState();
     _isUserLoggedIn = Supabase.instance.client.auth.currentUser != null;
-    
+
     if (widget.initialCommunityId != null) {
       _selectedDestination = widget.initialCommunityId;
     } else if (widget.taskToEdit != null) {
-      _selectedDestination = widget.taskToEdit!.communityId ?? (_isUserLoggedIn ? null : 'local');
+      _selectedDestination =
+          widget.taskToEdit!.communityId ?? (_isUserLoggedIn ? null : 'local');
     } else {
       _selectedDestination = _isUserLoggedIn ? null : 'local';
     }
-    
-    _titleController = TextEditingController(text: widget.taskToEdit?.title ?? '');
-    _descriptionController = TextEditingController(text: widget.taskToEdit?.description ?? '');
-    
+
+    _titleController = TextEditingController(
+      text: widget.taskToEdit?.title ?? '',
+    );
+    _descriptionController = TextEditingController(
+      text: widget.taskToEdit?.description ?? '',
+    );
+
     if (widget.taskToEdit != null) {
       _selectedAssigneeIds.addAll(widget.taskToEdit!.assignees);
       _selectedCategoryIds.addAll(widget.taskToEdit!.categoryIds);
       for (var sub in widget.taskToEdit!.subtasks) {
-        _subtaskControllers.add(TextEditingController(text: sub['title']));
+        final copy = Map<String, dynamic>.from(sub);
+        _originalSubtasks.add(copy);
+        _subtaskControllers.add(
+          TextEditingController(text: copy['title']?.toString() ?? ''),
+        );
       }
     }
-    
-    _selectedDate = widget.taskToEdit?.dateTime ?? DateTime.now();
-    _selectedTime = widget.taskToEdit?.dateTime != null 
-        ? TimeOfDay.fromDateTime(widget.taskToEdit!.dateTime)
+
+    // Only a real due date counts. Falling back to `dateTime` (which is
+    // `createdAt` when no deadline exists) meant every edit re-stamped a due
+    // date the user had never set.
+    _selectedDate = widget.taskToEdit?.dueDate;
+    _selectedTime = widget.taskToEdit?.dueDate != null
+        ? TimeOfDay.fromDateTime(widget.taskToEdit!.dueDate!)
         : null;
     _selectedPriority = widget.taskToEdit?.priority ?? Priority.medium;
     _selectedStatus = widget.taskToEdit?.status ?? Status.toDo;
-    
+
     _loadHiveCategories();
     _loadSupabaseCommunities();
     _loadCommunityMembers();
@@ -112,7 +128,9 @@ class _AddEventPageState extends State<AddEventPage> {
 
     setState(() => _isLoadingMembers = true);
     try {
-      final members = await SupabaseService().getCommunityMembers(_selectedDestination!);
+      final members = await SupabaseService().getCommunityMembers(
+        _selectedDestination!,
+      );
       setState(() {
         _communityMembers = members;
       });
@@ -144,25 +162,56 @@ class _AddEventPageState extends State<AddEventPage> {
     });
   }
 
+  /// Rebuilds the subtask payload while keeping the completion state of items
+  /// that survived the edit.
+  ///
+  /// The save path used to hard-code `is_completed: false`, so opening a task,
+  /// touching anything and saving silently reset every ticked subtask. Items are
+  /// matched by trimmed title (case-insensitive); a renamed or new item starts
+  /// unchecked, which is the only defensible answer without stable ids.
+  List<Map<String, dynamic>> _buildSubtasks() {
+    final Map<String, List<Map<String, dynamic>>> pool = {};
+    for (final sub in _originalSubtasks) {
+      final key = (sub['title']?.toString() ?? '').trim().toLowerCase();
+      pool.putIfAbsent(key, () => []).add(sub);
+    }
+
+    final List<Map<String, dynamic>> result = [];
+    for (final controller in _subtaskControllers) {
+      final title = controller.text.trim();
+      if (title.isEmpty) continue;
+
+      final bucket = pool[title.toLowerCase()];
+      if (bucket != null && bucket.isNotEmpty) {
+        final match = Map<String, dynamic>.from(bucket.removeAt(0));
+        match['title'] = title;
+        result.add(match);
+      } else {
+        result.add({'title': title, 'is_completed': false});
+      }
+    }
+    return result;
+  }
+
   Future<void> _saveTask() async {
     if (_formKey.currentState!.validate()) {
       try {
         final taskProvider = context.read<TaskProvider>();
-        final List<Map<String, dynamic>> subtasks = _subtaskControllers
-            .where((c) => c.text.trim().isNotEmpty)
-            .map((c) => {'title': c.text.trim(), 'is_completed': false})
-            .toList();
+        final List<Map<String, dynamic>> subtasks = _buildSubtasks();
 
-        // Combine date and time
-        DateTime finalDueAt = _selectedDate;
-        if (_selectedTime != null) {
-          finalDueAt = DateTime(
-            _selectedDate.year,
-            _selectedDate.month,
-            _selectedDate.day,
-            _selectedTime!.hour,
-            _selectedTime!.minute,
-          );
+        // Combine date and time. Null means "no due date", which is a real
+        // state: passing null through clears the deadline and cancels reminders.
+        DateTime? finalDueAt;
+        if (_selectedDate != null) {
+          finalDueAt = _selectedTime == null
+              ? _selectedDate
+              : DateTime(
+                  _selectedDate!.year,
+                  _selectedDate!.month,
+                  _selectedDate!.day,
+                  _selectedTime!.hour,
+                  _selectedTime!.minute,
+                );
         }
 
         if (widget.taskToEdit != null) {
@@ -180,10 +229,11 @@ class _AddEventPageState extends State<AddEventPage> {
             dueAt: finalDueAt,
           );
         } else {
-          final String? communityId = (_selectedDestination != null && _selectedDestination != 'local') 
-              ? _selectedDestination 
+          final String? communityId =
+              (_selectedDestination != null && _selectedDestination != 'local')
+              ? _selectedDestination
               : null;
-              
+
           final bool isLocalOnly = _selectedDestination == 'local';
 
           await taskProvider.addTask(
@@ -205,7 +255,10 @@ class _AddEventPageState extends State<AddEventPage> {
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to save: $e'), backgroundColor: Colors.red),
+            SnackBar(
+              content: Text('Failed to save: $e'),
+              backgroundColor: Colors.red,
+            ),
           );
         }
       }
@@ -222,15 +275,24 @@ class _AddEventPageState extends State<AddEventPage> {
         shrinkWrap: widget.isDialog,
         padding: const EdgeInsets.only(bottom: 100), // Clear FAB and buttons
         children: [
-          _buildTextField(controller: _titleController, label: 'Title', validator: (v) => v?.isEmpty ?? true ? 'Enter title' : null),
+          _buildTextField(
+            controller: _titleController,
+            label: 'Title',
+            validator: (v) => v?.isEmpty ?? true ? 'Enter title' : null,
+          ),
           const SizedBox(height: 16),
-          _buildTextField(controller: _descriptionController, label: 'Description', maxLines: 2),
+          _buildTextField(
+            controller: _descriptionController,
+            label: 'Description',
+            maxLines: 2,
+          ),
           const SizedBox(height: 16),
           _buildStatusPriorityRow(),
           const SizedBox(height: 16),
           _buildDestinationSelector(),
           const SizedBox(height: 16),
-          if (_selectedDestination != null && _selectedDestination != 'local') _buildAssigneeSelector(),
+          if (_selectedDestination != null && _selectedDestination != 'local')
+            _buildAssigneeSelector(),
           const SizedBox(height: 16),
           _buildDatePicker(),
           const Divider(height: 32),
@@ -239,7 +301,9 @@ class _AddEventPageState extends State<AddEventPage> {
           _buildSubtaskSection(),
           const SizedBox(height: 32),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(minimumSize: const Size.fromHeight(50)),
+            style: ElevatedButton.styleFrom(
+              minimumSize: const Size.fromHeight(50),
+            ),
             onPressed: _saveTask,
             child: Text(isEditing ? 'Update Task' : 'Save Task'),
           ),
@@ -264,16 +328,27 @@ class _AddEventPageState extends State<AddEventPage> {
         top: true,
         child: Scaffold(
           appBar: AppBar(title: Text(isEditing ? 'Edit Task' : 'Add New Task')),
-          body: Padding(padding: const EdgeInsets.all(16.0), child: formContent),
+          body: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: formContent,
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildTextField({required TextEditingController controller, required String label, String? Function(String?)? validator, int maxLines = 1}) {
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String label,
+    String? Function(String?)? validator,
+    int maxLines = 1,
+  }) {
     return TextFormField(
       controller: controller,
-      decoration: InputDecoration(labelText: label, border: const OutlineInputBorder()),
+      decoration: InputDecoration(
+        labelText: label,
+        border: const OutlineInputBorder(),
+      ),
       validator: validator,
       maxLines: maxLines,
     );
@@ -284,19 +359,45 @@ class _AddEventPageState extends State<AddEventPage> {
       children: [
         Expanded(
           child: DropdownButtonFormField<Status>(
-            value: _selectedStatus,
-            decoration: const InputDecoration(labelText: 'Status', border: OutlineInputBorder()),
-            items: Status.values.map((s) => DropdownMenuItem(value: s, child: Text(_formatStatus(s).toUpperCase()))).toList(),
-            onChanged: (v) => setState(() { _selectedStatus = v!; _hasUnsavedChanges = true; }),
+            initialValue: _selectedStatus,
+            decoration: const InputDecoration(
+              labelText: 'Status',
+              border: OutlineInputBorder(),
+            ),
+            items: Status.values
+                .map(
+                  (s) => DropdownMenuItem(
+                    value: s,
+                    child: Text(_formatStatus(s).toUpperCase()),
+                  ),
+                )
+                .toList(),
+            onChanged: (v) => setState(() {
+              _selectedStatus = v!;
+              _hasUnsavedChanges = true;
+            }),
           ),
         ),
         const SizedBox(width: 16),
         Expanded(
           child: DropdownButtonFormField<Priority>(
-            value: _selectedPriority,
-            decoration: const InputDecoration(labelText: 'Priority', border: OutlineInputBorder()),
-            items: Priority.values.map((p) => DropdownMenuItem(value: p, child: Text(p.name.toUpperCase()))).toList(),
-            onChanged: (v) => setState(() { _selectedPriority = v!; _hasUnsavedChanges = true; }),
+            initialValue: _selectedPriority,
+            decoration: const InputDecoration(
+              labelText: 'Priority',
+              border: OutlineInputBorder(),
+            ),
+            items: Priority.values
+                .map(
+                  (p) => DropdownMenuItem(
+                    value: p,
+                    child: Text(p.name.toUpperCase()),
+                  ),
+                )
+                .toList(),
+            onChanged: (v) => setState(() {
+              _selectedPriority = v!;
+              _hasUnsavedChanges = true;
+            }),
           ),
         ),
       ],
@@ -309,19 +410,25 @@ class _AddEventPageState extends State<AddEventPage> {
   }
 
   Widget _buildAssigneeSelector() {
-    if (_isLoadingMembers) return const Center(child: LinearProgressIndicator());
+    if (_isLoadingMembers) {
+      return const Center(child: LinearProgressIndicator());
+    }
     if (_communityMembers.isEmpty) return const SizedBox.shrink();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Assign to Members:', style: TextStyle(fontWeight: FontWeight.bold)),
+        const Text(
+          'Assign to Members:',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         const SizedBox(height: 8),
         Wrap(
           spacing: 8,
           children: _communityMembers.map((member) {
             final String id = member['user_id'];
-            final String name = member['full_name'] ?? 'User ${id.substring(0, 4)}';
+            final String name =
+                member['full_name'] ?? 'User ${id.substring(0, 4)}';
             final isSelected = _selectedAssigneeIds.contains(id);
 
             return FilterChip(
@@ -345,42 +452,101 @@ class _AddEventPageState extends State<AddEventPage> {
   }
 
   Widget _buildDatePicker() {
+    final hasDueDate = _selectedDate != null;
     return Column(
       children: [
         ListTile(
-          shape: RoundedRectangleBorder(side: BorderSide(color: Theme.of(context).dividerColor), borderRadius: BorderRadius.circular(4)),
-          title: Text("Due Date: ${DateFormat.yMMMd().format(_selectedDate)}"),
-          trailing: const Icon(Icons.calendar_today),
+          shape: RoundedRectangleBorder(
+            side: BorderSide(color: Theme.of(context).dividerColor),
+            borderRadius: BorderRadius.circular(4),
+          ),
+          title: Text(
+            hasDueDate
+                ? "Due Date: ${DateFormat.yMMMd().format(_selectedDate!)}"
+                : "Due Date: None",
+          ),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (hasDueDate)
+                IconButton(
+                  tooltip: 'Clear due date',
+                  icon: const Icon(Icons.clear),
+                  onPressed: () => setState(() {
+                    _selectedDate = null;
+                    _selectedTime = null;
+                    _hasUnsavedChanges = true;
+                  }),
+                ),
+              const Icon(Icons.calendar_today),
+            ],
+          ),
           onTap: () async {
-            final picked = await showDatePicker(context: context, initialDate: _selectedDate, firstDate: DateTime(2000), lastDate: DateTime(2101));
-            if (picked != null) setState(() { _selectedDate = picked; _hasUnsavedChanges = true; });
+            final picked = await showDatePicker(
+              context: context,
+              initialDate: _selectedDate ?? DateTime.now(),
+              firstDate: DateTime(2000),
+              lastDate: DateTime(2101),
+            );
+            if (picked != null) {
+              setState(() {
+                _selectedDate = picked;
+                _hasUnsavedChanges = true;
+              });
+            }
           },
         ),
         const SizedBox(height: 16),
         ListTile(
-          shape: RoundedRectangleBorder(side: BorderSide(color: Theme.of(context).dividerColor), borderRadius: BorderRadius.circular(4)),
-          title: Text("Time: ${_selectedTime != null ? _selectedTime!.format(context) : 'None (All Day)'}"),
+          enabled: hasDueDate,
+          shape: RoundedRectangleBorder(
+            side: BorderSide(color: Theme.of(context).dividerColor),
+            borderRadius: BorderRadius.circular(4),
+          ),
+          title: Text(
+            "Time: ${_selectedTime != null ? _selectedTime!.format(context) : (hasDueDate ? 'None (All Day)' : 'Set a date first')}",
+          ),
           trailing: const Icon(Icons.access_time),
-          onTap: () async {
-            final picked = await showTimePicker(context: context, initialTime: _selectedTime ?? TimeOfDay.now());
-            if (picked != null) setState(() { _selectedTime = picked; _hasUnsavedChanges = true; });
-          },
+          onTap: hasDueDate
+              ? () async {
+                  final picked = await showTimePicker(
+                    context: context,
+                    initialTime: _selectedTime ?? TimeOfDay.now(),
+                  );
+                  if (picked != null) {
+                    setState(() {
+                      _selectedTime = picked;
+                      _hasUnsavedChanges = true;
+                    });
+                  }
+                }
+              : null,
         ),
       ],
     );
   }
 
   Widget _buildDestinationSelector() {
-    final List<String?> validIds = [null, 'local', ..._userCommunities.map((c) => c['id'].toString())];
-    final String? effectiveValue = validIds.contains(_selectedDestination) ? _selectedDestination : 'local';
+    final List<String?> validIds = [
+      null,
+      'local',
+      ..._userCommunities.map((c) => c['id'].toString()),
+    ];
+    final String? effectiveValue = validIds.contains(_selectedDestination)
+        ? _selectedDestination
+        : 'local';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Destination:', style: TextStyle(fontWeight: FontWeight.bold)),
+        const Text(
+          'Destination:',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         const SizedBox(height: 8),
         DropdownButtonFormField<String?>(
-          value: effectiveValue,
+          key: ValueKey('destination_$effectiveValue'),
+          initialValue: effectiveValue,
           decoration: const InputDecoration(
             border: OutlineInputBorder(),
             contentPadding: EdgeInsets.symmetric(horizontal: 12),
@@ -388,35 +554,41 @@ class _AddEventPageState extends State<AddEventPage> {
           items: [
             if (_isUserLoggedIn)
               const DropdownMenuItem(
-                value: null, 
+                value: null,
                 child: Row(
                   children: [
-                    Icon(Icons.cloud_done_outlined, size: 18, color: Colors.blue),
+                    Icon(
+                      Icons.cloud_done_outlined,
+                      size: 18,
+                      color: Colors.blue,
+                    ),
                     SizedBox(width: 8),
                     Text('Personal (Cloud Sync)'),
                   ],
-                )
+                ),
               ),
             const DropdownMenuItem(
-              value: 'local', 
+              value: 'local',
               child: Row(
                 children: [
                   Icon(Icons.smartphone_rounded, size: 18, color: Colors.grey),
                   SizedBox(width: 8),
                   Text('Device Only (Offline)'),
                 ],
-              )
-            ),
-            ..._userCommunities.map((comm) => DropdownMenuItem(
-              value: comm['id'].toString(),
-              child: Row(
-                children: [
-                  const Icon(Icons.hub_rounded, size: 18, color: Colors.teal),
-                  const SizedBox(width: 8),
-                  Text('Community: ${comm['name']}'),
-                ],
               ),
-            )),
+            ),
+            ..._userCommunities.map(
+              (comm) => DropdownMenuItem(
+                value: comm['id'].toString(),
+                child: Row(
+                  children: [
+                    const Icon(Icons.hub_rounded, size: 18, color: Colors.teal),
+                    const SizedBox(width: 8),
+                    Text('Community: ${comm['name']}'),
+                  ],
+                ),
+              ),
+            ),
           ],
           onChanged: (val) {
             setState(() {
@@ -434,7 +606,10 @@ class _AddEventPageState extends State<AddEventPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Apply Categories (Tags):', style: TextStyle(fontWeight: FontWeight.bold)),
+        const Text(
+          'Apply Categories (Tags):',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         const SizedBox(height: 8),
         Wrap(
           spacing: 8,
@@ -465,9 +640,15 @@ class _AddEventPageState extends State<AddEventPage> {
       children: [
         Row(
           children: [
-            const Text('Sub-tasks', style: TextStyle(fontWeight: FontWeight.bold)),
+            const Text(
+              'Sub-tasks',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
             const Spacer(),
-            IconButton(onPressed: _addSubtask, icon: const Icon(Icons.add_circle_outline, color: Colors.teal)),
+            IconButton(
+              onPressed: _addSubtask,
+              icon: const Icon(Icons.add_circle_outline, color: Colors.teal),
+            ),
           ],
         ),
         ...List.generate(_subtaskControllers.length, (index) {
@@ -485,7 +666,13 @@ class _AddEventPageState extends State<AddEventPage> {
                     ),
                   ),
                 ),
-                IconButton(onPressed: () => _removeSubtask(index), icon: const Icon(Icons.remove_circle_outline, color: Colors.redAccent)),
+                IconButton(
+                  onPressed: () => _removeSubtask(index),
+                  icon: const Icon(
+                    Icons.remove_circle_outline,
+                    color: Colors.redAccent,
+                  ),
+                ),
               ],
             ),
           );
@@ -495,26 +682,48 @@ class _AddEventPageState extends State<AddEventPage> {
   }
 
   Widget _buildDialogWrapper(bool isEditing, Widget content) {
-    return Dialog(
-      backgroundColor: Colors.transparent,
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 600, maxHeight: 800),
-        child: Material(
-          color: Theme.of(context).cardColor,
-          borderRadius: BorderRadius.circular(24),
-          child: Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Row(children: [
-                  Text(isEditing ? 'Edit Task' : 'Add New Task', style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
-                  const Spacer(),
-                  IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
-                ]),
-                const SizedBox(height: 24),
-                Flexible(child: content),
-              ],
+    return PopScope(
+      canPop: !_hasUnsavedChanges,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        final shouldPop = await _onWillPop();
+        if (shouldPop && mounted) {
+          Navigator.pop(context);
+        }
+      },
+      child: Dialog(
+        backgroundColor: Colors.transparent,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 600, maxHeight: 800),
+          child: Material(
+            color: Theme.of(context).cardColor,
+            borderRadius: BorderRadius.circular(24),
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        isEditing ? 'Edit Task' : 'Add New Task',
+                        style: Theme.of(context).textTheme.headlineSmall
+                            ?.copyWith(fontWeight: FontWeight.bold),
+                      ),
+                      const Spacer(),
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () async {
+                          final shouldClose = await _onWillPop();
+                          if (shouldClose && mounted) Navigator.pop(context);
+                        },
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  Flexible(child: content),
+                ],
+              ),
             ),
           ),
         ),
@@ -525,16 +734,23 @@ class _AddEventPageState extends State<AddEventPage> {
   Future<bool> _onWillPop() async {
     if (!_hasUnsavedChanges) return true;
     return await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Unsaved Changes'),
-        content: const Text('Discard changes?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('NO')),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('YES')),
-        ],
-      )
-    ) ?? false;
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Unsaved Changes'),
+            content: const Text('Discard changes?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('NO'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('YES'),
+              ),
+            ],
+          ),
+        ) ??
+        false;
   }
 
   @override

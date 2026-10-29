@@ -1,0 +1,10 @@
+# Supabase CLI configuration.
+#
+# The deploy target is selected with `--project-ref` (or `supabase link`); the
+# project_id here names the local development stack.
+project_id = "eknzdxexfcfdmqvbyvxt"
+
+# The AI proxy verifies the caller's Supabase JWT and charges the request to
+# that user's daily quota. Never disable this.
+[functions.ai]
+verify_jwt = true

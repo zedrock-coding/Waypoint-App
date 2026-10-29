@@ -75,9 +75,9 @@ class _SettingPageState extends State<SettingPage> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.3),
+              color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.3),
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Theme.of(context).colorScheme.primary.withOpacity(0.2)),
+              border: Border.all(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2)),
             ),
             child: Text(
               keys,
@@ -150,6 +150,33 @@ class _SettingPageState extends State<SettingPage> {
             subtitle: const Text('Notify when you are mentioned in a group'),
             value: settings.communityMentionsEnabled ?? true,
             onChanged: (v) => _handleNotificationToggle('communityMentions', v, themeProvider),
+          ),
+          ValueListenableBuilder<String?>(
+            valueListenable: NotificationService().lastError,
+            builder: (context, error, _) {
+              if (error == null) return const SizedBox.shrink();
+              return Container(
+                margin: const EdgeInsets.only(top: 8),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 18),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        error,
+                        style: const TextStyle(fontSize: 12, color: Colors.orange),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
           ),
           const Divider(height: 40),
           Text('System', style: Theme.of(context).textTheme.titleLarge),
