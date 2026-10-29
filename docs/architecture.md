@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **App** | Helm `0.3.3+8` (`helm/`) |
+| **App** | Helm `0.3.5+10` (`helm/`) |
 | **Stack** | Flutter (Material 3) · Supabase · Hive · Provider |
 | **Targets** | Android, Windows, Web |
 | **Last updated** | 2026-10-29 |
@@ -68,6 +68,13 @@ detail panel and the reorderable list.
   writes immediately or enqueues and returns whether it succeeded. Duplicating
   the "if online try, else queue" dance per call site was the source of several
   data-loss bugs.
+- `deleteTask(id, {taskBackup})` stores both Hive and in-memory `UnifiedTask` backups,
+  immediately cleans `_personalTasks` for instant UI feedback, and cancels pending local
+  notifications.
+- `undoDelete()` restores personal tasks into Hive and community tasks through `_mutate(create)`,
+  re-syncs the complete task schema (`due_at`, `subtasks`, `assignees`, `category_ids`),
+  reschedules due date reminders, purges any unflushed delete in `SyncService`, and
+  forces `_refreshPersonalTasks()` so the restored task displays immediately.
 
 `NavigationProvider` holds the selected tab and community. Changing either
 invalidates the desktop detail panel selection.
@@ -87,6 +94,10 @@ invalidates the desktop detail panel selection.
 | `audio_recording_service.dart` | Microphone capture for the AI voice path. |
 
 ### 2.4 UI (`lib/*_page.dart`, `lib/widgets/`)
+
+`AppSnackBar` (`lib/widgets/app_snackbar.dart`) provides a small, centered, pill-shaped
+floating toast (`width: 310`, `borderRadius: 100`, `#222528` background with `#88C0A4` mint action)
+configured with a guaranteed 5-second persistence for dismissal and undo actions.
 
 Screens are ordinary `StatefulWidget`s; no router package. `AppShell` provides
 the responsive sidebar/drawer and the header (search, bell, pending-sync badge,
@@ -153,8 +164,9 @@ truth table.
    with the prompt, optional audio, and the user's community/member context.
 3. The Edge Function attaches the fixed server-side system instruction
    (`gemini-3.5-flash-lite`), enforces a per-user rate limit, and returns JSON.
-4. The response is passed back through the local parser so the schema is always
-   complete, even if the model omits fields.
+4. The response is passed back through the local parser (`needle_engine.dart`)
+   and `AiService.parseAiDueDate` so exact user-specified times (e.g. "5 pm", "17:00")
+   are extracted and blended into ISO8601 timestamps instead of defaulting to midday.
 
 The client never sees a Gemini key. The Edge Function reads `GEMINI_API_KEY`
 from its own environment.

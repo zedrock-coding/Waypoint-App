@@ -4,6 +4,36 @@ All notable changes to the **Helm** project will be documented in this file.
 
 ---
 
+## [0.3.5] - 2026-10-29
+
+### 🚀 Added
+- **Compact Pill Undo Toast (`AppSnackBar`)**:
+  - Rebuilt toast into a centered, floating pill (`width: 310`, `borderRadius: 100`, `#222528` slate background, `#3A3D40` border, `#88C0A4` mint accent).
+  - Maintained guaranteed 5-second display before dismissal across desktop and mobile.
+  - Added dedicated widget test suite (`helm/test/app_snackbar_test.dart`).
+
+### 🐛 Fixed
+- **Task Deletion & Undo Restoration Lifecycle**:
+  - Fixed undo failure where community tasks streamed from Supabase lacked local Hive backup.
+  - Added `taskBackup` parameter in `TaskProvider.deleteTask` across `main.dart`, `calendar_page.dart`, and `widgets/task_search_delegate.dart`.
+  - Re-synced restored tasks with full schema fields (`due_at`, `status`, `order`, `subtasks`, `category_ids`, `assignees`) to Supabase and Hive.
+  - Forced `await _refreshPersonalTasks()` upon undo to eliminate stale in-memory task lists on Flutter Web.
+  - Cleaned up pending sync deletions via `SyncService().removeFromQueue` when restored immediately.
+
+---
+
+## [0.3.4] - 2026-10-29
+
+### 🚀 Added
+- **Exact Time Extraction in Hybrid AI Parsing**:
+  - Added `AiService.parseAiDueDate` supporting full ISO8601 timestamps and explicit user-specified times.
+  - Added regex time capture in `LocalHeuristicParser` (`needle_engine.dart`) for standard formats (`5 pm`, `17:00`, `9:30 am`, `noon`).
+  - Added context-aware time blending in `applyGeminiTemplateContext`: preserves user-specified time instead of defaulting to midday `12:00 PM`.
+  - Updated Edge Function prompt in `supabase/functions/ai/index.ts` to output `YYYY-MM-DDTHH:mm:ss` ISO format when time is mentioned.
+  - Added 5 test cases in `helm/test/ai_service_hybrid_test.dart` verifying explicit time extraction and parsing.
+
+---
+
 ## [0.3.3] - Navigation Hotfix
 
 ### 🐛 Fixed
