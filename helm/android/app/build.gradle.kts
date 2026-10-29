@@ -60,6 +60,20 @@ android {
     }
 }
 
+tasks.configureEach {
+    if (name == "assembleRelease") {
+        doLast {
+            val flutterApkDir = layout.buildDirectory.dir("outputs/flutter-apk").get().asFile
+            val defaultApk = File(flutterApkDir, "app-release.apk")
+            val vName = android.defaultConfig.versionName ?: "0.4.0"
+            if (defaultApk.exists()) {
+                val versionedApk = File(flutterApkDir, "waypoint-v$vName.apk")
+                defaultApk.copyTo(versionedApk, overwrite = true)
+            }
+        }
+    }
+}
+
 flutter {
     source = "../.."
 }
