@@ -80,3 +80,4 @@ foreach ($item in $artifacts) {
     Write-Host " * $($item.Platform): $($item.File)" -ForegroundColor White
 }
 Write-Host ""
+
