@@ -14,6 +14,12 @@
 
 alter table public.tasks enable row level security;
 
+-- Drop legacy policies from initial schema
+drop policy if exists "Access tasks" on public.tasks;
+drop policy if exists "Edit restricted tasks" on public.tasks;
+drop policy if exists "Enable all for owners" on public.tasks;
+drop policy if exists "View personal and team tasks" on public.tasks;
+
 drop policy if exists tasks_select on public.tasks;
 create policy tasks_select on public.tasks
   for select to authenticated
@@ -72,6 +78,9 @@ create policy tasks_delete on public.tasks
 
 alter table public.task_comments enable row level security;
 
+-- Drop legacy policies
+drop policy if exists "Access comments" on public.task_comments;
+
 drop policy if exists task_comments_select on public.task_comments;
 create policy task_comments_select on public.task_comments
   for select to authenticated
@@ -106,6 +115,11 @@ create policy task_comments_delete on public.task_comments
 
 alter table public.communities enable row level security;
 
+-- Drop legacy policies
+drop policy if exists "Authenticated users can create communities" on public.communities;
+drop policy if exists "Members view joined communities" on public.communities;
+drop policy if exists "View communities" on public.communities;
+
 drop policy if exists communities_select on public.communities;
 create policy communities_select on public.communities
   for select to authenticated
@@ -133,6 +147,13 @@ create policy communities_delete on public.communities
 -- ----------------------------------------------------- community_members ----
 
 alter table public.community_members enable row level security;
+
+-- Drop legacy policies
+drop policy if exists "Admins can manage roles" on public.community_members;
+drop policy if exists "Admins can remove members" on public.community_members;
+drop policy if exists "Users can join communities" on public.community_members;
+drop policy if exists "Users view own memberships" on public.community_members;
+drop policy if exists "View team members" on public.community_members;
 
 drop policy if exists community_members_select on public.community_members;
 create policy community_members_select on public.community_members
@@ -193,6 +214,10 @@ create policy community_members_delete on public.community_members
 
 alter table public.categories enable row level security;
 
+-- Drop legacy policies
+drop policy if exists "Categories are public" on public.categories;
+drop policy if exists "Manage personal categories" on public.categories;
+
 drop policy if exists categories_all on public.categories;
 create policy categories_all on public.categories
   for all to authenticated
@@ -204,6 +229,9 @@ create policy categories_all on public.categories
 -- and mark them read.
 
 alter table public.notifications enable row level security;
+
+-- Drop legacy policies
+drop policy if exists "Users can manage their own notifications" on public.notifications;
 
 drop policy if exists notifications_select on public.notifications;
 create policy notifications_select on public.notifications

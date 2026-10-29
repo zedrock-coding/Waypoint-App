@@ -11,3 +11,4 @@ supabase/functions/.env.local
 .artifacts/
 .vercel/
 *.log
+supabase/.temp/

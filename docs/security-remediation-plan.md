@@ -434,14 +434,14 @@ curl -s -X PATCH "$SUPABASE_URL/rest/v1/tasks?id=eq.$TASK_ID" -H "apikey: $ANON"
 - [x] Rotated Gemini key (owner) + revoked old key
 - [x] `tools/admin/admin.html` (no longer deployed) with escaped rendering
 - [x] `helm/.env` untracked; `.env.example`; `AppConfig`
-- [x] `supabase/functions/ai/index.ts` + rate limiting (code complete; deploy pending)
-- [ ] `supabase/migrations/0001_baseline.sql` … `0005_rbac_triggers.sql` (`20261028120000_ai_rate_limit.sql` landed)
-      — **authored but never applied**: `20261029110000_internal_helpers.sql`,
-      `20261029110100_rls_policies.sql`, `20261029110200_task_triggers.sql`,
-      `20261029110300_storage_avatars.sql`. Baseline capture is still missing
-      (needs `supabase db pull` against the live project).
-- [ ] pgTAP tests for comment quota + RBAC — `supabase/tests/rls_test.sql`
-      authored, never executed.
+- [x] `supabase/functions/ai/index.ts` + rate limiting deployed to project `eknzdxexfcfdmqvbyvxt`
+- [x] Database migrations applied to remote database: `20261028120000_ai_rate_limit.sql`,
+      `20261029110000_internal_helpers.sql`, `20261029110100_rls_policies.sql`,
+      `20261029110200_task_triggers.sql`, `20261029110300_storage_avatars.sql`.
+      All legacy policies and triggers dropped. `supabase db lint --linked` clean.
+      Baseline schema captured in `docs/baseline_schema.sql`.
+- [ ] pgTAP tests for comment quota + RBAC (`supabase/tests/rls_test.sql`)
+      authored for local Docker pgTAP (auth schema restricted on remote pooler).
 - [x] Sync integrity tests (23) instead of a `TaskRepository` extraction; the
       queue engine was rewritten in place to avoid destabilising it.
 - [x] Phase 5 UX fixes (U2–U20); 9 pure-rule tests, no widget tests.

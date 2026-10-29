@@ -240,33 +240,21 @@ as a stuck queue entry rather than an error dialog. The header badge
 - Never edit an applied migration; add a new one.
 - Anything that changes a table also gets its policy statements in the same
   file, so a table is never left without RLS.
-- `supabase/migrations/20261028120000_ai_rate_limit.sql` is **authored but not
-  confirmed applied** — verify with `select * from supabase_migrations.schema_migrations;`
-  before assuming the quota exists.
+- All 5 migrations are applied to remote project `eknzdxexfcfdmqvbyvxt`.
 
-### 7.1 Authored, not applied
+### 7.1 Applied migrations
 
-| File | Contents |
-|---|---|
-| `20261029110000_internal_helpers.sql` | `internal` schema, `role_weight()`, `is_member()`, `communities.creator_id` default |
-| `20261029110100_rls_policies.sql` | RLS enable + policies for tasks, comments, communities, members, categories, notifications |
-| `20261029110200_task_triggers.sql` | `updated_at` stamping, comment quota, owner-demotion guard, assignment notifications |
-| `20261029110300_storage_avatars.sql` | Public read, owner-only write under `<uid>/` |
-| `supabase/tests/rls_test.sql` | pgTAP coverage for the above |
+| File | Contents | Status |
+|---|---|---|
+| `20261028120000_ai_rate_limit.sql` | `ai_usage` table and `consume_ai_quota()` function | Applied |
+| `20261029110000_internal_helpers.sql` | `internal` schema, `role_weight()`, `is_member()`, `communities.creator_id` default | Applied |
+| `20261029110100_rls_policies.sql` | RLS enable + policies for tasks, comments, communities, members, categories, notifications (legacy policies dropped) | Applied |
+| `20261029110200_task_triggers.sql` | `updated_at` stamping, comment quota, owner-demotion guard, assignment notifications | Applied |
+| `20261029110300_storage_avatars.sql` | Public read, owner-only write under `<uid>/` | Applied |
+| `supabase/tests/rls_test.sql` | pgTAP coverage for local test runs | Authored |
 
-### 7.2 How to apply (branch database first)
+Baseline schema before migrations is captured at `docs/baseline_schema.sql`.
 
-```bash
-supabase link --project-ref <ref>
-supabase db push --dry-run        # review what will change
-supabase db push                  # branch/preview database only
-supabase test db                  # pgTAP must be green
-supabase db lint
-```
-
-Only then promote to production. Keep the previous policy set so a wrong policy
-can be rolled back within minutes; a bad policy locks users out of their own
-data.
 
 ---
 

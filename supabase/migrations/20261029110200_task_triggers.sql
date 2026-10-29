@@ -44,6 +44,9 @@ begin
 end;
 $$;
 
+-- Drop legacy trigger
+drop trigger if exists tr_tasks_updated_at on public.tasks;
+
 drop trigger if exists tasks_touch_updated_at on public.tasks;
 create trigger tasks_touch_updated_at
   before insert or update on public.tasks
@@ -90,6 +93,9 @@ begin
   return null;
 end;
 $$;
+
+-- Drop legacy trigger
+drop trigger if exists tr_notify_assignee on public.tasks;
 
 drop trigger if exists tasks_notify_assignees on public.tasks;
 create trigger tasks_notify_assignees
