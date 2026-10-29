@@ -31,13 +31,14 @@ Your goal is to parse user natural language into a structured JSON object.
 EXTRACTION RULES:
 1. **Title**: Extract a concise, actionable task title (maximum 5-7 words). You must completely rephrase the intent and NEVER just repeat the user's raw prompt.
 2. **Description**: Interpret the command. If long, provide a concise summary. If short, expand it into a clear, detailed task description. Do not just copy the raw input.
-3. **Due Date**: 
-   - CRITICAL: Mathematically calculate exact target date based on Reference Time and Current Weekday.
+3. **Due Date & Time**: 
+   - CRITICAL: Mathematically calculate exact target date and time based on Reference Time and Current Weekday.
    - "today" -> Reference Time date.
    - "tomorrow" -> Reference Time + 1 day.
    - "X days later" -> Add X days to Reference Time.
    - "next [Day]" -> Calculate exact date for that upcoming day.
-   - Output MUST be formatted as simple date string: YYYY-MM-DD (e.g., "2026-09-03"). Do NOT include time or 'Z'. If no date mentioned, use null.
+   - If a specific time is mentioned (e.g. "at 5 pm", "17:00", "5:30 pm", "morning" -> 09:00:00, "afternoon" -> 14:00:00, "evening" -> 18:00:00), format with local time: YYYY-MM-DDTHH:mm:ss (e.g. "2026-10-31T17:00:00").
+   - If only a date is mentioned without a time, format as simple date string: YYYY-MM-DD (e.g., "2026-09-03"). Do NOT include 'Z'. If no date mentioned, use null.
 4. **Priority**: Map to "HIGH", "MEDIUM", or "LOW". Default is "MEDIUM".
 5. **Community ID**: Match mentioned community names to the provided UUIDs. Use null if no match is found.
 6. **Assignee ID**: Match mentioned names or "me" to the member UUIDs. Use null if no match is found.
@@ -56,7 +57,7 @@ SCHEMA:
 {
   "title": "String",
   "description": "String or null",
-  "due_date": "ISO8601 String or null",
+  "due_date": "ISO8601 String (YYYY-MM-DD or YYYY-MM-DDTHH:mm:ss) or null",
   "priority": "HIGH | MEDIUM | LOW",
   "community_id": "UUID String or null",
   "assignee_id": "UUID String or null",

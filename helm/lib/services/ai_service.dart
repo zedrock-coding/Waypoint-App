@@ -30,6 +30,75 @@ class AiService {
     _needleEngine.initialize();
   }
 
+  /// Safely parses an AI due_date (and optional due_time) into a [DateTime].
+  ///
+  /// If the string contains an explicit time component (e.g. `2026-10-31T17:00:00`),
+  /// that exact local time is preserved. If only a date is provided (e.g. `2026-10-31`),
+  /// it defaults to midday (12:00:00).
+  static DateTime? parseAiDueDate(dynamic dueDateVal, [dynamic dueTimeVal]) {
+    if (dueDateVal == null) return null;
+    final str = dueDateVal.toString().trim();
+    if (str.isEmpty || str.toLowerCase() == 'null') return null;
+
+    final parsed = DateTime.tryParse(str);
+    if (parsed == null) return null;
+
+    final local = parsed.isUtc ? parsed.toLocal() : parsed;
+
+    // Check if the input string contains an explicit time component
+    final hasExplicitTime = RegExp(r'[T\s]\d{1,2}:\d{2}').hasMatch(str);
+
+    int hour = hasExplicitTime ? local.hour : 12;
+    int minute = hasExplicitTime ? local.minute : 0;
+    int second = hasExplicitTime ? local.second : 0;
+
+    if (dueTimeVal != null && dueTimeVal.toString().trim().isNotEmpty) {
+      final timeStr = dueTimeVal.toString().trim();
+      final matchAmPm = RegExp(r'(\d{1,2})(?::(\d{2}))?\s*(am|pm)', caseSensitive: false).firstMatch(timeStr);
+      if (matchAmPm != null) {
+        int h = int.parse(matchAmPm.group(1)!);
+        int m = matchAmPm.group(2) != null ? int.parse(matchAmPm.group(2)!) : 0;
+        final isPm = matchAmPm.group(3)!.toLowerCase() == 'pm';
+        if (isPm && h < 12) h += 12;
+        if (!isPm && h == 12) h = 0;
+        hour = h;
+        minute = m;
+        second = 0;
+      } else {
+        final match24 = RegExp(r'(\d{1,2}):(\d{2})').firstMatch(timeStr);
+        if (match24 != null) {
+          hour = int.parse(match24.group(1)!);
+          minute = int.parse(match24.group(2)!);
+          second = 0;
+        }
+      }
+    }
+
+    return DateTime(local.year, local.month, local.day, hour, minute, second);
+  }
+
+  /// Extracts structured JSON object from AI response text, stripping markdown fences or preamble.
+  static Map<String, dynamic> _cleanAndDecodeJson(String text) {
+    var clean = text.replaceAll('```json', '').replaceAll('```', '').trim();
+    final firstBrace = clean.indexOf('{');
+    final lastBrace = clean.lastIndexOf('}');
+    if (firstBrace != -1 && lastBrace != -1 && lastBrace >= firstBrace) {
+      clean = clean.substring(firstBrace, lastBrace + 1);
+    }
+    return jsonDecode(clean) as Map<String, dynamic>;
+  }
+
+  /// Extracts structured JSON array from AI response text, stripping markdown fences or preamble.
+  static List<dynamic> _cleanAndDecodeJsonList(String text) {
+    var clean = text.replaceAll('```json', '').replaceAll('```', '').trim();
+    final firstBracket = clean.indexOf('[');
+    final lastBracket = clean.lastIndexOf(']');
+    if (firstBracket != -1 && lastBracket != -1 && lastBracket >= firstBracket) {
+      clean = clean.substring(firstBracket, lastBracket + 1);
+    }
+    return jsonDecode(clean) as List<dynamic>;
+  }
+
   /// Single network entry point.
   ///
   /// The Gemini credential lives only in the `ai` Edge Function's environment.
@@ -117,8 +186,7 @@ User Input: "$userInput"
 
     try {
       final text = await _generate(prompt: prompt);
-      final cleanJson = text.replaceAll('```json', '').replaceAll('```', '').trim();
-      return jsonDecode(cleanJson) as Map<String, dynamic>;
+      return _cleanAndDecodeJson(text);
     } catch (e) {
       debugPrint('AiService Error: $e');
       rethrow;
@@ -218,8 +286,7 @@ INSTRUCTIONS:
 
     try {
       final text = await _generate(prompt: prompt, audioBytes: audioBytes);
-      final cleanJson = text.replaceAll('```json', '').replaceAll('```', '').trim();
-      final Map<String, dynamic> cloudTemplate = jsonDecode(cleanJson);
+      final Map<String, dynamic> cloudTemplate = _cleanAndDecodeJson(text);
 
       // Normalise the cloud answer through the local parser
       return await _needleEngine.extractTask(
@@ -254,8 +321,7 @@ SCHEMA:
 
     try {
       final text = await _generate(prompt: prompt);
-      final cleanJson = text.replaceAll('```json', '').replaceAll('```', '').trim();
-      final List<dynamic> parsed = jsonDecode(cleanJson);
+      final List<dynamic> parsed = _cleanAndDecodeJsonList(text);
       final hints = parsed.map((e) => e.toString()).toList();
 
       // Local parser validates and expands subtasks

@@ -26,6 +26,42 @@ void main() {
       expect(result['clarification_needed'], isFalse);
     });
 
+    test('Extracts time at 5 pm correctly', () async {
+      final result = await engine.extractTask(
+        input: 'Test AI functionality and automation at 5 pm',
+      );
+
+      expect(result, isNotNull);
+      expect(result!['due_date'], isNotNull);
+      expect(result['due_date'].toString(), contains('T17:00:00'));
+      expect(result['title'], equals('Test AI functionality and automation'));
+    });
+
+    test('Extracts explicit date and time on October 31 at 5 pm', () async {
+      final result = await engine.extractTask(
+        input: 'Release review on October 31 at 5 pm',
+      );
+
+      expect(result, isNotNull);
+      expect(result!['due_date'], isNotNull);
+      expect(result['due_date'].toString(), contains('-10-31T17:00:00'));
+    });
+
+    test('Blends date-only cloud template with user time at 5 pm', () async {
+      final cloudTemplate = {
+        'title': 'Test AI functionality and automation',
+        'due_date': '2026-10-31',
+      };
+
+      final result = await engine.extractTask(
+        input: 'make the task at 5 pm',
+        templateContext: cloudTemplate,
+      );
+
+      expect(result, isNotNull);
+      expect(result!['due_date'], equals('2026-10-31T17:00:00'));
+    });
+
     test('Extracts low priority and assigns matching community and member', () async {
       final communities = [
         {'id': 'comm-123', 'name': 'Engineering'},
@@ -107,6 +143,42 @@ void main() {
       expect(result, isNotNull);
       expect(result!['priority'], equals('HIGH'));
       expect(result['due_date'], isNotNull);
+    });
+  });
+
+  group('AiService parseAiDueDate Tests', () {
+    test('Preserves explicit time from ISO8601 string', () {
+      final dt = AiService.parseAiDueDate('2026-10-31T17:00:00');
+      expect(dt, isNotNull);
+      expect(dt!.year, equals(2026));
+      expect(dt.month, equals(10));
+      expect(dt.day, equals(31));
+      expect(dt.hour, equals(17));
+      expect(dt.minute, equals(0));
+    });
+
+    test('Defaults date-only string to midday 12:00', () {
+      final dt = AiService.parseAiDueDate('2026-10-31');
+      expect(dt, isNotNull);
+      expect(dt!.year, equals(2026));
+      expect(dt.month, equals(10));
+      expect(dt.day, equals(31));
+      expect(dt.hour, equals(12));
+      expect(dt.minute, equals(0));
+    });
+
+    test('Applies separate due_time field if provided', () {
+      final dt = AiService.parseAiDueDate('2026-10-31', '5:00 PM');
+      expect(dt, isNotNull);
+      expect(dt!.hour, equals(17));
+      expect(dt.minute, equals(0));
+    });
+
+    test('Returns null for null or invalid input', () {
+      expect(AiService.parseAiDueDate(null), isNull);
+      expect(AiService.parseAiDueDate(''), isNull);
+      expect(AiService.parseAiDueDate('null'), isNull);
+      expect(AiService.parseAiDueDate('not-a-date'), isNull);
     });
   });
 }

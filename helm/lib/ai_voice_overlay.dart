@@ -116,14 +116,10 @@ class _AIVoiceOverlayState extends State<AIVoiceOverlay>
         final title = result['title'] ?? (_currentDraft?['title'] ?? 'Voice Task');
         final description = result['description'] ?? _currentDraft?['description'];
 
-        DateTime? dueDate;
-        final dateStr = result['due_date'] ?? _currentDraft?['due_date'];
-        if (dateStr != null && dateStr.toString().isNotEmpty) {
-          final parsed = DateTime.tryParse(dateStr.toString());
-          if (parsed != null) {
-            dueDate = DateTime(parsed.year, parsed.month, parsed.day, 12, 0, 0);
-          }
-        }
+        final dueDate = AiService.parseAiDueDate(
+          result['due_date'] ?? _currentDraft?['due_date'],
+          result['due_time'] ?? result['time'] ?? _currentDraft?['due_time'] ?? _currentDraft?['time'],
+        );
 
         final communityId = result['community_id'] ?? _currentDraft?['community_id'];
         final assigneeId = result['assignee_id'] ?? _currentDraft?['assignee_id'];
