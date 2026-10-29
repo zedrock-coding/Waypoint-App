@@ -448,7 +448,7 @@ curl -s -X PATCH "$SUPABASE_URL/rest/v1/tasks?id=eq.$TASK_ID" -H "apikey: $ANON"
 - [ ] `quality.yml` gate — done; **branch protection still needs repo admin**.
 - [x] `gitleaks` in CI
 - [x] Rewritten `AGENTS.md`, new `docs/architecture.md`, `docs/database.md`, `docs/admin-tool.md`
-- [x] LICENSE (MIT)
+- [x] LICENSE (proprietary source, compiled builds free to use)
 
 ---
 
