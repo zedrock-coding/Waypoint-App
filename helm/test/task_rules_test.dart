@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:helm/models/hive_models.dart' as hive_model;
-import 'package:helm/models/unified_task.dart';
-import 'package:helm/services/task_rules.dart';
+import 'package:waypoint/models/hive_models.dart' as hive_model;
+import 'package:waypoint/models/unified_task.dart';
+import 'package:waypoint/services/task_rules.dart';
 
 Map<String, dynamic> _comment({
   required String userId,

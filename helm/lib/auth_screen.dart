@@ -138,7 +138,7 @@ class _AuthScreenState extends State<AuthScreen> {
                   ),
                   const SizedBox(height: 24),
                   Text(
-                    _isSignUp ? 'Join Helm' : 'Welcome Back',
+                    _isSignUp ? 'Join Waypoint' : 'Welcome Back',
                     style: textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 8),

@@ -190,7 +190,7 @@ class _SettingPageState extends State<SettingPage> {
           ),
           ListTile(
             leading: const Icon(Icons.info_outline_rounded),
-            title: const Text('About Helm'),
+            title: const Text('About Waypoint'),
             subtitle: const Text('Version, Licenses, and Legal'),
             trailing: const Icon(Icons.chevron_right_rounded),
             onTap: () => Navigator.pushNamed(context, '/about'),

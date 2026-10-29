@@ -174,9 +174,12 @@ class AiService {
     final List<String> weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
     final currentWeekday = weekdays[now.weekday - 1];
 
+    final tzName = now.timeZoneName;
+    final tzOffset = now.timeZoneOffset.inHours;
+
     final prompt = '''
 CURRENT CONTEXT:
-- Reference Time: ${now.toIso8601String()} (Local)
+- Reference Time: ${now.toIso8601String()} (Timezone: $tzName, UTC${tzOffset >= 0 ? '+' : ''}$tzOffset)
 - Current Weekday: $currentWeekday
 - Available Communities: ${jsonEncode(availableCommunities)}
 - Available Members: ${jsonEncode(availableMembers)}

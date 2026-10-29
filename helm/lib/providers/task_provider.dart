@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -574,8 +575,25 @@ class TaskProvider with ChangeNotifier {
 
   // --- GAMIFICATION FEATURE ---
 
+  Box get _statsBox => Hive.box('user_stats');
+
   int get currentStreak {
-    // Calculates a simple daily streak based on completed tasks
+    if (Hive.isBoxOpen('user_stats')) {
+      final val = _statsBox.get('current_streak');
+      if (val is int && val > 0) return val;
+    }
+    return _computeStreakFromTasks();
+  }
+
+  int get longestStreak {
+    if (Hive.isBoxOpen('user_stats')) {
+      final val = _statsBox.get('longest_streak');
+      if (val is int) return val;
+    }
+    return currentStreak;
+  }
+
+  int _computeStreakFromTasks() {
     final List<UnifiedTask> allCompleted = _taskBox.values
         .where((t) => (t.isCompleted ?? false) || t.status == 'done')
         .map((t) => UnifiedTask.fromHive(t))
@@ -583,10 +601,9 @@ class TaskProvider with ChangeNotifier {
 
     if (allCompleted.isEmpty) return 0;
 
-    // Group by local Date (ignoring time)
     final Set<String> completedDates = {};
     for (var t in allCompleted) {
-      final date = t.updatedAt; // The time it was marked done
+      final date = t.updatedAt;
       final dateString =
           '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
       completedDates.add(dateString);
@@ -595,7 +612,6 @@ class TaskProvider with ChangeNotifier {
     int streak = 0;
     DateTime checkDate = DateTime.now();
 
-    // Check if missed today, but did yesterday (streak is still active but 0 for today added yet)
     final todayStr =
         '${checkDate.year}-${checkDate.month.toString().padLeft(2, '0')}-${checkDate.day.toString().padLeft(2, '0')}';
 
@@ -615,6 +631,55 @@ class TaskProvider with ChangeNotifier {
     }
 
     return streak;
+  }
+
+  void _recordTaskCompletionStreak() {
+    if (!Hive.isBoxOpen('user_stats')) return;
+
+    final now = DateTime.now();
+    final String today =
+        '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+    final yesterdayDate = now.subtract(const Duration(days: 1));
+    final String yesterday =
+        '${yesterdayDate.year}-${yesterdayDate.month.toString().padLeft(2, '0')}-${yesterdayDate.day.toString().padLeft(2, '0')}';
+
+    final String? lastDate = _statsBox.get('last_completed_date') as String?;
+    int current = (_statsBox.get('current_streak', defaultValue: 0) as int);
+    int longest = (_statsBox.get('longest_streak', defaultValue: 0) as int);
+
+    if (lastDate == today) {
+      // Completed another task today, maintain current streak
+    } else if (lastDate == yesterday) {
+      // Completed yesterday, advance streak
+      current += 1;
+      HapticFeedback.mediumImpact();
+    } else {
+      // Missed yesterday, reset streak to 1
+      current = 1;
+      HapticFeedback.mediumImpact();
+    }
+
+    if (current > longest) longest = current;
+
+    _statsBox.put('current_streak', current);
+    _statsBox.put('longest_streak', longest);
+    _statsBox.put('last_completed_date', today);
+
+    // Sync user stats to Supabase user metadata if signed in
+    final user = _supabase.auth.currentUser;
+    if (user != null) {
+      unawaited(
+        _supabase.auth.updateUser(
+          UserAttributes(data: {
+            'current_streak': current,
+            'longest_streak': longest,
+            'last_completed_date': today,
+          }),
+        ).then((_) {}).catchError((e) {
+          debugPrint('Sync user stats to Supabase skipped: $e');
+        }),
+      );
+    }
   }
 
   // --- CALENDAR FEATURE ---
@@ -644,6 +709,7 @@ class TaskProvider with ChangeNotifier {
 
     if (newStatus == Status.done) {
       unawaited(NotificationService().cancelTaskNotifications(task.id));
+      _recordTaskCompletionStreak();
     } else if (task.dueDate != null) {
       unawaited(
         NotificationService().scheduleTaskDueDateNotification(

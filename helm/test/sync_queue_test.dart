@@ -2,8 +2,8 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive/hive.dart';
-import 'package:helm/models/sync_model.dart';
-import 'package:helm/services/sync_service.dart';
+import 'package:waypoint/models/sync_model.dart';
+import 'package:waypoint/services/sync_service.dart';
 
 void main() {
   late Directory tempDir;

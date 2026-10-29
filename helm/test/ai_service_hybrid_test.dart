@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:helm/services/needle_engine.dart';
-import 'package:helm/services/ai_service.dart';
+import 'package:waypoint/services/needle_engine.dart';
+import 'package:waypoint/services/ai_service.dart';
 
 void main() {
   group('LocalHeuristicParser Tests', () {

@@ -240,7 +240,7 @@ class VelocityDashboardCard extends StatelessWidget {
       if (granted) {
         await ns.scheduleDailyNotification(
           id: 0, 
-          title: 'Helm Reminder', 
+          title: 'Waypoint Reminder', 
           body: 'Time to check your tasks!', 
           time: const TimeOfDay(hour: 9, minute: 0),
         );

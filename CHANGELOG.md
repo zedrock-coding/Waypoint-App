@@ -4,7 +4,23 @@ All notable changes to the **Helm** project will be documented in this file.
 
 ---
 
-## [0.3.5] - 2026-10-29
+## [0.3.5] - Waypoint Rebranding & Workspace Upgrade
+
+### 🚀 Added
+- **Project Rebranding (Waypoint)**: Renamed workspace identity, pubspec package, android applicationId/label (`com.waypoint.app`), windows binary target, web title/manifest, and deep linking scheme (`waypoint://invite`).
+- **Gamification & Streak Tracking**: Added local Hive `user_stats` tracking `current_streak`, `longest_streak`, and `last_completed_date` with `HapticFeedback` on completion, wired directly to `VelocityDashboardCard`.
+- **In-App Feedback Modal**: Replaced detached browser launches with an in-app modal dialog (`showDialog`) for support and feedback, preventing lost focus for automated agents.
+- **Global Desktop Shortcuts**: Registered single-key desktop bindings (`N` for New Task, `C` for Calendar, `/` for Command Bar) with editable text focus guards.
+- **Dynamic Timezone in AI Context**: Injected client reference time with local timezone and UTC offset for high-accuracy relative date/time calculations on `gemini-3.5-flash-lite`.
+
+### 🐛 Fixed
+- **Onboarding & EULA Persistence**: Added persistent `has_seen_onboarding` check to bypass tutorial and EULA once completed, and strictly route unauthenticated users to `/auth`.
+- **Tutorial Navigation**: Added visible 'Back' button alongside 'Next' / 'Get Started' and bound arrow key navigation on desktop.
+- **Web Cache-Busting**: Added service worker update script and query-string cache-busting to prevent stale asset loads on web.
+
+---
+
+## [0.3.5-patch] - 2026-10-29
 
 ### 🚀 Added
 - **Compact Pill Undo Toast (`AppSnackBar`)**:

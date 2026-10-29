@@ -306,7 +306,7 @@ class _AIVoiceOverlayState extends State<AIVoiceOverlay>
     switch (_currentState) {
       case AIState.listening:
         return const Text(
-          "Helm is listening...",
+          "Waypoint is listening...",
           textAlign: TextAlign.center,
           style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
         );

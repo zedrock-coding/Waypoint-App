@@ -14,7 +14,7 @@ if (keystorePropertiesFile.exists()) {
 }
 
 android {
-    namespace = "com.example.EventsMmanager.events_manager"
+    namespace = "com.waypoint.app"
     compileSdk = 36
     ndkVersion = "28.2.13676358"
 
@@ -29,7 +29,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.example.EventsMmanager.events_manager"
+        applicationId = "com.waypoint.app"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode

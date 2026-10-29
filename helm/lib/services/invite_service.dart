@@ -45,7 +45,7 @@ class InviteService {
   void _handleLink(Uri uri) {
     debugPrint('Processing Deep Link: $uri');
     
-    if (uri.scheme == 'helm' && uri.host == 'invite') {
+    if ((uri.scheme == 'waypoint' || uri.scheme == 'helm') && uri.host == 'invite') {
       final communityId = uri.queryParameters['communityId'];
       if (communityId != null) {
         _inviteController.add(communityId);

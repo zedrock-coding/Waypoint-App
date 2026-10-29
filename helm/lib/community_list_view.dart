@@ -70,7 +70,7 @@ class _CommunityListViewState extends State<CommunityListView> {
           title: const Text('Join Community'),
           content: TextField(
             controller: controller, 
-            decoration: const InputDecoration(labelText: 'Invite Link or ID', hintText: 'Paste helm://invite... or ID'), 
+            decoration: const InputDecoration(labelText: 'Invite Link or ID', hintText: 'Paste waypoint://invite... or ID'), 
             autofocus: true,
             onSubmitted: (_) => _submitJoin(ctx, controller.text.trim()),
           ),

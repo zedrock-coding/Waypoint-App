@@ -147,27 +147,48 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       ),
                       const SizedBox(height: 48),
                       
-                      // CTA Button
+                      // CTA Button Group with Back & Next
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 40),
-                        child: FilledButton(
-                          onPressed: _nextPage,
-                          style: FilledButton.styleFrom(
-                            backgroundColor: colorScheme.primary,
-                            foregroundColor: colorScheme.onPrimary,
-                            minimumSize: const Size(double.infinity, 56),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
+                        child: Row(
+                          children: [
+                            if (_currentPage > 0)
+                              Expanded(
+                                child: OutlinedButton(
+                                  onPressed: _previousPage,
+                                  style: OutlinedButton.styleFrom(
+                                    minimumSize: const Size(0, 56),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(16),
+                                    ),
+                                  ),
+                                  child: const Text('Back'),
+                                ),
+                              ),
+                            if (_currentPage > 0) const SizedBox(width: 16),
+                            Expanded(
+                              flex: 2,
+                              child: FilledButton(
+                                onPressed: _nextPage,
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: colorScheme.primary,
+                                  foregroundColor: colorScheme.onPrimary,
+                                  minimumSize: const Size(double.infinity, 56),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                  elevation: 0,
+                                ),
+                                child: Text(
+                                  _currentPage == _slides.length - 1 ? 'Get Started' : 'Next',
+                                  style: const TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
                             ),
-                            elevation: 0,
-                          ),
-                          child: Text(
-                            _currentPage == _slides.length - 1 ? 'Get Started' : 'Next',
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
+                          ],
                         ),
                       ),
                     ],

@@ -64,7 +64,7 @@ class _CommunityManagePageState extends State<CommunityManagePage> {
   }
 
   void _copyInviteLink() {
-    final String link = 'helm://invite?communityId=${widget.communityId}';
+    final String link = 'waypoint://invite?communityId=${widget.communityId}';
     Clipboard.setData(ClipboardData(text: link));
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -134,7 +134,7 @@ class _CommunityManagePageState extends State<CommunityManagePage> {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final String inviteLink = 'helm://invite?communityId=${widget.communityId}';
+    final String inviteLink = 'waypoint://invite?communityId=${widget.communityId}';
 
     // A plain page, not a second AppShell: nesting the shell inside the tab
     // shell duplicated the sidebar/header and created two navigation states.

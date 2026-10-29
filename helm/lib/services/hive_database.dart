@@ -24,6 +24,7 @@ class HiveDatabase {
     await Hive.openBox<Task>('tasks');
     await Hive.openBox<SyncAction>('sync_queue');
     final settingsBox = await Hive.openBox<Settings>('settings');
+    await Hive.openBox('user_stats');
 
     // Seed default settings if empty
     if (settingsBox.isEmpty) {

@@ -1,5 +1,5 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.example.EventsMmanager.events_manager">
+    package="com.waypoint.app">
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
@@ -12,7 +12,7 @@
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
 
     <application
-        android:label="Helm"
+        android:label="Waypoint"
         android:name="${applicationName}"
         android:icon="@mipmap/launcher_icon">
         <activity
@@ -38,6 +38,7 @@
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="waypoint" android:host="invite" />
                 <data android:scheme="helm" android:host="invite" />
             </intent-filter>
         </activity>

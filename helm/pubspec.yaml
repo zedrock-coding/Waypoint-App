@@ -1,8 +1,8 @@
-name: helm
-description: "A Premium, Cross-Platform Team Event & Task Management Application"
+name: waypoint
+description: "AI-orchestrated task management workspace"
 publish_to: 'none'
 
-version: 0.3.3+8
+version: 0.3.5+10
 
 environment:
   sdk: ^3.11.0

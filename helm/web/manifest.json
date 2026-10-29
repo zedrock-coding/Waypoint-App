@@ -1,11 +1,11 @@
 {
-    "name": "Helm - Team Workspace",
-    "short_name": "Helm",
+    "name": "Waypoint Workspace",
+    "short_name": "Waypoint",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#1A1C1E",
     "theme_color": "#88C0A4",
-    "description": "A Premium, Cross-Platform Team Event & Task Management Application",
+    "description": "AI-orchestrated task management workspace",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

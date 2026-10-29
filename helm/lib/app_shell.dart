@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'ai_voice_overlay.dart';
 import 'widgets/task_search_delegate.dart';
 import 'widgets/app_intents.dart';
@@ -158,6 +157,106 @@ class _AppShellState extends State<AppShell> {
       );
     }
 
+    void showFeedbackModal(BuildContext context) {
+      final textController = TextEditingController();
+      String feedbackType = 'General Feedback';
+      showDialog(
+        context: context,
+        builder: (ctx) => StatefulBuilder(
+          builder: (ctx, setDialogState) => AlertDialog(
+            backgroundColor: const Color(0xFF222528),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+              side: const BorderSide(color: Color(0xFF3A3D40), width: 1),
+            ),
+            title: const Row(
+              children: [
+                Icon(Icons.feedback_outlined, color: Color(0xFF88C0A4)),
+                SizedBox(width: 10),
+                Text('Support & Feedback', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+              ],
+            ),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Category', style: TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF2D2F31),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: const Color(0xFF3A3D40)),
+                    ),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        value: feedbackType,
+                        isExpanded: true,
+                        dropdownColor: const Color(0xFF2D2F31),
+                        items: const [
+                          DropdownMenuItem(value: 'General Feedback', child: Text('General Feedback', style: TextStyle(color: Colors.white))),
+                          DropdownMenuItem(value: 'Bug Report', child: Text('Bug Report', style: TextStyle(color: Colors.white))),
+                          DropdownMenuItem(value: 'Feature Request', child: Text('Feature Request', style: TextStyle(color: Colors.white))),
+                        ],
+                        onChanged: (val) {
+                          if (val != null) setDialogState(() => feedbackType = val);
+                        },
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text('Your Message', style: TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 6),
+                  TextField(
+                    controller: textController,
+                    maxLines: 4,
+                    style: const TextStyle(color: Colors.white, fontSize: 14),
+                    decoration: InputDecoration(
+                      hintText: 'Describe your feedback or issue...',
+                      hintStyle: const TextStyle(color: Colors.white38),
+                      filled: true,
+                      fillColor: const Color(0xFF2D2F31),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: Color(0xFF3A3D40))),
+                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: Color(0xFF88C0A4))),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Cancel', style: TextStyle(color: Colors.white54)),
+              ),
+              FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFF88C0A4),
+                  foregroundColor: Colors.black,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+                onPressed: () {
+                  final text = textController.text.trim();
+                  if (text.isNotEmpty) {
+                    Navigator.pop(ctx);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Feedback submitted! Thank you.'),
+                        behavior: SnackBarBehavior.floating,
+                        backgroundColor: Color(0xFF222528),
+                      ),
+                    );
+                  }
+                },
+                child: const Text('Submit', style: TextStyle(fontWeight: FontWeight.bold)),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     Widget urlNavItem({
       required IconData icon,
       required String label,
@@ -166,12 +265,9 @@ class _AppShellState extends State<AppShell> {
       return Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
         child: InkWell(
-          onTap: () async {
+          onTap: () {
             if (!isDesktop) Navigator.pop(context);
-            await launchUrl(
-              Uri.parse(url),
-              mode: LaunchMode.externalApplication,
-            );
+            showFeedbackModal(context);
           },
           borderRadius: BorderRadius.circular(12),
           child: Container(
@@ -195,9 +291,9 @@ class _AppShellState extends State<AppShell> {
                   ),
                 ),
                 Icon(
-                  Icons.open_in_new_rounded,
-                  size: 14,
-                  color: colorScheme.onSurface.withValues(alpha: 0.3),
+                  Icons.feedback_outlined,
+                  size: 16,
+                  color: colorScheme.onSurface.withValues(alpha: 0.5),
                 ),
               ],
             ),
@@ -222,7 +318,7 @@ class _AppShellState extends State<AppShell> {
               const SizedBox(width: 12),
               const Flexible(
                 child: Text(
-                  'Helm',
+                  'Waypoint',
                   style: TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.bold,
@@ -348,6 +444,14 @@ class _AppShellState extends State<AppShell> {
     return FocusScope(
       child: Shortcuts(
         shortcuts: <ShortcutActivator, Intent>{
+          // Single-key global shortcuts (active when not editing text)
+          const SingleActivator(LogicalKeyboardKey.keyN):
+              const NewTaskIntent(),
+          const SingleActivator(LogicalKeyboardKey.keyC):
+              const CycleTabIntent(),
+          const SingleActivator(LogicalKeyboardKey.slash):
+              const SearchIntent(),
+          // Secondary modifier bindings
           const SingleActivator(LogicalKeyboardKey.keyN, control: true):
               const NewTaskIntent(),
           const SingleActivator(LogicalKeyboardKey.keyF, control: true):
@@ -393,6 +497,10 @@ class _AppShellState extends State<AppShell> {
                     is EditableText) {
                   return null;
                 }
+                if (FocusManager.instance.primaryFocus?.context?.widget
+                    is EditableText) {
+                  return null;
+                }
                 showSearch(
                   context: context,
                   delegate: CustomTaskSearchDelegate(),
@@ -402,6 +510,10 @@ class _AppShellState extends State<AppShell> {
             ),
             CycleTabIntent: CallbackAction<CycleTabIntent>(
               onInvoke: (intent) {
+                if (FocusManager.instance.primaryFocus?.context?.widget
+                    is EditableText) {
+                  return null;
+                }
                 if (FocusManager.instance.primaryFocus?.context?.widget
                     is EditableText) {
                   return null;

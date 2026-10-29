@@ -173,8 +173,8 @@ class NotificationService {
     }
     try {
       const androidDetails = AndroidNotificationDetails(
-        'helm_notifications',
-        'Helm Notifications',
+        'waypoint_notifications',
+        'Waypoint Notifications',
         channelDescription: 'Real-time task and community updates',
         importance: Importance.max,
         priority: Priority.high,

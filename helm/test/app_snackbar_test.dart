@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:helm/widgets/app_snackbar.dart';
+import 'package:waypoint/widgets/app_snackbar.dart';
 
 void main() {
   testWidgets('AppSnackBar.showUndo renders pill snackbar and triggers callback', (

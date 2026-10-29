@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:helm/models/hive_models.dart' as hive_model;
-import 'package:helm/services/task_merge.dart';
+import 'package:waypoint/models/hive_models.dart' as hive_model;
+import 'package:waypoint/services/task_merge.dart';
 
 hive_model.Task _task({
   required String id,

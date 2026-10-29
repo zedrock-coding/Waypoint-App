@@ -40,7 +40,7 @@ class AppConfig {
       supabaseUrl.isNotEmpty && supabaseAnonKey.isNotEmpty;
 
   /// Shown when the build is missing configuration, instead of a blank screen.
-  static const String misconfiguredMessage = 'Helm is missing its Supabase configuration.\n\n'
+  static const String misconfiguredMessage = 'Waypoint is missing its Supabase configuration.\n\n'
       'Run it with:\n'
       'flutter run --dart-define=SUPABASE_URL=... --dart-define=SUPABASE_ANON_KEY=...\n\n'
       'or with a dart-define file:\n'

@@ -25,7 +25,7 @@ const CORS_HEADERS: Record<string, string> = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-const SYSTEM_INSTRUCTION = `Act as an expert data extraction engine for Helm, a team task manager.
+const SYSTEM_INSTRUCTION = `Act as an expert data extraction engine for Waypoint, a team task manager.
 Your goal is to parse user natural language into a structured JSON object.
 
 EXTRACTION RULES:

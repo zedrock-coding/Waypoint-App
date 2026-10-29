@@ -13,7 +13,7 @@ class AboutScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: colorScheme.surface,
       appBar: AppBar(
-        title: const Text('About Helm'),
+        title: const Text('About Waypoint'),
         centerTitle: true,
       ),
       body: FutureBuilder<PackageInfo>(
@@ -42,7 +42,7 @@ class AboutScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 24),
                 Text(
-                  'Helm',
+                  'Waypoint',
                   style: textTheme.headlineMedium?.copyWith(
                     fontWeight: FontWeight.bold,
                     letterSpacing: 1.2,

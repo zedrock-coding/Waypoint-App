@@ -13,6 +13,10 @@ class ThemeProvider with ChangeNotifier {
 
   Settings get settings => _settings;
 
+  bool get hasSeenOnboarding {
+    return _settings.onboardingComplete ?? false;
+  }
+
   void _init() {
     final s = _settingsBox.get('app_settings');
     if (s != null) {

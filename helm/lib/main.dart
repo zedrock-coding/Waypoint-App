@@ -99,7 +99,7 @@ class _MisconfiguredApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Helm',
+      title: 'Waypoint',
       theme: AppTheme.darkTheme,
       home: Scaffold(
         body: Center(
@@ -147,10 +147,18 @@ class _MyAppState extends State<MyApp> {
     try {
       final tp = Provider.of<ThemeProvider>(context, listen: false);
       
+      final session = Supabase.instance.client.auth.currentSession;
+      final bool hasSeenOnboarding = tp.hasSeenOnboarding;
+
+      // If already onboarded, skip legal and tutorial
+      if (hasSeenOnboarding && tp.settings.legalAccepted == true) {
+        if (session == null) {
+          _navigatorKey.currentState?.pushNamedAndRemoveUntil('/auth', (r) => false);
+        }
+        return;
+      }
+
       // 1. Legal Check
-      // On mobile/desktop, declining closes the app. A browser tab cannot be
-      // closed by SystemNavigator.pop(), so on web the gate simply stays up:
-      // accepting is the only way into the app.
       while (tp.settings.legalAccepted != true) {
         final bool? accepted = await showDialog<bool>(
           context: _navigatorKey.currentContext!,
@@ -170,8 +178,10 @@ class _MyAppState extends State<MyApp> {
       }
 
       // 2. Onboarding Check
-      if (tp.settings.onboardingComplete != true) {
+      if (!tp.hasSeenOnboarding) {
         _navigatorKey.currentState?.pushNamedAndRemoveUntil('/onboarding', (r) => false);
+      } else if (session == null) {
+        _navigatorKey.currentState?.pushNamedAndRemoveUntil('/auth', (r) => false);
       }
     } catch (e) {
       debugPrint('Launch check error: $e');
@@ -184,7 +194,7 @@ class _MyAppState extends State<MyApp> {
 
     return MaterialApp(
       navigatorKey: _navigatorKey,
-      key: const ValueKey('helm_app_root'),
+      key: const ValueKey('waypoint_app_root'),
       title: 'Helm',
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
@@ -211,7 +221,7 @@ class _MyAppState extends State<MyApp> {
         return null;
       },
       routes: {
-        '/': (context) => const MyHomePage(title: 'Helm'),
+        '/': (context) => const MyHomePage(title: 'Waypoint'),
         '/auth': (context) => const AuthScreen(),
         '/settings': (context) => const SettingPage(),
         '/calendar': (context) => const CalendarPage(),
@@ -266,7 +276,7 @@ class _MyHomePageState extends State<MyHomePage> {
       builder: (context) => AlertDialog(
         title: const Text('Enable task reminders?'),
         content: const Text(
-          'Helm can notify you before a task is due. Reminders are scheduled on '
+          'Waypoint can notify you before a task is due. Reminders are scheduled on '
           'this device only, and you can turn them off later in Settings.',
         ),
         actions: [
@@ -307,7 +317,7 @@ class _MyHomePageState extends State<MyHomePage> {
     final bool isDesktop = width > 900;
 
     Widget body;
-    String title = 'Helm';
+    String title = 'Waypoint';
     List<Widget> appBarActions = [];
 
     if (navProvider.selectedIndex == 0) {

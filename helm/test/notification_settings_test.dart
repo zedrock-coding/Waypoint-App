@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:helm/notification_service.dart';
+import 'package:waypoint/notification_service.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
