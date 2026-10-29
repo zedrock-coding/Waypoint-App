@@ -4,6 +4,7 @@ import '../models/unified_task.dart';
 import '../providers/task_provider.dart';
 import '../services/navigation_provider.dart';
 import 'task_item_card.dart';
+import 'app_snackbar.dart';
 import '../task_detail_page.dart';
 
 class CustomTaskSearchDelegate extends SearchDelegate {
@@ -90,7 +91,17 @@ class CustomTaskSearchDelegate extends SearchDelegate {
             );
           },
           onToggle: () => taskProvider.toggleTask(unifiedTask),
-          onDismiss: (direction) => taskProvider.deleteTask(unifiedTask.id),
+          onDismiss: (direction) async {
+            await taskProvider.deleteTask(unifiedTask.id);
+            if (context.mounted) {
+              AppSnackBar.showUndo(
+                context: context,
+                message: 'Task deleted',
+                onUndo: () => taskProvider.undoDelete(),
+                duration: const Duration(seconds: 5),
+              );
+            }
+          },
         );
       },
     );

@@ -284,7 +284,7 @@ class TaskProvider with ChangeNotifier {
     return false;
   }
 
-  Future<void> addTask({
+  Future<String> addTask({
     required String title,
     String? description,
     String? communityId,
@@ -356,6 +356,7 @@ class TaskProvider with ChangeNotifier {
         payload: taskData,
       );
     }
+    return id;
   }
 
   Future<void> reorderTasks(int oldIndex, int newIndex) async {

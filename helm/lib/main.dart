@@ -18,6 +18,7 @@ import 'services/task_rules.dart';
 import 'providers/task_provider.dart';
 
 import 'widgets/task_item_card.dart';
+import 'widgets/app_snackbar.dart';
 import 'widgets/empty_states.dart';
 import 'widgets/velocity_dashboard.dart';
 import 'widgets/task_form_utils.dart';
@@ -453,16 +454,11 @@ class _MyHomePageState extends State<MyHomePage> {
                   await taskProvider.deleteTask(id);
                   
                   if (context.mounted) {
-                    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: const Text('Task deleted'),
-                        action: SnackBarAction(
-                          label: 'UNDO',
-                          onPressed: () => taskProvider.undoDelete(),
-                        ),
-                        behavior: SnackBarBehavior.floating,
-                      ),
+                    AppSnackBar.showUndo(
+                      context: context,
+                      message: 'Task deleted',
+                      onUndo: () => taskProvider.undoDelete(),
+                      duration: const Duration(seconds: 5),
                     );
                   }
                 },
@@ -512,16 +508,11 @@ class _MyHomePageState extends State<MyHomePage> {
                 await taskProvider.deleteTask(id);
                 
                 if (context.mounted) {
-                  ScaffoldMessenger.of(context).hideCurrentSnackBar();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: const Text('Task deleted'),
-                      action: SnackBarAction(
-                        label: 'UNDO',
-                        onPressed: () => taskProvider.undoDelete(),
-                      ),
-                      behavior: SnackBarBehavior.floating,
-                    ),
+                  AppSnackBar.showUndo(
+                    context: context,
+                    message: 'Task deleted',
+                    onUndo: () => taskProvider.undoDelete(),
+                    duration: const Duration(seconds: 5),
                   );
                 }
               },

@@ -7,6 +7,7 @@ import '../services/audio_recording_service.dart';
 import '../services/supabase_service.dart';
 import '../providers/task_provider.dart';
 import '../models/unified_task.dart';
+import 'app_snackbar.dart';
 
 class CommandBarWidget extends StatefulWidget {
   const CommandBarWidget({super.key});
@@ -231,7 +232,7 @@ class _CommandBarWidgetState extends State<CommandBarWidget> with SingleTickerPr
     final assigneeId = result['assignee_id'];
     final Priority priority = UnifiedTask.parsePriority(result['priority']?.toString());
 
-    await taskProvider.addTask(
+    final createdId = await taskProvider.addTask(
       title: title,
       description: description,
       communityId: communityId,
@@ -243,8 +244,11 @@ class _CommandBarWidgetState extends State<CommandBarWidget> with SingleTickerPr
 
     if (mounted) {
       _textController.clear();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('AI Task Created!'), behavior: SnackBarBehavior.floating),
+      AppSnackBar.showUndo(
+        context: context,
+        message: 'AI Task Created!',
+        onUndo: () => taskProvider.deleteTask(createdId),
+        duration: const Duration(seconds: 5),
       );
     }
   }

@@ -4,6 +4,7 @@ import 'package:table_calendar/table_calendar.dart';
 import 'providers/task_provider.dart';
 import 'models/unified_task.dart';
 import 'widgets/task_item_card.dart';
+import 'widgets/app_snackbar.dart';
 import 'task_detail_page.dart';
 import 'app_shell.dart';
 
@@ -116,7 +117,17 @@ class _CalendarPageState extends State<CalendarPage> {
                           MaterialPageRoute(builder: (context) => TaskDetailScreen(task: task)),
                         ),
                         onToggle: () => taskProvider.toggleTask(task),
-                        onDismiss: (_) => taskProvider.deleteTask(task.id),
+                        onDismiss: (_) async {
+                          await taskProvider.deleteTask(task.id);
+                          if (context.mounted) {
+                            AppSnackBar.showUndo(
+                              context: context,
+                              message: 'Task deleted',
+                              onUndo: () => taskProvider.undoDelete(),
+                              duration: const Duration(seconds: 5),
+                            );
+                          }
+                        },
                       );
                     },
                   ),
