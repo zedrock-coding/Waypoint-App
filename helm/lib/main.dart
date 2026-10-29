@@ -195,7 +195,7 @@ class _MyAppState extends State<MyApp> {
     return MaterialApp(
       navigatorKey: _navigatorKey,
       key: const ValueKey('waypoint_app_root'),
-      title: 'Helm',
+      title: 'Waypoint',
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: themeProvider.themeMode,

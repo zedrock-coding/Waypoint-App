@@ -7,7 +7,7 @@ abstract class NeedleEngine {
 
   /// Transcribes raw audio locally when offline.
   ///
-  /// No on-device ASR model ships with Helm, so the implementation returns
+  /// No on-device ASR model ships with Waypoint, so the implementation returns
   /// `null`; callers fall back to typed or speech-to-text input.
   Future<String?> transcribeAudioLocally(Uint8List audioBytes);
 
