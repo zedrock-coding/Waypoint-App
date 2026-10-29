@@ -194,12 +194,15 @@ serving stale bundles after deploys. `--web-renderer` no longer exists.
 
 ## 7. Known gaps
 
-- **RLS verification.** The database policies and triggers are described in
-  `docs/database.md`, but the live schema has never been captured, so the
-  policies are **not** verified against production. Client-side RBAC
-  (`TaskDetailPage`) fails closed, but it is a UX affordance — RLS is the real
-  boundary.
+- **RLS behaviour is applied but not proven.** All five migrations are applied
+  to the remote project and `supabase db lint --linked` is clean, and the
+  pre-migration schema is captured in `docs/baseline_schema.sql`. The pgTAP
+  suite (`supabase/tests/rls_test.sql`) has still never been executed — the
+  remote pooler restricts the `auth` schema — so the comment quota and role
+  hierarchy are reasoned about, not demonstrated. The API-level check (a Member
+  edit must fail with `curl`, not just be hidden by `AbsorbPointer`) is also
+  outstanding.
 - **No on-device ASR.** `transcribeAudioLocally` returns `null` by design; the
   voice path relies on the cloud function or speech-to-text.
 - **Feedback page insert path** (`helm/web/feedback.html`) was verified for
-  reads under RLS but not for inserts.
+  reads under RLS but not for inserts, and `anon` still has `insert`.

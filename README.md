@@ -74,3 +74,18 @@
 
 ## 🔐 Security & Integrity
 Helm 0.3.3 utilizes PostgreSQL Security Definer functions and strict Row Level Security (RLS) to ensure your team's data is isolated and protected against unauthorized access.
+
+---
+
+## 📄 License
+
+Helm is **source-available, not open source**.
+
+- **Source code**: proprietary, all rights reserved. No copying, modification or
+  redistribution without written permission.
+- **Compiled builds**: free to download, install and use — personal or
+  commercial — and free to redistribute unmodified. They may not be sold, and
+  modified builds may not be redistributed.
+
+See [`LICENSE`](LICENSE) for the full terms. Third-party packages keep their own
+licenses.

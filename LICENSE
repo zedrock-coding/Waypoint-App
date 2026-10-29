@@ -1,21 +1,97 @@
-MIT License
+Helm — Proprietary Source License
+Copyright (c) 2026 Lakshya Jadhav. All rights reserved.
 
-Copyright (c) 2026 Lakshya Jadhav
+This license covers two different things: the source code (which stays private)
+and compiled builds (which are free to use).
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+--------------------------------------------------------------------------------
+1. SOURCE CODE — ALL RIGHTS RESERVED
+--------------------------------------------------------------------------------
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+The source code, project files, documentation and assets in this repository are
+proprietary and confidential.
+
+No license or right is granted to copy, reproduce, modify, adapt, translate,
+merge, publish, distribute, sublicense, sell, rent, lease, or create derivative
+works from the source code, in whole or in part.
+
+Being able to read the code (for example because the repository is visible)
+grants none of the rights above. Any use of the source code beyond viewing it
+requires prior written permission from the copyright holder.
+
+--------------------------------------------------------------------------------
+2. COMPILED BUILDS — FREE TO USE
+--------------------------------------------------------------------------------
+
+Subject to this notice remaining intact and unmodified, you are granted a
+worldwide, royalty-free, non-exclusive, non-transferable license to:
+
+  (a) download, install, run and use compiled builds of Helm for any lawful
+      purpose, including personal and commercial use, at no charge; and
+
+  (b) redistribute unmodified compiled builds, at no charge.
+
+You may NOT sell, rent, lease, license or otherwise charge any fee for compiled
+builds, and you may NOT redistribute a build that you have modified.
+
+--------------------------------------------------------------------------------
+3. RESTRICTIONS
+--------------------------------------------------------------------------------
+
+You may not, with respect to the software:
+
+  (a) reverse engineer, decompile or disassemble it, except to the extent that
+      such activity is expressly permitted by applicable law notwithstanding
+      this limitation;
+
+  (b) remove, obscure or alter any copyright, license or other proprietary
+      notice;
+
+  (c) use the name "Helm", the Helm logo, or any confusingly similar name or
+      mark to identify a modified build or a derivative product, or in any way
+      that suggests endorsement by the copyright holder; or
+
+  (d) use the software to violate any applicable law.
+
+--------------------------------------------------------------------------------
+4. CONTRIBUTIONS
+--------------------------------------------------------------------------------
+
+By submitting a contribution (pull request, patch or otherwise) to this project,
+you grant the copyright holder a perpetual, irrevocable, worldwide, royalty-free
+license to use, reproduce, modify, distribute and sublicense that contribution,
+and you confirm you have the right to grant it.
+
+--------------------------------------------------------------------------------
+5. NO WARRANTY
+--------------------------------------------------------------------------------
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+FITNESS FOR A PARTICULAR PURPOSE, TITLE AND NON-INFRINGEMENT. YOU BEAR THE
+ENTIRE RISK OF USING IT.
+
+--------------------------------------------------------------------------------
+6. LIMITATION OF LIABILITY
+--------------------------------------------------------------------------------
+
+IN NO EVENT SHALL THE COPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES OR
+OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+--------------------------------------------------------------------------------
+7. TERMINATION
+--------------------------------------------------------------------------------
+
+This license terminates automatically if you breach any of its terms. On
+termination you must stop using the software and delete all copies in your
+possession or control.
+
+--------------------------------------------------------------------------------
+8. THIRD-PARTY COMPONENTS
+--------------------------------------------------------------------------------
+
+Helm depends on third-party packages and services (Flutter, Supabase, and the
+packages listed in helm/pubspec.yaml). Those components remain under their own
+licenses, which take precedence for those components.

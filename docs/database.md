@@ -5,7 +5,7 @@
 | **Engine** | PostgreSQL (Supabase) |
 | **Client** | `helm/lib/services/`, `helm/lib/providers/task_provider.dart` |
 | **Last updated** | 2026-10-29 |
-| **Verification status** | ⚠️ **Unverified against production.** This describes the schema and policy the client code expects. No live schema dump was available when this was written; treat it as the specification, not a guarantee. |
+| **Verification status** | ✅ **Applied and linted.** All five migrations are applied to the remote project (`supabase db lint --linked` clean) and the pre-migration schema is captured in `docs/baseline_schema.sql`. ⚠️ The pgTAP suite has not been executed yet, so behaviour (comment quota, role hierarchy) is reasoned, not proven. |
 
 ---
 
@@ -260,13 +260,16 @@ Baseline schema before migrations is captured at `docs/baseline_schema.sql`.
 
 ## 8. Open verification items
 
-1. Dump the live schema (`supabase db dump --schema public`) and reconcile it
-   with §2. `supabase/migrations/0001_baseline.sql` does not exist yet.
-2. Confirm RLS is enabled on every table and that no table has a permissive
-   `using (true)` policy.
-3. Apply the four migrations in §7.1 and run `supabase test db`.
-4. Confirm `ai_usage` and `consume_ai_quota` exist in production.
-5. Confirm the `avatars` bucket policies restrict writes to the owner prefix.
-6. Verify at the API, not in the UI: two accounts (one Owner, one Member) — the
-   Member's edit must fail with `curl`, not just be hidden by `AbsorbPointer`.
-7. Decide the `feedback` path: Edge Function + captcha, or keep `anon` insert.
+1. ~~Dump the live schema~~ — done, `docs/baseline_schema.sql`.
+2. ~~Confirm RLS is enabled and legacy policies are gone~~ — migrations applied
+   and `supabase db lint --linked` is clean; re-check after any dashboard edit.
+3. **Run the pgTAP suite.** `supabase test db` needs a local Docker database;
+   the remote pooler restricts the `auth` schema that the fixtures touch.
+   Nothing has executed `supabase/tests/rls_test.sql` yet.
+4. **Verify at the API, not in the UI.** Two accounts (one Owner, one Member):
+   the Member's `PATCH /rest/v1/tasks?id=eq.<owner task>` must be rejected, and
+   a third comment must fail with `comment_limit_reached`. Hiding the input in
+   `AbsorbPointer` proves nothing.
+5. Confirm the `avatars` bucket policies restrict writes to the owner prefix
+   (upload as user A to `B/…` must fail).
+6. Decide the `feedback` path: Edge Function + captcha, or keep `anon` insert.
