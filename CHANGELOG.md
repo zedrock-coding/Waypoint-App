@@ -4,6 +4,25 @@ All notable changes to the **Helm** project will be documented in this file.
 
 ---
 
+## [0.4.0] - 2026-10-30
+
+### 🚀 Added
+- **Universal Deep Linking**:
+  - Implemented deep-link routing for custom schemes (`waypoint://` and legacy `helm://`) as well as web URLs (`https://helm-omega-blue.vercel.app`).
+  - Added persistent pending invite storage when logged out, displaying an invite banner on `AuthScreen`, and auto-joining the community upon authentication.
+  - Added Android intent filters for verified web links and scheme interception.
+- **First-Time Sign Up with Email OTP**:
+  - Implemented passwordless sign-up flow using 6-digit Email OTP via Supabase Auth with automated resend timer cooldown (60s).
+  - Integrated profile onboarding for first-time users to set their display name and initial password.
+- **Password Authentication & Self-Service Recovery**:
+  - Set Email + Password as default login interface for returning users.
+  - Added self-service "Forgot password?" recovery flow sending recovery tokens/links and updating passwords in-app.
+- **Remote Supabase Configuration**:
+  - Configured redirect URL whitelist (`waypoint://login-callback`, `helm://login-callback`, `https://helm-omega-blue.vercel.app/**`, `localhost`) and set OTP length to 6 digits live via `supabase config push`.
+- **Automated Build Versioning**:
+  - Android Gradle Kotlin DSL automatically names APK outputs as `waypoint-v<version>.apk`.
+  - Windows CMake post-build rule automatically copies the compiled binary to `waypoint-v<version>.exe`.
+
 ## [0.3.5] - Waypoint Rebranding & Workspace Upgrade
 
 ### 🚀 Added

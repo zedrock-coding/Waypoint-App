@@ -2,10 +2,10 @@
 
 | | |
 |---|---|
-| **App** | Helm `0.3.5+10` (`helm/`) |
+| **App** | Waypoint `0.4.0+11` (`helm/`) |
 | **Stack** | Flutter (Material 3) · Supabase · Hive · Provider |
 | **Targets** | Android, Windows, Web |
-| **Last updated** | 2026-10-29 |
+| **Last updated** | 2026-10-30 |
 
 This document describes how the pieces fit together. For rules that agents and
 contributors must follow, see `AGENTS.md`; for the schema see
@@ -218,3 +218,17 @@ serving stale bundles after deploys. `--web-renderer` no longer exists.
   voice path relies on the cloud function or speech-to-text.
 - **Feedback page insert path** (`helm/web/feedback.html`) was verified for
   reads under RLS but not for inserts, and `anon` still has `insert`.
+
+---
+
+## 8. Authentication & Deep Linking
+
+- **First-Time Sign Up**: Email OTP passwordless onboarding via Supabase Auth (`signInWithOtp(shouldCreateUser: true)`), 6-digit verification code with 60-second cooldown timer, followed by display name and password creation (`updateUser`).
+- **Returning User Sign In**: Password sign in with visibility toggle and self-service password recovery flow (`resetPasswordForEmail`).
+- **Universal Deep Linking**:
+  - Custom schemes (`waypoint://` and legacy `helm://`) and web links (`https://helm-omega-blue.vercel.app`).
+  - Auth redirects (`waypoint://login-callback`).
+  - Community invites (`waypoint://invite?communityId=...` or `?communityId=...`): automatically joins community if authenticated or stores pending invite to join post-auth.
+- **Build Artifact Auto-Naming**:
+  - Android APK: `waypoint-v<version>.apk` via Gradle Kotlin DSL output filename override.
+  - Windows: CMake post-build copy creating `waypoint-v<version>.exe`.
