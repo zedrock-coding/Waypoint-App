@@ -677,8 +677,9 @@ class TaskProvider with ChangeNotifier {
   }
 
   hive_model.Task? _lastDeletedHiveTask;
+  UnifiedTask? _lastDeletedUnifiedTask;
 
-  Future<void> deleteTask(String id) async {
+  Future<void> deleteTask(String id, {UnifiedTask? taskBackup}) async {
     final hiveTask = _taskBox.get(id);
 
     if (hiveTask != null) {
@@ -700,21 +701,75 @@ class TaskProvider with ChangeNotifier {
         subtasks: hiveTask.subtasks,
         updatedAt: hiveTask.updatedAt,
       );
+      _lastDeletedUnifiedTask =
+          taskBackup ?? UnifiedTask.fromHive(_lastDeletedHiveTask!);
+    } else if (taskBackup != null) {
+      _lastDeletedUnifiedTask = taskBackup;
+      _lastDeletedHiveTask = hive_model.Task(
+        id: taskBackup.id,
+        title: taskBackup.title,
+        description: taskBackup.description,
+        isCompleted: taskBackup.isCompleted,
+        userId: taskBackup.userId,
+        communityId: taskBackup.communityId,
+        categoryId: taskBackup.categoryIds.isNotEmpty
+            ? taskBackup.categoryIds.first
+            : null,
+        categoryIds: taskBackup.categoryIds,
+        createdAt: taskBackup.dateTime,
+        dueAt: taskBackup.dueDate,
+        priority: taskBackup.priority.name,
+        assignees: taskBackup.assignees,
+        status: _statusToString(taskBackup.status),
+        order: taskBackup.order,
+        subtasks: taskBackup.subtasks
+            .map((e) => Map<dynamic, dynamic>.from(e))
+            .toList(),
+        updatedAt: taskBackup.updatedAt,
+      );
+    } else {
+      final existingTask = _personalTasks.where((t) => t.id == id).firstOrNull;
+      if (existingTask != null) {
+        _lastDeletedUnifiedTask = existingTask;
+        _lastDeletedHiveTask = hive_model.Task(
+          id: existingTask.id,
+          title: existingTask.title,
+          description: existingTask.description,
+          isCompleted: existingTask.isCompleted,
+          userId: existingTask.userId,
+          communityId: existingTask.communityId,
+          categoryId: existingTask.categoryIds.isNotEmpty
+              ? existingTask.categoryIds.first
+              : null,
+          categoryIds: existingTask.categoryIds,
+          createdAt: existingTask.dateTime,
+          dueAt: existingTask.dueDate,
+          priority: existingTask.priority.name,
+          assignees: existingTask.assignees,
+          status: _statusToString(existingTask.status),
+          order: existingTask.order,
+          subtasks: existingTask.subtasks
+              .map((e) => Map<dynamic, dynamic>.from(e))
+              .toList(),
+          updatedAt: existingTask.updatedAt,
+        );
+      }
     }
 
-    // Enqueue the remote delete even when the local row is already gone. The
-    // old early-return meant that deleting a task whose Hive mirror had been
-    // dropped (e.g. by the remote-delete snapshot diff) silently left the
-    // server row in place, and it came back on the next reconnect.
     final bool shouldSyncDelete =
         hiveTask == null ||
         hiveTask.userId != null ||
-        hiveTask.communityId != null;
+        hiveTask.communityId != null ||
+        (_lastDeletedUnifiedTask != null &&
+            (_lastDeletedUnifiedTask!.userId != null ||
+                _lastDeletedUnifiedTask!.communityId != null));
 
     if (hiveTask != null) {
       await _taskBox.delete(id);
       unawaited(NotificationService().cancelTaskNotifications(id));
     }
+
+    _personalTasks.removeWhere((t) => t.id == id);
 
     if (shouldSyncDelete) {
       await _mutate(
@@ -728,45 +783,98 @@ class TaskProvider with ChangeNotifier {
   }
 
   Future<void> undoDelete() async {
-    if (_lastDeletedHiveTask == null) return;
+    final hiveTask = _lastDeletedHiveTask;
+    final unifiedTask = _lastDeletedUnifiedTask;
+    if (hiveTask == null && unifiedTask == null) return;
 
-    final task = _lastDeletedHiveTask!;
-    await _taskBox.put(task.id!, task);
+    final String taskId = hiveTask?.id ?? unifiedTask!.id;
+    final String? communityId =
+        hiveTask?.communityId ?? unifiedTask?.communityId;
+    final String? userId =
+        hiveTask?.userId ?? unifiedTask?.userId ?? _supabase.auth.currentUser?.id;
 
-    final bool shouldSync = task.userId != null || task.communityId != null;
+    if (hiveTask != null) {
+      await _taskBox.put(taskId, hiveTask);
+    } else if (communityId == null && unifiedTask != null) {
+      final restoredHive = hive_model.Task(
+        id: unifiedTask.id,
+        title: unifiedTask.title,
+        description: unifiedTask.description,
+        isCompleted: unifiedTask.isCompleted,
+        userId: unifiedTask.userId,
+        communityId: null,
+        categoryId: unifiedTask.categoryIds.isNotEmpty
+            ? unifiedTask.categoryIds.first
+            : null,
+        categoryIds: unifiedTask.categoryIds,
+        createdAt: unifiedTask.dateTime,
+        dueAt: unifiedTask.dueDate,
+        priority: unifiedTask.priority.name,
+        assignees: unifiedTask.assignees,
+        status: _statusToString(unifiedTask.status),
+        order: unifiedTask.order,
+        subtasks: unifiedTask.subtasks
+            .map((e) => Map<dynamic, dynamic>.from(e))
+            .toList(),
+        updatedAt: DateTime.now(),
+      );
+      await _taskBox.put(taskId, restoredHive);
+    }
+
+    final DateTime? dueAt = hiveTask?.dueAt ?? unifiedTask?.dueDate;
+    final String title = hiveTask?.title ?? unifiedTask?.title ?? 'Task';
+    final bool isDone =
+        (hiveTask?.isCompleted ?? unifiedTask?.isCompleted) ?? false;
+    if (dueAt != null && !isDone) {
+      unawaited(
+        NotificationService().scheduleTaskDueDateNotification(
+          taskId: taskId,
+          title: title,
+          dueAt: dueAt,
+        ),
+      );
+    }
+
+    final bool shouldSync = userId != null || communityId != null;
     if (shouldSync) {
       final taskData = {
-        'id': task.id,
-        'title': task.title,
-        'description': task.description,
-        'community_id': task.communityId,
-        'category_ids': task.categoryIds,
-        'assignees': task.assignees,
-        'subtasks': task.subtasks,
-        'user_id': task.userId,
-        'priority': task.priority,
-        'status': task.status,
-        'is_completed': task.isCompleted,
-        'created_at': task.createdAt?.toIso8601String(),
-        'order': task.order,
+        'id': taskId,
+        'title': hiveTask?.title ?? unifiedTask?.title,
+        'description': hiveTask?.description ?? unifiedTask?.description,
+        'community_id': communityId,
+        'category_ids': hiveTask?.categoryIds ?? unifiedTask?.categoryIds ?? [],
+        'assignees': hiveTask?.assignees ?? unifiedTask?.assignees ?? [],
+        'subtasks': hiveTask?.subtasks ?? unifiedTask?.subtasks ?? [],
+        'user_id': userId,
+        'priority': hiveTask?.priority ?? unifiedTask?.priority.name ?? 'medium',
+        'status': hiveTask?.status ??
+            (unifiedTask != null
+                ? _statusToString(unifiedTask.status)
+                : 'toDo'),
+        'is_completed': isDone,
+        'due_at': dueAt?.toIso8601String(),
+        'order': hiveTask?.order ?? unifiedTask?.order ?? 0,
+        'created_at':
+            (hiveTask?.createdAt ?? unifiedTask?.dateTime ?? DateTime.now())
+                .toIso8601String(),
         'updated_at': DateTime.now().toIso8601String(),
       };
 
       final bool written = await _mutate(
         table: 'tasks',
-        id: task.id!,
+        id: taskId,
         action: SyncActionType.create,
         payload: taskData,
       );
-      // A queued delete must not survive the undo, or the next flush would
-      // delete the row we just restored. addToQueue already merges a create
-      // over a delete; a successful immediate write supersedes it outright.
       if (written) {
-        await SyncService().removeFromQueue(table: 'tasks', id: task.id!);
+        await SyncService().removeFromQueue(table: 'tasks', id: taskId);
       }
     }
 
+    await _refreshPersonalTasks();
+
     _lastDeletedHiveTask = null;
+    _lastDeletedUnifiedTask = null;
     notifyListeners();
   }
 

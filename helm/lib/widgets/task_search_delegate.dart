@@ -92,7 +92,8 @@ class CustomTaskSearchDelegate extends SearchDelegate {
           },
           onToggle: () => taskProvider.toggleTask(unifiedTask),
           onDismiss: (direction) async {
-            await taskProvider.deleteTask(unifiedTask.id);
+            final taskToDelete = unifiedTask;
+            await taskProvider.deleteTask(taskToDelete.id, taskBackup: taskToDelete);
             if (context.mounted) {
               AppSnackBar.showUndo(
                 context: context,

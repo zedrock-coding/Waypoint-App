@@ -26,17 +26,19 @@ class AppTheme {
       ),
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
-        backgroundColor: const Color(0xFF1E2124),
+        width: 310,
+        backgroundColor: const Color(0xFF222528),
         contentTextStyle: const TextStyle(
           color: Colors.white,
-          fontSize: 14,
+          fontSize: 13.5,
           fontWeight: FontWeight.w500,
         ),
-        actionTextColor: const Color(0xFF26A69A),
+        actionTextColor: const Color(0xFF88C0A4),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(100),
+          side: const BorderSide(color: Color(0xFF3A3D40), width: 1),
         ),
-        elevation: 4,
+        elevation: 6,
       ),
     );
   }
@@ -60,18 +62,19 @@ class AppTheme {
       ),
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
-        backgroundColor: const Color(0xFF2D2F31),
+        width: 310,
+        backgroundColor: const Color(0xFF222528),
         contentTextStyle: const TextStyle(
           color: Colors.white,
-          fontSize: 14,
+          fontSize: 13.5,
           fontWeight: FontWeight.w500,
         ),
         actionTextColor: const Color(0xFF88C0A4), // Mint Green accent
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-          side: const BorderSide(color: Color(0xFF3E4145), width: 1),
+          borderRadius: BorderRadius.circular(100),
+          side: const BorderSide(color: Color(0xFF3A3D40), width: 1),
         ),
-        elevation: 4,
+        elevation: 6,
       ),
     );
   }

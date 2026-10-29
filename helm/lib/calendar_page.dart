@@ -118,7 +118,8 @@ class _CalendarPageState extends State<CalendarPage> {
                         ),
                         onToggle: () => taskProvider.toggleTask(task),
                         onDismiss: (_) async {
-                          await taskProvider.deleteTask(task.id);
+                          final taskToDelete = task;
+                          await taskProvider.deleteTask(taskToDelete.id, taskBackup: taskToDelete);
                           if (context.mounted) {
                             AppSnackBar.showUndo(
                               context: context,

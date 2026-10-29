@@ -450,8 +450,8 @@ class _MyHomePageState extends State<MyHomePage> {
                 },
                 onToggle: () => taskProvider.toggleTask(unifiedTask),
                 onDismiss: (direction) async {
-                  final String id = unifiedTask.id;
-                  await taskProvider.deleteTask(id);
+                  final taskToDelete = unifiedTask;
+                  await taskProvider.deleteTask(taskToDelete.id, taskBackup: taskToDelete);
                   
                   if (context.mounted) {
                     AppSnackBar.showUndo(
@@ -504,8 +504,8 @@ class _MyHomePageState extends State<MyHomePage> {
               },
               onToggle: () => taskProvider.toggleTask(unifiedTask),
               onDismiss: (direction) async {
-                final String id = unifiedTask.id;
-                await taskProvider.deleteTask(id);
+                  final taskToDelete = unifiedTask;
+                  await taskProvider.deleteTask(taskToDelete.id, taskBackup: taskToDelete);
                 
                 if (context.mounted) {
                   AppSnackBar.showUndo(
