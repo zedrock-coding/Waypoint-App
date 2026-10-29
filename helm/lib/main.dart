@@ -126,6 +126,7 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   final _navigatorKey = GlobalKey<NavigatorState>();
+  final _scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
 
   @override
   void initState() {
@@ -135,7 +136,28 @@ class _MyAppState extends State<MyApp> {
       if (session == null) {
         _navigatorKey.currentState?.pushNamedAndRemoveUntil('/auth', (route) => false);
       } else {
-        _navigatorKey.currentState?.pushNamedAndRemoveUntil('/', (route) => false);
+        if (!AuthScreen.isCompletingSetup) {
+          _navigatorKey.currentState?.pushNamedAndRemoveUntil('/', (route) => false);
+        }
+      }
+    });
+
+    InviteService().onInviteEvent.listen((event) {
+      if (event.status == InviteStatus.success) {
+        _scaffoldMessengerKey.currentState?.showSnackBar(
+          SnackBar(
+            content: Text(event.message),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: const Color(0xFF88C0A4),
+          ),
+        );
+      } else if (event.status == InviteStatus.alreadyMember || event.status == InviteStatus.failed) {
+        _scaffoldMessengerKey.currentState?.showSnackBar(
+          SnackBar(
+            content: Text(event.message),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
       }
     });
 
@@ -194,6 +216,7 @@ class _MyAppState extends State<MyApp> {
 
     return MaterialApp(
       navigatorKey: _navigatorKey,
+      scaffoldMessengerKey: _scaffoldMessengerKey,
       key: const ValueKey('waypoint_app_root'),
       title: 'Waypoint',
       theme: AppTheme.lightTheme,

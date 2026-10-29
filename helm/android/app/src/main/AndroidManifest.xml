@@ -33,13 +33,21 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
 
-            <!-- Deep Link Filter for helm://invite -->
+            <!-- Deep Link Filter for waypoint:// and helm:// -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="waypoint" android:host="invite" />
-                <data android:scheme="helm" android:host="invite" />
+                <data android:scheme="waypoint" />
+                <data android:scheme="helm" />
+            </intent-filter>
+
+            <!-- Web App Links for helm-omega-blue.vercel.app -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="helm-omega-blue.vercel.app" />
             </intent-filter>
         </activity>
         <meta-data

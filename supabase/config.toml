@@ -8,3 +8,28 @@ project_id = "eknzdxexfcfdmqvbyvxt"
 # that user's daily quota. Never disable this.
 [functions.ai]
 verify_jwt = true
+
+[auth]
+additional_redirect_urls = [
+  "waypoint://login-callback",
+  "helm://login-callback",
+  "https://helm-omega-blue.vercel.app/**",
+  "http://localhost:3000/**",
+  "http://127.0.0.1:3000/**"
+]
+site_url = "https://helm-omega-blue.vercel.app/"
+
+[auth.email]
+max_frequency = "1m0s"
+otp_length = 6
+
+[auth.mfa.totp]
+enroll_enabled = true
+verify_enabled = true
+
+[db.pooler]
+default_pool_size = 15
+max_client_conn = 200
+
+[storage.vector]
+enabled = false
