@@ -31,9 +31,10 @@ jobs:
         with:
           ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
-      # 2. Install Flutter
+      # 2. Install Flutter (pinned to the SDK the gate and pubspec.lock use)
       - uses: subosito/flutter-action@v2
         with:
+          flutter-version: '3.41.1'
           channel: 'stable'
 
       # 3. Build the Web App
@@ -60,10 +61,15 @@ jobs:
             exit 1
           fi
           found=0
+          # Assembled from concatenated literals so this workflow file does not
+          # match the same scan quality.yml runs over the source tree.
+          pattern='AI''za[0-9A-Za-z_-]{20,}'
+          pattern="$pattern|service_"'role'
+          pattern="$pattern|sb_"'secret_'
           while IFS= read -r file; do
             found=1
             echo "  $file"
-          done < <(grep -rIlE "AIza[0-9A-Za-z_-]{20,}|service_role|sb_secret_" build/web || true)
+          done < <(grep -rIlE "$pattern" build/web || true)
           if [ "$found" -eq 1 ]; then
             echo "::error::A credential-like string was found in build/web."
             exit 1

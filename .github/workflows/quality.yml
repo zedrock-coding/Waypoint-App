@@ -24,8 +24,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Pinned: helm/pubspec.lock and the clean `flutter analyze --fatal-infos`
+      # result were both produced with this SDK. Tracking `stable` silently
+      # moves the gate onto a newer SDK, where a deprecation that is only an
+      # `info` today fails the build. Bump this deliberately, together with a
+      # local `flutter pub get && flutter analyze --fatal-infos && flutter test`.
       - uses: subosito/flutter-action@v2
         with:
+          flutter-version: '3.41.1'
           channel: stable
           cache: true
 
@@ -57,11 +63,19 @@ jobs:
             exit 1
           fi
 
+      # .github/* is excluded because the workflows themselves have to name the
+      # patterns they hunt for, and the scanner would otherwise always match its
+      # own definition (a permanent false positive). The literal is also split
+      # into concatenated shell strings so the grep does not trip on itself if
+      # that exclusion is ever narrowed.
       - name: No credential-shaped strings in source
         run: |
           set -euo pipefail
-          if git grep -nIiE 'AIza[0-9A-Za-z_-]{20,}|sk-[A-Za-z0-9]{20,}|sb_secret_' \
-               -- . ':!*.lock' ':!docs/*' ':!*.md'; then
+          pattern='AI''za[0-9A-Za-z_-]{20,}'
+          pattern="$pattern|sk-"'[A-Za-z0-9]{20,}'
+          pattern="$pattern|sb_"'secret_'
+          if git grep -nIiE "$pattern" \
+               -- . ':!*.lock' ':!docs/*' ':!*.md' ':!.github/*'; then
             echo "::error::A credential-shaped string was found in the source tree."
             exit 1
           fi
