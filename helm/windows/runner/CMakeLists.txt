@@ -47,4 +47,20 @@ if(DEFINED FLUTTER_VERSION AND NOT "${FLUTTER_VERSION}" STREQUAL "")
       "$<TARGET_FILE_DIR:${BINARY_NAME}>/waypoint-v${FLUTTER_VERSION}.exe"
     COMMENT "Copying binary to waypoint-v${FLUTTER_VERSION}.exe"
   )
+
+  # Automatically trigger Inno Setup installer compilation if compiler exists
+  find_program(INNO_SETUP_COMPILER ISCC.exe
+    PATHS
+      "$ENV{LOCALAPPDATA}/Programs/Inno Setup 6"
+      "$ENV{ProgramFiles\(x86\)}/Inno Setup 6"
+      "$ENV{ProgramFiles}/Inno Setup 6"
+  )
+
+  if(INNO_SETUP_COMPILER)
+    add_custom_command(TARGET ${BINARY_NAME} POST_BUILD
+      COMMAND "${INNO_SETUP_COMPILER}" "/DMyAppVersion=${FLUTTER_VERSION}" "${CMAKE_CURRENT_SOURCE_DIR}/../installer/waypoint_setup.iss"
+      WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/../installer"
+      COMMENT "Compiling single-file Windows setup installer with Inno Setup..."
+    )
+  endif()
 endif()

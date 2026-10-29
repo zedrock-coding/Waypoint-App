@@ -65,3 +65,4 @@ if ($iscc) {
     Compress-Archive -Path "$releaseDir\*" -DestinationPath $zipPath -Force
     Write-Host "Created archive: $zipPath" -ForegroundColor Green
 }
+
