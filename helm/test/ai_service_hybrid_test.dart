@@ -129,6 +129,31 @@ void main() {
       expect(subtasks.length, equals(3));
       expect(subtasks.first, equals('Build container'));
     });
+
+    test('Extracts subtasks from Gemini templateContext', () async {
+      final cloudTemplate = {
+        'title': 'Sprint Kickoff',
+        'subtasks': ['Review backlog', 'Assign tickets', 'Schedule standup'],
+      };
+
+      final result = await engine.extractTask(
+        input: 'Sprint Kickoff with subtasks',
+        templateContext: cloudTemplate,
+      );
+
+      expect(result, isNotNull);
+      expect(result!['subtasks'], equals(['Review backlog', 'Assign tickets', 'Schedule standup']));
+    });
+
+    test('Extracts subtasks offline from colon-separated lists', () async {
+      final result = await engine.extractTask(
+        input: 'Prep release: bump version, test, deploy',
+      );
+
+      expect(result, isNotNull);
+      expect(result!['title'], equals('Prep release'));
+      expect(result['subtasks'], equals(['bump version', 'test', 'deploy']));
+    });
   });
 
   group('AiService Hybrid Fast-Path Tests', () {

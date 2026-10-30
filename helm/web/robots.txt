@@ -1,0 +1,7 @@
+# Waypoint Robots.txt
+User-agent: *
+Allow: /
+Disallow: /auth/callback
+
+Sitemap: https://helm-omega-blue.vercel.app/sitemap.xml
+

@@ -149,7 +149,35 @@ class LocalHeuristicParser implements NeedleEngine {
       }
     }
 
-    // 5. Title & Description Cleanup
+    // 5. Subtask Extraction (from template context or delimiter heuristics)
+    List<String> subtasks = [];
+    if (templateContext?['subtasks'] is List) {
+      subtasks = (templateContext!['subtasks'] as List)
+          .map((e) => e.toString().trim())
+          .where((e) => e.isNotEmpty)
+          .toList();
+    }
+
+    if (subtasks.isEmpty) {
+      final delimiterMatch = RegExp(r'^(.+?)[:;]\s*(.+)$').firstMatch(cleanInput);
+      if (delimiterMatch != null) {
+        final prefix = delimiterMatch.group(1)!.trim();
+        final suffix = delimiterMatch.group(2)!.trim();
+        final rawItems = suffix.split(RegExp(r'[,;]|\band\b'));
+        final items = rawItems
+            .map((e) => e.trim())
+            .where((e) => e.isNotEmpty && e.length > 1)
+            .toList();
+        if (items.length >= 2) {
+          subtasks = items;
+          if (title.isEmpty) {
+            title = prefix;
+          }
+        }
+      }
+    }
+
+    // 6. Title & Description Cleanup
     if (title.isEmpty) {
       // Rephrase clean title
       var candidate = cleanInput
@@ -179,6 +207,7 @@ class LocalHeuristicParser implements NeedleEngine {
       'priority': priorityStr.toUpperCase(),
       'community_id': communityId,
       'assignee_id': assigneeId,
+      'subtasks': subtasks,
       'clarification_needed': clarificationNeeded,
       'clarification_message': clarificationMessage,
     };

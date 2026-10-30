@@ -42,6 +42,7 @@ EXTRACTION RULES:
 4. **Priority**: Map to "HIGH", "MEDIUM", or "LOW". Default is "MEDIUM".
 5. **Community ID**: Match mentioned community names to the provided UUIDs. Use null if no match is found.
 6. **Assignee ID**: Match mentioned names or "me" to the member UUIDs. Use null if no match is found.
+7. **Subtasks**: When a command describes a multi-step project, launch, or checklist, decompose it into 2 to 5 actionable, atomic subtasks. Return an empty array [] if the task is a single atomic action.
 
 OUTPUT FORMAT:
 Return ONLY a raw JSON object. Do not wrap it in markdown. Do not include any explanations.
@@ -61,6 +62,7 @@ SCHEMA:
   "priority": "HIGH | MEDIUM | LOW",
   "community_id": "UUID String or null",
   "assignee_id": "UUID String or null",
+  "subtasks": ["Actionable subtask step 1", "Actionable subtask step 2"],
   "clarification_needed": Boolean,
   "clarification_message": "String or null"
 }`;

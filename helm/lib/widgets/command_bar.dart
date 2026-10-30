@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:uuid/uuid.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import '../services/ai_service.dart';
 import '../services/audio_recording_service.dart';
@@ -232,11 +233,25 @@ class _CommandBarWidgetState extends State<CommandBarWidget> with SingleTickerPr
     final assigneeId = result['assignee_id'];
     final Priority priority = UnifiedTask.parsePriority(result['priority']?.toString());
 
+    final rawSubtasks = result['subtasks'] as List? ?? [];
+    final List<Map<String, dynamic>> subtaskMaps = rawSubtasks
+        .asMap()
+        .entries
+        .map((e) => {
+              'id': const Uuid().v4(),
+              'title': e.value.toString().trim(),
+              'is_completed': false,
+              'order': e.key,
+            })
+        .where((st) => (st['title'] as String).isNotEmpty)
+        .toList();
+
     final createdId = await taskProvider.addTask(
       title: title,
       description: description,
       communityId: communityId,
       assignees: assigneeId != null ? [assigneeId] : [],
+      subtasks: subtaskMaps,
       priority: priority,
       status: Status.toDo,
       dueAt: dueDate,

@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:uuid/uuid.dart';
 import 'models/unified_task.dart';
 import 'providers/task_provider.dart';
 import 'services/ai_service.dart';
@@ -127,11 +128,25 @@ class _AIVoiceOverlayState extends State<AIVoiceOverlay>
           (result['priority'] ?? _currentDraft?['priority'])?.toString(),
         );
 
+        final rawSubtasks = (result['subtasks'] ?? _currentDraft?['subtasks']) as List? ?? [];
+        final List<Map<String, dynamic>> subtaskMaps = rawSubtasks
+            .asMap()
+            .entries
+            .map((e) => {
+                  'id': const Uuid().v4(),
+                  'title': e.value.toString().trim(),
+                  'is_completed': false,
+                  'order': e.key,
+                })
+            .where((st) => (st['title'] as String).isNotEmpty)
+            .toList();
+
         await taskProvider.addTask(
           title: title,
           description: description,
           communityId: communityId,
           assignees: assigneeId != null ? [assigneeId] : [],
+          subtasks: subtaskMaps,
           priority: priority,
           status: Status.toDo,
           dueAt: dueDate,

@@ -1,46 +1,107 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <!--
-    If you are serving your web app in a path other than the root, change the
-    href value below to reflect the base path you are serving from.
-
-    The path provided below has to start and end with a slash "/" in order for
-    it to work correctly.
-
-    For more details:
-    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
-
-    This is a placeholder for base href that will be replaced by the value of
-    the `--base-href` argument provided to `flutter build`.
-  -->
   <base href="$FLUTTER_BASE_HREF">
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="AI-orchestrated task management workspace">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <!-- iOS meta tags & icons -->
+  <!-- Primary SEO Meta Tags -->
+  <title>Waypoint — AI-Orchestrated Task Management & Team Workspace</title>
+  <meta name="title" content="Waypoint — AI-Orchestrated Task Management & Team Workspace">
+  <meta name="description" content="Waypoint is an AI-orchestrated, offline-first task workspace built for speed. Powered by Gemini, featuring instant natural language breakdown, velocity tracking, and zero operational noise.">
+  <meta name="keywords" content="Waypoint, task manager, AI task planner, offline first todo app, Flutter workspace, team task orchestration, linear alternative, productivity app">
+  <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
+  <meta name="author" content="Waypoint Team">
+  <link rel="canonical" href="https://helm-omega-blue.vercel.app">
+
+  <!-- OpenGraph / Facebook / LinkedIn / Discord -->
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://helm-omega-blue.vercel.app">
+  <meta property="og:site_name" content="Waypoint Workspace">
+  <meta property="og:title" content="Waypoint — AI-Orchestrated Task Management">
+  <meta property="og:description" content="Turn natural language into structured milestones, track execution velocity, and collaborate with zero noise — even offline.">
+  <meta property="og:image" content="https://helm-omega-blue.vercel.app/icons/og-preview.png">
+
+  <!-- Twitter / X -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:url" content="https://helm-omega-blue.vercel.app">
+  <meta name="twitter:title" content="Waypoint — AI-Orchestrated Task Management">
+  <meta name="twitter:description" content="Natural language task orchestration, offline-first sync, and velocity tracking.">
+  <meta name="twitter:image" content="https://helm-omega-blue.vercel.app/icons/og-preview.png">
+
+  <!-- iOS & PWA meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <meta name="apple-mobile-web-app-title" content="Waypoint">
   <link rel="apple-touch-icon" href="favicon.png">
-
-  <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png"/>
-
-  <title>Waypoint</title>
   <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#1E2124">
+
+  <!-- Schema.org JSON-LD Structured Data -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "Waypoint",
+    "url": "https://helm-omega-blue.vercel.app",
+    "operatingSystem": "Web, Android, Windows",
+    "applicationCategory": "ProductivityApplication, BusinessApplication",
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "USD"
+    },
+    "description": "Waypoint is an AI-orchestrated, offline-first task management workspace featuring instant natural language decomposition, milestone velocity tracking, and zero operational noise."
+  }
+  </script>
+
+  <style>
+    /* Pre-hydration fallback styling */
+    .crawler-content {
+      position: absolute;
+      left: -9999px;
+      top: auto;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+    }
+    body {
+      background-color: #1E2124;
+      margin: 0;
+      padding: 0;
+    }
+  </style>
 </head>
 <body>
-  <!--
-    You can customize the "flutter_bootstrap.js" script.
-    This is useful to provide a custom configuration to the Flutter loader
-    or to give the user feedback during the initialization process.
+  <!-- Pre-hydration Semantic Fallback for Search Engine Crawlers (Googlebot, Bingbot) -->
+  <noscript>
+    <div style="padding: 24px; color: #fff; background-color: #1E2124; font-family: sans-serif;">
+      <h1>Waypoint Workspace</h1>
+      <p>Waypoint is an AI-orchestrated, offline-first task workspace built for speed and focus. Please enable JavaScript to run the application.</p>
+    </div>
+  </noscript>
 
-    For more details:
-    * https://docs.flutter.dev/platform-integration/web/initialization
-  -->
+  <header class="crawler-content" aria-hidden="true">
+    <h1>Waypoint — AI-Orchestrated Task Management & Team Workspace</h1>
+    <p>Turn natural language into structured milestones, track execution velocity, and collaborate with zero noise — even offline.</p>
+    <h2>Key Capabilities</h2>
+    <ul>
+      <li>AI-Powered Task Orchestration: Natural language task and subtask creation powered by Gemini.</li>
+      <li>Local-First Offline Sync: Zero latency, local Hive storage with background conflict-free synchronization.</li>
+      <li>Execution Velocity Tracking: Streaks, milestone metrics, and focused productivity.</li>
+    </ul>
+    <nav>
+      <a href="/">Home</a> |
+      <a href="/login">Login</a> |
+      <a href="/support">Support</a> |
+      <a href="/privacy">Privacy Policy</a> |
+      <a href="/terms">Terms of Service</a>
+    </nav>
+  </header>
+
   <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.getRegistrations().then(function(regs) {
