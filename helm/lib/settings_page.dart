@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'theme_provider.dart';
 import 'app_shell.dart';
 import 'notification_service.dart';
@@ -181,6 +182,29 @@ class _SettingPageState extends State<SettingPage> {
           const Divider(height: 40),
           Text('System', style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: 16),
+          ListTile(
+            leading: const Icon(Icons.system_update_alt_rounded),
+            title: const Text('Updates'),
+            subtitle: const Text('Check latest releases on GitHub'),
+            trailing: const Icon(Icons.open_in_new_rounded),
+            onTap: () async {
+              final uri = Uri.parse('https://github.com/zedrock-coding/Waypoint-App');
+              try {
+                final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+                if (!launched && context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Could not open updates page')),
+                  );
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Error launching updates: $e')),
+                  );
+                }
+              }
+            },
+          ),
           ListTile(
             leading: const Icon(Icons.keyboard_rounded),
             title: const Text('Keyboard Shortcuts'),

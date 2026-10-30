@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'widgets/legal_dialog.dart';
 
 class AboutScreen extends StatelessWidget {
@@ -64,6 +65,13 @@ class AboutScreen extends StatelessWidget {
                     children: [
                       _buildActionTile(
                         context,
+                        icon: Icons.system_update_alt_rounded,
+                        title: 'Check for Updates',
+                        onTap: () => _launchUpdatesUrl(context),
+                      ),
+                      const SizedBox(height: 12),
+                      _buildActionTile(
+                        context,
                         icon: Icons.description_outlined,
                         title: 'View EULA',
                         onTap: () => showDialog(
@@ -124,5 +132,25 @@ class AboutScreen extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  static const String updatesUrl = 'https://github.com/zedrock-coding/Waypoint-App';
+
+  Future<void> _launchUpdatesUrl(BuildContext context) async {
+    final uri = Uri.parse(updatesUrl);
+    try {
+      final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!launched && context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not open updates page')),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error launching updates: $e')),
+        );
+      }
+    }
   }
 }
