@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'models/unified_task.dart';
 import 'providers/task_provider.dart';
 import 'services/supabase_service.dart';
+import 'services/ai_service.dart';
 import 'models/hive_models.dart' as hive_model;
 import 'package:hive_flutter/hive_flutter.dart';
 
@@ -51,6 +52,7 @@ class _AddEventPageState extends State<AddEventPage> {
   List<Map<String, dynamic>> _communityMembers = [];
   bool _isUserLoggedIn = false;
   bool _isLoadingMembers = false;
+  bool _isGeneratingSubtasks = false;
 
   @override
   void initState() {
@@ -152,6 +154,75 @@ class _AddEventPageState extends State<AddEventPage> {
       _subtaskControllers.add(TextEditingController());
       _hasUnsavedChanges = true;
     });
+  }
+
+  Future<void> _decomposeSubtasksWithAi() async {
+    final title = _titleController.text.trim();
+    final description = _descriptionController.text.trim();
+
+    if (title.isEmpty && description.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Enter a task title or description first.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isGeneratingSubtasks = true);
+    try {
+      final aiService = context.read<AiService>();
+      final subtasks = await aiService.generateSubtasks(
+        title: title.isNotEmpty ? title : description,
+        description: description,
+      );
+
+      if (mounted) {
+        if (subtasks.isNotEmpty) {
+          setState(() {
+            _subtaskControllers.removeWhere((c) {
+              final empty = c.text.trim().isEmpty;
+              if (empty) c.dispose();
+              return empty;
+            });
+
+            for (final st in subtasks) {
+              _subtaskControllers.add(TextEditingController(text: st));
+            }
+            _hasUnsavedChanges = true;
+          });
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('AI generated ${subtasks.length} subtask milestones!'),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('No subtasks could be decomposed from this task.'),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('AI subtask generation error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Could not generate subtasks: $e'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isGeneratingSubtasks = false);
+      }
+    }
   }
 
   void _removeSubtask(int index) {
@@ -645,6 +716,38 @@ class _AddEventPageState extends State<AddEventPage> {
               style: TextStyle(fontWeight: FontWeight.bold),
             ),
             const Spacer(),
+            TextButton.icon(
+              key: const ValueKey('ai_decompose_subtasks_button'),
+              onPressed: _isGeneratingSubtasks ? null : _decomposeSubtasksWithAi,
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              icon: _isGeneratingSubtasks
+                  ? const SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Color(0xFF88C0A4),
+                      ),
+                    )
+                  : const Icon(
+                      Icons.auto_awesome_rounded,
+                      size: 16,
+                      color: Color(0xFF88C0A4),
+                    ),
+              label: Text(
+                _isGeneratingSubtasks ? 'Decomposing...' : 'AI Subtasks',
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: Color(0xFF88C0A4),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            const SizedBox(width: 4),
             IconButton(
               onPressed: _addSubtask,
               icon: const Icon(Icons.add_circle_outline, color: Colors.teal),

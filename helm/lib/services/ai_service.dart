@@ -80,6 +80,13 @@ class AiService {
   /// Extracts structured JSON object from AI response text, stripping markdown fences or preamble.
   static Map<String, dynamic> _cleanAndDecodeJson(String text) {
     var clean = text.replaceAll('```json', '').replaceAll('```', '').trim();
+    try {
+      final direct = jsonDecode(clean);
+      if (direct is Map<String, dynamic>) return direct;
+      if (direct is Map) return Map<String, dynamic>.from(direct);
+    } catch (_) {
+      // Preamble or markdown wrapping: fallback to extracting outermost braces
+    }
     final firstBrace = clean.indexOf('{');
     final lastBrace = clean.lastIndexOf('}');
     if (firstBrace != -1 && lastBrace != -1 && lastBrace >= firstBrace) {
@@ -88,15 +95,64 @@ class AiService {
     return jsonDecode(clean) as Map<String, dynamic>;
   }
 
-  /// Extracts structured JSON array from AI response text, stripping markdown fences or preamble.
-  static List<dynamic> _cleanAndDecodeJsonList(String text) {
-    var clean = text.replaceAll('```json', '').replaceAll('```', '').trim();
-    final firstBracket = clean.indexOf('[');
-    final lastBracket = clean.lastIndexOf(']');
-    if (firstBracket != -1 && lastBracket != -1 && lastBracket >= firstBracket) {
-      clean = clean.substring(firstBracket, lastBracket + 1);
+  /// Extracts structured subtasks list from AI response text.
+  /// Handles both pure JSON arrays, JSON objects with 'subtasks', and text with brackets.
+  static List<String> extractSubtasksFromAiResponse(String text) {
+    final clean = text.replaceAll('```json', '').replaceAll('```', '').trim();
+    try {
+      final decoded = jsonDecode(clean);
+      if (decoded is List) {
+        return decoded
+            .map((e) => e.toString().trim())
+            .where((e) => e.isNotEmpty)
+            .toList();
+      }
+      if (decoded is Map) {
+        final subtasks = decoded['subtasks'];
+        if (subtasks is List) {
+          return subtasks
+              .map((e) => e.toString().trim())
+              .where((e) => e.isNotEmpty)
+              .toList();
+        }
+        for (final val in decoded.values) {
+          if (val is List) {
+            return val
+                .map((e) => e.toString().trim())
+                .where((e) => e.isNotEmpty)
+                .toList();
+          }
+        }
+      }
+    } catch (_) {
+      // Direct decode failed (preamble or truncated JSON). Try regex array/object search.
+      final arrayRegex = RegExp(r'\[[\s\S]*?\]');
+      for (final match in arrayRegex.allMatches(clean)) {
+        try {
+          final decoded = jsonDecode(match.group(0)!);
+          if (decoded is List) {
+            return decoded
+                .map((e) => e.toString().trim())
+                .where((e) => e.isNotEmpty)
+                .toList();
+          }
+        } catch (_) {}
+      }
+
+      final objectRegex = RegExp(r'\{[\s\S]*?\}');
+      for (final match in objectRegex.allMatches(clean)) {
+        try {
+          final decoded = jsonDecode(match.group(0)!);
+          if (decoded is Map && decoded['subtasks'] is List) {
+            return (decoded['subtasks'] as List)
+                .map((e) => e.toString().trim())
+                .where((e) => e.isNotEmpty)
+                .toList();
+          }
+        } catch (_) {}
+      }
     }
-    return jsonDecode(clean) as List<dynamic>;
+    return [];
   }
 
   /// Single network entry point.
@@ -324,8 +380,7 @@ SCHEMA:
 
     try {
       final text = await _generate(prompt: prompt);
-      final List<dynamic> parsed = _cleanAndDecodeJsonList(text);
-      final hints = parsed.map((e) => e.toString()).toList();
+      final hints = extractSubtasksFromAiResponse(text);
 
       // Local parser validates and expands subtasks
       return await _needleEngine.expandSubtasks(

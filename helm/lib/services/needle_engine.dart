@@ -149,7 +149,7 @@ class LocalHeuristicParser implements NeedleEngine {
       }
     }
 
-    // 5. Subtask Extraction (from template context or delimiter heuristics)
+    // 5. Subtask Extraction (from template context, bullet lists, multi-step sequences, or delimiter heuristics)
     List<String> subtasks = [];
     if (templateContext?['subtasks'] is List) {
       subtasks = (templateContext!['subtasks'] as List)
@@ -159,15 +159,106 @@ class LocalHeuristicParser implements NeedleEngine {
     }
 
     if (subtasks.isEmpty) {
+      // 5a. Bullet list or numbered list extraction (e.g. lines with -, *, 1., 2.)
+      final lines = cleanInput.split('\n').map((l) => l.trim()).toList();
+      if (lines.length >= 2) {
+        final bulletItems = lines
+            .where((l) => l.startsWith('- ') || l.startsWith('* ') || RegExp(r'^\d+[\.\)]\s+').hasMatch(l))
+            .map((l) => l.replaceFirst(RegExp(r'^(?:[-\*]|\d+[\.\)])\s*'), '').trim())
+            .where((l) => l.isNotEmpty && l.length > 1)
+            .toList();
+        if (bulletItems.length >= 2) {
+          subtasks = bulletItems;
+          if (title.isEmpty) {
+            final firstNonBullet = lines.firstWhere(
+              (l) => !l.startsWith('- ') && !l.startsWith('* ') && !RegExp(r'^\d+[\.\)]\s+').hasMatch(l),
+              orElse: () => '',
+            );
+            if (firstNonBullet.isNotEmpty) {
+              title = firstNonBullet.replaceAll(RegExp(r'[:;]$'), '').trim();
+            }
+          }
+        }
+      }
+    }
+
+    if (subtasks.isEmpty) {
+      // 5b. Multi-step phrases (e.g. "first do X then do Y and finally do Z")
+      final multiStepRegex = RegExp(
+        r'\bfirst(?:ly)?\s+(.+?)\s+then\s+(.+?)(?:\s+then\s+(.+?))?(?:\s+(?:and\s+)?(?:finally|lastly)\s+(.+))?$',
+        caseSensitive: false,
+      );
+      final stepMatch = multiStepRegex.firstMatch(cleanInput);
+      if (stepMatch != null) {
+        final List<String> extracted = [];
+        for (int i = 1; i <= stepMatch.groupCount; i++) {
+          final raw = stepMatch.group(i)?.trim();
+          if (raw != null && raw.isNotEmpty) {
+            final cleaned = raw
+                .replaceAll(RegExp(r'[,;.\s]+$'), '')
+                .replaceAll(RegExp(r'^(?:and|then)\s+', caseSensitive: false), '')
+                .trim();
+            if (cleaned.isNotEmpty && cleaned.length > 1) {
+              extracted.add(cleaned);
+            }
+          }
+        }
+        if (extracted.length >= 2) {
+          subtasks = extracted;
+          if (title.isEmpty) {
+            final prefix = cleanInput.substring(0, stepMatch.start).trim();
+            final cleanPrefix = prefix
+                .replaceAll(RegExp(r'[:;,\s]+$'), '')
+                .replaceAll(
+                  RegExp(
+                    r'^(?:remind me to|create task to|create task|add task to|add task|make a task to|make a task)\s+',
+                    caseSensitive: false,
+                  ),
+                  '',
+                )
+                .trim();
+            if (cleanPrefix.isNotEmpty) {
+              title = cleanPrefix;
+            } else {
+              final first = extracted.first;
+              final capitalized = first[0].toUpperCase() + first.substring(1);
+              title = '$capitalized & next steps';
+            }
+          }
+        }
+      }
+    }
+
+    if (subtasks.isEmpty) {
+      // 5c. Delimiter matching (e.g. "Title: item 1, item 2, and item 3")
       final delimiterMatch = RegExp(r'^(.+?)[:;]\s*(.+)$').firstMatch(cleanInput);
       if (delimiterMatch != null) {
         final prefix = delimiterMatch.group(1)!.trim();
         final suffix = delimiterMatch.group(2)!.trim();
-        final rawItems = suffix.split(RegExp(r'[,;]|\band\b'));
-        final items = rawItems
-            .map((e) => e.trim())
+
+        // 1. Try splitting on comma, semicolon, or newline
+        List<String> items = suffix
+            .split(RegExp(r'[,;\n]'))
+            .map((e) => e
+                .replaceAll(RegExp(r'^(?:[-\*]|\d+[\.\)])\s*'), '')
+                .replaceAll(RegExp(r'^\s*and\s+', caseSensitive: false), '')
+                .replaceAll(RegExp(r'[,;.\s]+$'), '')
+                .trim())
             .where((e) => e.isNotEmpty && e.length > 1)
             .toList();
+
+        // 2. If no commas present, fallback to " and "
+        if (items.length < 2 && RegExp(r'\band\b', caseSensitive: false).hasMatch(suffix)) {
+          items = suffix
+              .split(RegExp(r'\band\b', caseSensitive: false))
+              .map((e) => e
+                  .replaceAll(RegExp(r'^(?:[-\*]|\d+[\.\)])\s*'), '')
+                  .replaceAll(RegExp(r'[,;.\s]+$'), '')
+                  .trim())
+              .where((e) => e.isNotEmpty && e.length > 1)
+              .toList();
+        }
+
         if (items.length >= 2) {
           subtasks = items;
           if (title.isEmpty) {
@@ -223,6 +314,37 @@ class LocalHeuristicParser implements NeedleEngine {
           .map((hint) => hint.trim())
           .where((hint) => hint.isNotEmpty)
           .toList();
+    }
+
+    final lower = title.toLowerCase();
+    if (RegExp(r'\b(launch|deploy|release|ship|rollout)\b').hasMatch(lower)) {
+      return [
+        'Complete pre-launch checklist for $title',
+        'Deploy to staging and verify smoke tests',
+        'Execute production rollout',
+        'Monitor telemetry and error rates',
+      ];
+    }
+    if (RegExp(r'\b(test|qa|verify|audit|validation)\b').hasMatch(lower)) {
+      return [
+        'Define test matrix and scenarios for $title',
+        'Execute functional and regression test suite',
+        'Document bugs and verify patches',
+      ];
+    }
+    if (RegExp(r'\b(meet|meeting|interview|sync|call|presentation)\b').hasMatch(lower)) {
+      return [
+        'Prepare agenda and materials for $title',
+        'Conduct session and capture action items',
+        'Send summary notes and next steps',
+      ];
+    }
+    if (RegExp(r'\b(bug|fix|patch|issue|error|hotfix|crash)\b').hasMatch(lower)) {
+      return [
+        'Reproduce and isolate root cause for $title',
+        'Implement code fix and unit tests',
+        'Verify resolution in staging environment',
+      ];
     }
 
     // Fallback template items derived from title

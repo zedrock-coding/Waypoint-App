@@ -9,6 +9,7 @@ import '../services/supabase_service.dart';
 import '../providers/task_provider.dart';
 import '../models/unified_task.dart';
 import 'app_snackbar.dart';
+import 'audio_waveform_visualizer.dart';
 
 class CommandBarWidget extends StatefulWidget {
   const CommandBarWidget({super.key});
@@ -17,12 +18,14 @@ class CommandBarWidget extends StatefulWidget {
   State<CommandBarWidget> createState() => _CommandBarWidgetState();
 }
 
-class _CommandBarWidgetState extends State<CommandBarWidget> with SingleTickerProviderStateMixin {
+class _CommandBarWidgetState extends State<CommandBarWidget>
+    with SingleTickerProviderStateMixin {
   final _textController = TextEditingController();
   final _stt = stt.SpeechToText();
   final _audioService = AudioRecordingService();
   bool _isListening = false;
   bool _isLoading = false;
+
   /// True when the current capture is the audio recorder (multimodal path);
   /// false when we fell back to speech-to-text only.
   bool _capturingAudio = false;
@@ -35,6 +38,12 @@ class _CommandBarWidgetState extends State<CommandBarWidget> with SingleTickerPr
       vsync: this,
       duration: const Duration(seconds: 1),
     )..repeat(reverse: true);
+
+    _audioService.onTimeout = () {
+      if (mounted && _isListening) {
+        _stopAndProcessVoice();
+      }
+    };
   }
 
   @override
@@ -53,10 +62,8 @@ class _CommandBarWidgetState extends State<CommandBarWidget> with SingleTickerPr
       }
 
       // One capture source at a time. Running `record` and `speech_to_text`
-      // together meant two consumers fought over the microphone, which on
-      // Android truncates or corrupts both streams. Prefer the recorder (the
-      // AI path takes audio directly); fall back to STT only if recording is
-      // unavailable.
+      // together meant two consumers fought over the microphone.
+      // Prefer the recorder (the AI path takes audio directly).
       _capturingAudio = await _audioService.startRecording();
       if (_capturingAudio) {
         setState(() => _isListening = true);
@@ -120,8 +127,7 @@ class _CommandBarWidgetState extends State<CommandBarWidget> with SingleTickerPr
       await _stt.stop();
     }
 
-    // No usable audio: process whatever the text field holds (STT transcript,
-    // or something the user typed before pressing the mic).
+    // Process typed or STT text fallback
     await _handleCommand();
   }
 
@@ -150,7 +156,9 @@ class _CommandBarWidgetState extends State<CommandBarWidget> with SingleTickerPr
       } else if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('AI Voice Error: ${e.toString().replaceAll('Exception: ', '')}'),
+            content: Text(
+              'AI Voice Error: ${e.toString().replaceAll('Exception: ', '')}',
+            ),
             backgroundColor: Colors.redAccent,
           ),
         );
@@ -179,7 +187,7 @@ class _CommandBarWidgetState extends State<CommandBarWidget> with SingleTickerPr
       final communities = await supabaseService.fetchUserCommunities();
       final members = await supabaseService.fetchAllAccessibleMembers();
 
-      // Hybrid parse: local rules for short commands, Gemini for the hard ones.
+      // Hybrid parse: local rules for short commands, Gemini for complex tasks.
       final result = await aiService.parseHybridCommand(
         userInput: input,
         availableCommunities: communities,
@@ -191,7 +199,9 @@ class _CommandBarWidgetState extends State<CommandBarWidget> with SingleTickerPr
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('AI Error: ${e.toString().replaceAll('Exception: ', '')}'),
+            content: Text(
+              'AI Error: ${e.toString().replaceAll('Exception: ', '')}',
+            ),
             backgroundColor: Colors.redAccent,
           ),
         );
@@ -201,7 +211,10 @@ class _CommandBarWidgetState extends State<CommandBarWidget> with SingleTickerPr
     }
   }
 
-  Future<void> _applyTaskResult(Map<String, dynamic>? result, TaskProvider taskProvider) async {
+  Future<void> _applyTaskResult(
+    Map<String, dynamic>? result,
+    TaskProvider taskProvider,
+  ) async {
     if (result == null) {
       throw Exception('Could not understand task command.');
     }
@@ -209,7 +222,8 @@ class _CommandBarWidgetState extends State<CommandBarWidget> with SingleTickerPr
     final bool clarificationNeeded = result['clarification_needed'] ?? false;
     if (clarificationNeeded) {
       if (mounted) {
-        final msg = result['clarification_message'] ?? 'Could you clarify what you want to do?';
+        final msg =
+            result['clarification_message'] ?? 'Could you clarify what you want to do?';
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('AI: $msg'),
@@ -231,7 +245,8 @@ class _CommandBarWidgetState extends State<CommandBarWidget> with SingleTickerPr
 
     final communityId = result['community_id'];
     final assigneeId = result['assignee_id'];
-    final Priority priority = UnifiedTask.parsePriority(result['priority']?.toString());
+    final Priority priority =
+        UnifiedTask.parsePriority(result['priority']?.toString());
 
     final rawSubtasks = result['subtasks'] as List? ?? [];
     final List<Map<String, dynamic>> subtaskMaps = rawSubtasks
@@ -259,9 +274,14 @@ class _CommandBarWidgetState extends State<CommandBarWidget> with SingleTickerPr
 
     if (mounted) {
       _textController.clear();
+      final subtaskCount = subtaskMaps.length;
+      final msg = subtaskCount > 0
+          ? 'Task created with $subtaskCount subtask milestone${subtaskCount == 1 ? '' : 's'}!'
+          : 'AI Task Created!';
+
       AppSnackBar.showUndo(
         context: context,
-        message: 'AI Task Created!',
+        message: msg,
         onUndo: () => taskProvider.deleteTask(createdId),
         duration: const Duration(seconds: 5),
       );
@@ -276,7 +296,7 @@ class _CommandBarWidgetState extends State<CommandBarWidget> with SingleTickerPr
       animation: _glowController,
       builder: (context, child) {
         final double glow = _isLoading ? _glowController.value : 0;
-        
+
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           decoration: BoxDecoration(
@@ -284,45 +304,172 @@ class _CommandBarWidgetState extends State<CommandBarWidget> with SingleTickerPr
             borderRadius: BorderRadius.circular(32),
             boxShadow: [
               BoxShadow(
-                color: _isListening ? Colors.red.withValues(alpha: 0.2) : colorScheme.primary.withValues(alpha: 0.15 * glow),
-                blurRadius: _isListening ? 15 : 10 * glow,
+                color: _isListening
+                    ? const Color(0xFF88C0A4).withValues(alpha: 0.25)
+                    : colorScheme.primary.withValues(alpha: 0.15 * glow),
+                blurRadius: _isListening ? 16 : 10 * glow,
                 spreadRadius: _isListening ? 2 : 2 * glow,
               )
             ],
             border: Border.all(
-              color: _isListening ? Colors.red : (_isLoading ? colorScheme.primary : colorScheme.outlineVariant.withValues(alpha: 0.5)),
+              color: _isListening
+                  ? const Color(0xFF88C0A4)
+                  : (_isLoading
+                      ? colorScheme.primary
+                      : colorScheme.outlineVariant.withValues(alpha: 0.5)),
               width: (_isListening || _isLoading) ? 2 : 1,
             ),
           ),
-          child: Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _textController,
-                  enabled: !_isLoading,
-                  decoration: const InputDecoration(
-                    hintText: 'Type or speak a task command...',
-                    border: InputBorder.none,
-                    isDense: true,
-                  ),
-                  onSubmitted: (_) => _handleCommand(),
-                ),
-              ),
-              IconButton(
-                icon: Icon(
-                  _isListening ? Icons.mic : Icons.mic_none,
-                  color: _isListening ? Colors.red : colorScheme.primary,
-                ),
-                onPressed: _isLoading ? null : _toggleListening,
-              ),
-              IconButton(
-                icon: Icon(Icons.send_rounded, color: _textController.text.isEmpty ? Colors.grey : colorScheme.primary),
-                onPressed: (_isLoading || _textController.text.isEmpty) ? null : _handleCommand,
-              ),
-            ],
-          ),
+          child: _isLoading
+              ? _buildLoadingPill(colorScheme)
+              : (_isListening
+                  ? _buildListeningPill(colorScheme)
+                  : _buildNormalInput(colorScheme)),
         );
       },
+    );
+  }
+
+  Widget _buildLoadingPill(ColorScheme colorScheme) {
+    return SizedBox(
+      height: 40,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const SizedBox(
+            width: 18,
+            height: 18,
+            child: CircularProgressIndicator(
+              strokeWidth: 2.2,
+              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF88C0A4)),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Text(
+            'AI is decomposing task & subtasks...',
+            style: TextStyle(
+              color: colorScheme.primary,
+              fontWeight: FontWeight.w600,
+              fontSize: 14,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildListeningPill(ColorScheme colorScheme) {
+    return SizedBox(
+      height: 40,
+      child: Row(
+        children: [
+          Container(
+            width: 10,
+            height: 10,
+            decoration: BoxDecoration(
+              color: Colors.redAccent,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.redAccent.withValues(alpha: 0.6),
+                  blurRadius: 6,
+                  spreadRadius: 2,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          const Text(
+            'Listening',
+            style: TextStyle(
+              fontWeight: FontWeight.w600,
+              fontSize: 13,
+              color: Color(0xFF88C0A4),
+            ),
+          ),
+          const SizedBox(width: 12),
+          AudioWaveformVisualizer(
+            amplitudeStream: _audioService.amplitudeStream,
+            barCount: 7,
+            height: 22,
+            barWidth: 3,
+            barSpacing: 3,
+            activeColor: const Color(0xFF88C0A4),
+          ),
+          const Spacer(),
+          StreamBuilder<Duration>(
+            stream: _audioService.durationStream,
+            builder: (context, snapshot) {
+              final sec = (snapshot.data?.inSeconds ?? 0).clamp(0, 30);
+              final display = '0:${sec.toString().padLeft(2, '0')} / 0:30';
+              return Text(
+                display,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontFamily: 'monospace',
+                  color: Colors.white70,
+                ),
+              );
+            },
+          ),
+          const SizedBox(width: 8),
+          TextButton(
+            onPressed: _stopAndProcessVoice,
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              backgroundColor: const Color(0xFF88C0A4).withValues(alpha: 0.2),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+            ),
+            child: const Text(
+              'Done',
+              style: TextStyle(
+                color: Color(0xFF88C0A4),
+                fontWeight: FontWeight.bold,
+                fontSize: 12,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNormalInput(ColorScheme colorScheme) {
+    return Row(
+      children: [
+        Expanded(
+          child: TextField(
+            controller: _textController,
+            enabled: !_isLoading,
+            decoration: const InputDecoration(
+              hintText: 'Type or speak a task command...',
+              border: InputBorder.none,
+              isDense: true,
+            ),
+            onSubmitted: (_) => _handleCommand(),
+          ),
+        ),
+        IconButton(
+          icon: Icon(
+            Icons.mic_none,
+            color: colorScheme.primary,
+          ),
+          onPressed: _isLoading ? null : _toggleListening,
+          tooltip: 'Speak task command',
+        ),
+        IconButton(
+          icon: Icon(
+            Icons.send_rounded,
+            color: _textController.text.isEmpty ? Colors.grey : colorScheme.primary,
+          ),
+          onPressed: (_isLoading || _textController.text.isEmpty)
+              ? null
+              : _handleCommand,
+          tooltip: 'Send command',
+        ),
+      ],
     );
   }
 }
