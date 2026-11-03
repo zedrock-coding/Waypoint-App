@@ -444,11 +444,7 @@ class _AppShellState extends State<AppShell> {
     return FocusScope(
       child: Shortcuts(
         shortcuts: <ShortcutActivator, Intent>{
-          // Single-key global shortcuts (active when not editing text)
-          const SingleActivator(LogicalKeyboardKey.keyN):
-              const NewTaskIntent(),
-          const SingleActivator(LogicalKeyboardKey.keyC):
-              const CycleTabIntent(),
+          // Global shortcuts (active when not editing text)
           const SingleActivator(LogicalKeyboardKey.slash):
               const SearchIntent(),
           // Secondary modifier bindings
