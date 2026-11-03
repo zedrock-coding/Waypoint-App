@@ -54,7 +54,7 @@ android {
     applicationVariants.all {
         outputs.all {
             val output = this as? com.android.build.gradle.internal.api.BaseVariantOutputImpl
-            val vName = versionName ?: "0.4.0"
+            val vName = versionName ?: "0.4.1"
             output?.outputFileName = "waypoint-v${vName}.apk"
         }
     }
@@ -65,7 +65,7 @@ tasks.configureEach {
         doLast {
             val flutterApkDir = layout.buildDirectory.dir("outputs/flutter-apk").get().asFile
             val defaultApk = File(flutterApkDir, "app-release.apk")
-            val vName = android.defaultConfig.versionName ?: "0.4.0"
+            val vName = android.defaultConfig.versionName ?: "0.4.1"
             if (defaultApk.exists()) {
                 val versionedApk = File(flutterApkDir, "waypoint-v$vName.apk")
                 defaultApk.copyTo(versionedApk, overwrite = true)
