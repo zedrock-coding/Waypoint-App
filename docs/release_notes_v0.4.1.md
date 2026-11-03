@@ -44,7 +44,8 @@
 * **Visual Sync Indicator**: Added `SyncBadge` widget showing pending local changes and syncing animations during active network flushes.
 * **Full Test Coverage**: Dedicated unit tests for sync queue ordering, conflict resolution, and retry backoff.
 
-### 5. Automated Windows Setup & Public Release Pipeline
+### 5. Automated Windows Setup & Desktop Navigation
+* **Desktop Navigation Fix**: Removed intrusive bare single-key shortcuts for 'C' and 'N', preserving explicit modifier combinations (`Ctrl+N` and `Ctrl+Tab`) to prevent accidental input interference.
 * **Single-File Setup Installer**: Packaged with Inno Setup (`Waypoint-v0.4.1-Setup.exe`) featuring automated shortcut creation, uninstaller, and compression.
 * **Automated Publishing (`publish.sh`)**: Direct integration with Git Credential Manager and GitHub CLI (`gh release`) with zero-leakage security audits.
 * **In-App GitHub Updates**: Added direct links to release notes in About and Settings screens.
@@ -53,12 +54,12 @@
 
 ## ⌨️ Desktop Keyboard Bindings
 
-Waypoint provides global single-key shortcuts on desktop platforms:
+Waypoint provides desktop shortcuts:
 
 | Key | Action |
 |:---:|---|
-| <kbd>N</kbd> | Open New Task modal |
-| <kbd>C</kbd> | Jump to Calendar & Timeline view |
+| <kbd>Ctrl</kbd> + <kbd>N</kbd> | Open New Task modal |
+| <kbd>Ctrl</kbd> + <kbd>Tab</kbd> | Cycle Tabs (Workspace / Calendar) |
 | <kbd>/</kbd> | Focus AI Natural Language Command Bar |
 | <kbd>Esc</kbd> | Dismiss active detail panel or modal |
 
