@@ -42,6 +42,15 @@
                 <data android:scheme="helm" />
             </intent-filter>
 
+            <!-- Specific Auth Callback Filter for Waypoint Auth -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="waypoint" android:host="auth-callback" />
+                <data android:scheme="https" android:host="auth.waypoint.internal" android:pathPrefix="/callback" />
+            </intent-filter>
+
             <!-- Web App Links for helm-omega-blue.vercel.app -->
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
@@ -50,6 +59,18 @@
                 <data android:scheme="https" android:host="helm-omega-blue.vercel.app" />
             </intent-filter>
         </activity>
+
+        <receiver
+            android:name=".WaypointWidgetProvider"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/waypoint_widget_info" />
+        </receiver>
+
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />

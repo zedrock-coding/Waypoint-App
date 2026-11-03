@@ -11,6 +11,19 @@ void main() {
       await engine.initialize();
     });
 
+    test('Extracts relative time in 2 hours correctly', () async {
+      final before = DateTime.now().add(const Duration(hours: 2));
+      final result = await engine.extractTask(
+        input: 'Finish report in 2 hours',
+      );
+
+      expect(result, isNotNull);
+      expect(result!['title'], equals('Finish report'));
+      expect(result['due_date'], isNotNull);
+      final parsed = DateTime.parse(result['due_date'].toString());
+      expect(parsed.hour, equals(before.hour));
+    });
+
     test('Initializes successfully', () {
       expect(engine.isReady, isTrue);
     });

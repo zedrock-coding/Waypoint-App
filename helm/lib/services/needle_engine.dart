@@ -98,7 +98,18 @@ class LocalHeuristicParser implements NeedleEngine {
 
     // 3. Rule-based date and time parsing
     final now = DateTime.now();
-    if (dueDateStr != null && dueDateStr.isNotEmpty && dueDateStr != 'null') {
+    final inHoursMatch = RegExp(r'\bin\s+(\d+)\s+hours?\b').firstMatch(lower);
+    final inMinsMatch = RegExp(r'\bin\s+(\d+)\s+(?:mins?|minutes?)\b').firstMatch(lower);
+
+    if (inHoursMatch != null && (dueDateStr == null || dueDateStr.isEmpty || dueDateStr == 'null')) {
+      final hoursToAdd = int.parse(inHoursMatch.group(1)!);
+      final target = now.add(Duration(hours: hoursToAdd));
+      dueDateStr = _formatDateTime(target, (hour: target.hour, minute: target.minute));
+    } else if (inMinsMatch != null && (dueDateStr == null || dueDateStr.isEmpty || dueDateStr == 'null')) {
+      final minsToAdd = int.parse(inMinsMatch.group(1)!);
+      final target = now.add(Duration(minutes: minsToAdd));
+      dueDateStr = _formatDateTime(target, (hour: target.hour, minute: target.minute));
+    } else if (dueDateStr != null && dueDateStr.isNotEmpty && dueDateStr != 'null') {
       final hasTimeInTemplate = RegExp(r'[T\s]\d{1,2}:\d{2}').hasMatch(dueDateStr);
       if (!hasTimeInTemplate && extractedTime != null) {
         final parsedDate = DateTime.tryParse(dueDateStr);
@@ -273,6 +284,7 @@ class LocalHeuristicParser implements NeedleEngine {
       // Rephrase clean title
       var candidate = cleanInput
           .replaceAll(RegExp(r'\b(urgent|high priority|low priority|asap|today|tomorrow)\b', caseSensitive: false), '')
+          .replaceAll(RegExp(r'\bin\s+\d+\s+(?:hours?|mins?|minutes?)\b', caseSensitive: false), '')
           .replaceAll(RegExp(r'\b(?:at\s+)?\d{1,2}(?::\d{2})?\s*(?:am|pm)\b', caseSensitive: false), '')
           .replaceAll(RegExp(r'\bat\s+\d{1,2}(?::\d{2})?\b', caseSensitive: false), '')
           .replaceAll(RegExp(r'\b(?:on\s+)?(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s+\d{1,2}(?:st|nd|rd|th)?(?:\s*,?\s*\d{4})?\b', caseSensitive: false), '')

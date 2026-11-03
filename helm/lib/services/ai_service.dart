@@ -234,6 +234,13 @@ class AiService {
     final tzOffset = now.timeZoneOffset.inHours;
 
     final prompt = '''
+CONTEXT HEADER:
+{
+  "client_timestamp": "${now.toIso8601String()}",
+  "client_timezone": "$tzName",
+  "first_day_of_week": 1
+}
+
 CURRENT CONTEXT:
 - Reference Time: ${now.toIso8601String()} (Timezone: $tzName, UTC${tzOffset >= 0 ? '+' : ''}$tzOffset)
 - Current Weekday: $currentWeekday
@@ -325,6 +332,13 @@ User Input: "$userInput"
         : jsonEncode(currentDraft);
 
     final prompt = '''
+CONTEXT HEADER:
+{
+  "client_timestamp": "${now.toIso8601String()}",
+  "client_timezone": "${now.timeZoneName}",
+  "first_day_of_week": 1
+}
+
 Listen to the user speaking and extract or refine the task intent.
 De-jumble any rambling, vocal pauses, or self-corrections in the audio.
 
