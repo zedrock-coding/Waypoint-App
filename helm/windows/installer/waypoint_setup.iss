@@ -2,7 +2,9 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 
 #define MyAppName "Waypoint"
-#define MyAppVersion "0.4.0"
+#ifndef MyAppVersion
+#define MyAppVersion "0.4.1"
+#endif
 #define MyAppPublisher "Waypoint Workspace"
 #define MyAppURL "https://helm-omega-blue.vercel.app"
 #define MyAppExeName "waypoint.exe"
