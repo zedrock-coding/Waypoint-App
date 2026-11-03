@@ -52,9 +52,14 @@ if ($Target -eq "apk" -or $Target -eq "all") {
     Write-Host "`n[2/3] Building Android Release APK..." -ForegroundColor Yellow
     flutter build apk --release
 
-    $apkPath = Join-Path $helmDir "build\app\outputs\flutter-apk\waypoint-v$version.apk"
-    if (-not (Test-Path $apkPath)) {
-        $apkPath = Join-Path $helmDir "build\app\outputs\apk\release\waypoint-v$version.apk"
+    $apkRelease = Join-Path $helmDir "build\app\outputs\apk\release\waypoint-v$version.apk"
+    $flutterApk = Join-Path $helmDir "build\app\outputs\flutter-apk\waypoint-v$version.apk"
+
+    if (Test-Path $apkRelease) {
+        Copy-Item -Path $apkRelease -Destination $flutterApk -Force
+        $apkPath = $flutterApk
+    } elseif (Test-Path $flutterApk) {
+        $apkPath = $flutterApk
     }
 
     if (Test-Path $apkPath) {

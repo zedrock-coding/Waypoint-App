@@ -31,7 +31,7 @@ android {
     defaultConfig {
         applicationId = "com.waypoint.app"
         minSdk = flutter.minSdkVersion
-        targetSdk = flutter.targetSdkVersion
+        targetSdk = 34
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
