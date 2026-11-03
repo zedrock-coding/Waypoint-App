@@ -292,23 +292,59 @@ cp -f "$WIN_BIN" "$RELEASES_DIR/$WIN_NAME"
 cp -f "$APK_BIN" "$RELEASES_DIR/$APK_NAME"
 pass "Copied artifacts: $WIN_NAME and $APK_NAME"
 
+# Ensure GitHub CLI is in PATH
+if ! command -v gh >/dev/null 2>&1; then
+    for gh_dir in "/c/Program Files/GitHub CLI" "C:/Program Files/GitHub CLI"; do
+        if [[ -d "$gh_dir" ]]; then
+            export PATH="$gh_dir:$PATH"
+            break
+        fi
+    done
+fi
+
+# Acquire GH_TOKEN automatically via Git Credential Manager if unset
+if [[ -z "${GH_TOKEN:-}" ]]; then
+    for gcm in "/c/Program Files/Git/mingw64/bin/git-credential-manager.exe" "C:/Program Files/Git/mingw64/bin/git-credential-manager.exe"; do
+        if [[ -f "$gcm" ]]; then
+            GCM_TOKEN=$(printf "protocol=https\nhost=github.com\n\n" | "$gcm" get 2>/dev/null | grep -E '^password=' | tr -d '\r\n' | sed -E 's/^password=//' || true)
+            if [[ -n "$GCM_TOKEN" ]]; then
+                export GH_TOKEN="$GCM_TOKEN"
+                break
+            fi
+        fi
+    done
+fi
+
 # Attempt gh release if gh is installed and authenticated
-if command -v gh >/dev/null 2>&1; then
-    if gh auth status >/dev/null 2>&1; then
-        info "Publishing release via GitHub CLI (gh release create)..."
-        (
-            cd "$PUBLIC_REPO_REAL"
+if command -v gh >/dev/null 2>&1 && [[ -n "${GH_TOKEN:-}" ]]; then
+    info "Publishing release via GitHub CLI (gh release)..."
+    (
+        cd "$PUBLIC_REPO_REAL"
+        REPO_NAME="zedrock-coding/Waypoint-App"
+        if gh release view "v${VERSION}" --repo "$REPO_NAME" >/dev/null 2>&1; then
+            info "Release v${VERSION} exists on GitHub. Uploading updated assets..."
+            gh release upload "v${VERSION}" \
+                "$RELEASES_DIR/$WIN_NAME" \
+                "$RELEASES_DIR/$APK_NAME" \
+                --repo "$REPO_NAME" \
+                --clobber
+            gh release edit "v${VERSION}" \
+                --repo "$REPO_NAME" \
+                --title "Waypoint-v${VERSION}+12" \
+                --notes "$CHANGELOG_NOTES"
+        else
+            info "Creating new GitHub Release v${VERSION}..."
             gh release create "v${VERSION}" \
                 "$RELEASES_DIR/$WIN_NAME" \
                 "$RELEASES_DIR/$APK_NAME" \
-                --title "v${VERSION}" \
-                --notes "$CHANGELOG_NOTES" || warn "gh release create failed or release already exists."
-        )
-    else
-        warn "GitHub CLI (gh) is installed but not authenticated. Artifacts placed in releases/ directory."
-    fi
+                --repo "$REPO_NAME" \
+                --title "Waypoint-v${VERSION}+12" \
+                --notes "$CHANGELOG_NOTES"
+        fi
+        pass "GitHub Release successfully published to GitHub Releases!"
+    )
 else
-    info "GitHub CLI (gh) not installed. Artifacts preserved in public releases/ directory."
+    warn "GitHub CLI or GH_TOKEN unavailable. Artifacts placed in local releases/ directory."
 fi
 
 # Update or Create CHANGELOG.md in Public Repo
