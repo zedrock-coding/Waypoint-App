@@ -1,0 +1,14 @@
+{
+  "java.import.gradle.enabled": false,
+  "gradle.autoDetect": "off",
+  "gradle.java.home": "C:\\Program Files\\Java\\jdk-17.0.20",
+  "java.jdt.ls.java.home": "C:\\Program Files\\Java\\jdk-17.0.20",
+  "java.configuration.runtimes": [
+    {
+      "name": "JavaSE-17",
+      "path": "C:\\Program Files\\Java\\jdk-17.0.20",
+      "default": true
+    }
+  ]
+}
+
