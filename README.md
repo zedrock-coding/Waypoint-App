@@ -45,6 +45,6 @@ Helm 3.0 utilizes PostgreSQL Security Definer functions and strict Row Level Sec
 
 ## 📥 Downloads (v0.4.1)
 
-* 🪟 **Windows**: [`waypoint.exe`](releases/waypoint.exe)
+* 🪟 **Windows**: [`Waypoint-v0.4.1-Setup.exe`](releases/Waypoint-v0.4.1-Setup.exe)
 * 📱 **Android**: [`waypoint-v0.4.1.apk`](releases/waypoint-v0.4.1.apk)
 
