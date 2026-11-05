@@ -322,7 +322,6 @@ class SyncQueueManager extends ChangeNotifier {
 
   Future<int> drain({bool force = false}) async {
     if (_isDraining) return 0;
-    if (!isOnline && !force) return 0;
 
     _isDraining = true;
     notifyListeners();

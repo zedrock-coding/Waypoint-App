@@ -10,6 +10,8 @@ import 'services/ai_service.dart';
 import 'services/audio_recording_service.dart';
 import 'services/supabase_service.dart';
 import 'widgets/audio_waveform_visualizer.dart';
+import 'features/voice/domain/controllers/audio_capture_controller.dart';
+import 'features/voice/domain/models/recording_state.dart';
 
 enum AIState { listening, processing, clarifying, preview, success, error }
 
@@ -25,6 +27,7 @@ class _AIVoiceOverlayState extends State<AIVoiceOverlay>
   late AnimationController _pulseController;
   late Animation<double> _scaleAnimation;
   final AudioRecordingService _audioService = AudioRecordingService();
+  final AudioCaptureController _captureController = AudioCaptureController();
   AIState _currentState = AIState.listening;
   String _errorMessage = '';
   String _processingStageText = 'Analyzing audio with Gemini...';
@@ -101,8 +104,19 @@ class _AIVoiceOverlayState extends State<AIVoiceOverlay>
   }
 
   Future<void> _startListening() async {
+    _captureController.startRecording(
+      onLimitReached: () {
+        if (mounted &&
+            (_currentState == AIState.listening ||
+                _currentState == AIState.clarifying)) {
+          _finishRecordingAndProcess();
+        }
+      },
+    );
+
     final ok = await _audioService.startRecording();
     if (!ok && mounted) {
+      _captureController.stop();
       setState(() {
         _currentState = AIState.error;
         _errorMessage = 'Microphone permission denied or not available';
@@ -115,6 +129,8 @@ class _AIVoiceOverlayState extends State<AIVoiceOverlay>
         _currentState != AIState.clarifying) {
       return;
     }
+
+    _captureController.stop();
 
     setState(() {
       _currentState = AIState.processing;
@@ -296,6 +312,7 @@ class _AIVoiceOverlayState extends State<AIVoiceOverlay>
     _cancelAutoConfirm();
     _processingStepTimer?.cancel();
     _pulseController.dispose();
+    _captureController.dispose();
     _audioService.dispose();
     _newSubtaskController.dispose();
     _titleEditController.dispose();
@@ -819,12 +836,15 @@ class _AIVoiceOverlayState extends State<AIVoiceOverlay>
     if (_currentState == AIState.listening) {
       return Column(
         children: [
-          StreamBuilder<Duration>(
-            stream: _audioService.durationStream,
+          StreamBuilder<RecordingState>(
+            stream: _captureController.stream,
+            initialData: _captureController.state,
             builder: (context, snapshot) {
-              final sec = (snapshot.data?.inSeconds ?? 0).clamp(0, 30);
+              final remaining =
+                  snapshot.data?.remaining ?? const Duration(seconds: 30);
+              final seconds = remaining.inSeconds.clamp(0, 30);
               return Text(
-                '0:${sec.toString().padLeft(2, '0')} / 0:30',
+                '00:${seconds.toString().padLeft(2, '0')}',
                 style: const TextStyle(
                   color: Colors.white54,
                   fontFamily: 'monospace',
