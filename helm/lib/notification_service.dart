@@ -8,6 +8,7 @@ import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:hive/hive.dart';
 import 'models/hive_models.dart';
+import 'package:waypoint/features/dispatch/domain/services/needle_morning_dispatch_service.dart';
 
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
@@ -70,7 +71,10 @@ class NotificationService {
         await _notificationsPlugin.initialize(
           initSettings,
           onDidReceiveNotificationResponse: (NotificationResponse details) {
-            // Handle notification click: Navigate to specific task/community if needed
+            if (details.actionId == 'play_briefing' ||
+                details.payload == 'play_briefing') {
+              NeedleMorningDispatchService.playBriefing();
+            }
           },
         );
       }

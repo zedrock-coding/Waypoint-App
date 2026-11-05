@@ -71,7 +71,7 @@ void main() async {
   try {
     debugPrint('INIT: Starting Notifications...');
     await NotificationService().init();
-    await AppInitializationService.ensureSystemPermissions();
+    await AppInitializationService.init();
     debugPrint('INIT: Notifications Started.');
     
     final TaskProvider taskProvider = TaskProvider();

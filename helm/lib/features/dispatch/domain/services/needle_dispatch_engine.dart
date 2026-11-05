@@ -18,14 +18,15 @@ class NeedleDispatchEngine {
   static DispatchSummary filter(List<Task> allPendingTasks, DateTime now) {
     final startOfToday = DateTime(now.year, now.month, now.day);
     final endOfToday = startOfToday.add(const Duration(days: 1));
-    final mediumHorizon = startOfToday.add(const Duration(days: 3));
+    final mediumHorizon = startOfToday.add(const Duration(days: 4));
 
     final List<Task> critical = [];
     int mediumCount = 0;
     int lowCount = 0;
 
     for (final task in allPendingTasks) {
-      final isOverdueOrToday = task.dueDate != null && task.dueDate!.isBefore(endOfToday);
+      final isOverdueOrToday =
+          task.dueDate != null && task.dueDate!.isBefore(endOfToday);
       final isUrgent = task.priority == TaskPriority.urgent;
 
       if (isUrgent || isOverdueOrToday) {
@@ -56,12 +57,22 @@ class NeedleDispatchEngine {
       buffer.write("You have ${summary.criticalTasks.length} critical items: ");
       for (int i = 0; i < summary.criticalTasks.length; i++) {
         final t = summary.criticalTasks[i];
-        buffer.write("${t.title}. ");
+        if (t.dueDate != null) {
+          final hour = t.dueDate!.hour;
+          final minute = t.dueDate!.minute.toString().padLeft(2, '0');
+          final ampm = hour >= 12 ? 'PM' : 'AM';
+          final formattedHour =
+              hour % 12 == 0 ? 12 : (hour > 12 ? hour - 12 : hour);
+          buffer.write("${t.title} due at $formattedHour:$minute $ampm. ");
+        } else {
+          buffer.write("${t.title}. ");
+        }
       }
     }
 
     if (summary.mediumCount > 0) {
-      buffer.write("You have ${summary.mediumCount} medium tasks due in the next few days. ");
+      buffer.write(
+          "You have ${summary.mediumCount} medium tasks due in the next few days. ");
     }
 
     if (summary.lowCount > 0) {
@@ -70,4 +81,7 @@ class NeedleDispatchEngine {
 
     return buffer.toString().trim();
   }
+
+  static String generateBriefingScript(DispatchSummary summary) =>
+      compileBriefingScript(summary);
 }
