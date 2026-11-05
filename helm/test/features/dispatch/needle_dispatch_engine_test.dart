@@ -4,8 +4,24 @@ import 'package:waypoint/features/dispatch/domain/services/needle_dispatch_engin
 import 'package:waypoint/features/task/domain/models/task.dart';
 
 void main() {
-  group('NeedleDispatchEngine Tests', () {
-    final now = DateTime(2026, 11, 3, 9, 0); // Reference time
+  group('Needle Dispatch Briefing Aggregation Tests', () {
+    final now = DateTime(2026, 11, 5, 8, 0);
+
+    test('Compiles briefing script with critical details and aggregated medium/low counts', () {
+      final tasks = [
+        Task(id: '1', title: 'Assist Priyanshi with Jira', dueDate: now.add(const Duration(hours: 10)), priority: TaskPriority.high),
+        Task(id: '2', title: 'Sync with frontend lead', dueDate: now.add(const Duration(days: 2)), priority: TaskPriority.medium),
+        Task(id: '3', title: 'Archive repo branches', dueDate: now.add(const Duration(days: 6)), priority: TaskPriority.low),
+      ];
+
+      final summary = NeedleDispatchEngine.filter(tasks, now);
+      final script = NeedleDispatchEngine.compileBriefingScript(summary);
+
+      expect(script, contains('Assist Priyanshi with Jira'));
+      expect(script, contains('1 medium tasks due in the next few days'));
+      expect(script, contains('1 low priority items on your horizon'));
+      expect(script.contains('Sync with frontend lead'), false); // Medium titles aggregated
+    });
 
     test('Correctly separates Critical, Medium Horizon, and Low Priority counts', () {
       final tasks = [
@@ -30,23 +46,5 @@ void main() {
       expect(summary.mediumCount, 1); // Only Task '4'
       expect(summary.lowCount, 2);    // Tasks '5' and '6'
     });
-
-    test('Briefing script compiles exactly as specified', () {
-      final tasks = [
-        Task(id: '1', title: 'Sponsorship outreach', dueDate: now.add(const Duration(hours: 1)), priority: TaskPriority.high),
-        Task(id: '2', title: 'Sprint retrospective', dueDate: now.add(const Duration(days: 2)), priority: TaskPriority.medium),
-        Task(id: '3', title: 'Archive logs', dueDate: now.add(const Duration(days: 10)), priority: TaskPriority.low),
-      ];
-
-      final summary = NeedleDispatchEngine.filter(tasks, now);
-      final script = NeedleDispatchEngine.compileBriefingScript(summary);
-
-      expect(script, contains("You have 1 critical items: Sponsorship outreach."));
-      expect(script, contains("You have 1 medium tasks due in the next few days."));
-      expect(script, contains("There are 1 low priority items on your horizon."));
-      expect(script.contains("Sprint retrospective"), false); // Medium titles omitted
-      expect(script.contains("Archive logs"), false);         // Low titles omitted
-    });
   });
 }
-

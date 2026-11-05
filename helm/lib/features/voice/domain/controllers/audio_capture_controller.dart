@@ -21,6 +21,10 @@ class AudioCaptureController extends ChangeNotifier {
   final Stopwatch _stopwatch = Stopwatch();
   final List<double> _amplitudeRingBuffer = List.filled(32, 0.0);
   int _ringBufferIndex = 0;
+  final StreamController<RecordingState> _stateController =
+      StreamController<RecordingState>.broadcast();
+
+  Stream<RecordingState> get stream => _stateController.stream;
 
   AudioCaptureController({
     this.maxDuration = const Duration(seconds: 30),
@@ -34,6 +38,13 @@ class AudioCaptureController extends ChangeNotifier {
     return (clamped + 60.0) / 60.0;
   }
 
+  void _notify() {
+    notifyListeners();
+    if (!_stateController.isClosed) {
+      _stateController.add(_state);
+    }
+  }
+
   void updateAmplitude(double dbFS) {
     final normalized = normalizeDb(dbFS);
     _amplitudeRingBuffer[_ringBufferIndex] = normalized;
@@ -43,7 +54,7 @@ class AudioCaptureController extends ChangeNotifier {
       normalizedAmplitude: normalized,
       amplitudeHistory: List.unmodifiable(_amplitudeRingBuffer),
     );
-    notifyListeners();
+    _notify();
   }
 
   void startMockRecording() {
@@ -57,7 +68,7 @@ class AudioCaptureController extends ChangeNotifier {
       elapsed: Duration.zero,
       remaining: maxDuration,
     );
-    notifyListeners();
+    _notify();
 
     _ticker?.cancel();
     _ticker = Timer.periodic(const Duration(milliseconds: 50), (_) {
@@ -89,13 +100,13 @@ class AudioCaptureController extends ChangeNotifier {
         isRecording: false,
         isLimitReached: true,
       );
-      notifyListeners();
+      _notify();
     } else {
       _state = _state.copyWith(
         elapsed: elapsed,
         remaining: maxDuration - elapsed,
       );
-      notifyListeners();
+      _notify();
     }
   }
 
@@ -108,13 +119,14 @@ class AudioCaptureController extends ChangeNotifier {
     _state = _state.copyWith(
       isRecording: false,
     );
-    notifyListeners();
+    _notify();
   }
 
   @override
   void dispose() {
     _ticker?.cancel();
     _stopwatch.stop();
+    _stateController.close();
     super.dispose();
   }
 }

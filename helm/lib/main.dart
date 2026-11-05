@@ -9,6 +9,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'models/unified_task.dart';
 
 import 'config/app_config.dart';
+import 'core/services/app_initialization_service.dart';
 import 'services/invite_service.dart';
 import 'services/navigation_provider.dart';
 import 'services/hive_database.dart';
@@ -70,6 +71,7 @@ void main() async {
   try {
     debugPrint('INIT: Starting Notifications...');
     await NotificationService().init();
+    await AppInitializationService.ensureSystemPermissions();
     debugPrint('INIT: Notifications Started.');
     
     final TaskProvider taskProvider = TaskProvider();
