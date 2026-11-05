@@ -2,32 +2,95 @@
 
 import 'dart:async';
 import 'package:flutter/foundation.dart';
+import '../../../task/domain/models/extracted_task_result.dart';
+import '../../../task/domain/services/task_extraction_parser.dart';
+import '../../data/audio_cache_manager.dart';
+import '../../data/sherpa_tts_service.dart';
+import '../services/tts_service.dart';
 
 enum VoiceSessionStatus {
   idle,
+  listening,
   userListening,
   processing,
+  speakingDisambiguation,
   agentSpeaking,
+  taskCreated,
   completed,
-  error
+  error,
+}
+
+enum VoiceSessionState {
+  idle,
+  listening,
+  processing,
+  speakingDisambiguation,
+  taskCreated,
+  error,
 }
 
 class VoiceSessionController extends ChangeNotifier {
+  final TaskExtractionParser _parser;
+  final ITextToSpeechService _ttsService;
+  final AudioCacheManager? _cacheManager;
+  final String sessionId;
+
   VoiceSessionStatus _status = VoiceSessionStatus.idle;
+  VoiceSessionState _state = VoiceSessionState.idle;
   Duration _remaining = const Duration(seconds: 30);
   Timer? _countdownTimer;
   final Stopwatch _stopwatch = Stopwatch();
 
+  String _accumulatedTranscript = '';
+  int _currentChunkIndex = 0;
+  ExtractedTaskResult? _currentTaskResult;
+  String? _lastQuestion;
+  String? _confirmationMessage;
+
+  VoiceSessionController({
+    TaskExtractionParser? parser,
+    ITextToSpeechService? ttsService,
+    AudioCacheManager? cacheManager,
+    String? sessionId,
+  })  : _parser = parser ?? TaskExtractionParser(),
+        _ttsService = ttsService ?? SherpaTtsService(),
+        _cacheManager = cacheManager,
+        sessionId =
+            sessionId ?? 'session_${DateTime.now().millisecondsSinceEpoch}';
+
   VoiceSessionStatus get status => _status;
+  VoiceSessionState get state => _state;
   Duration get remaining => _remaining;
-  bool get isListening => _status == VoiceSessionStatus.userListening;
+  bool get isListening =>
+      _state == VoiceSessionState.listening ||
+      _status == VoiceSessionStatus.userListening ||
+      _status == VoiceSessionStatus.listening;
+  bool get isSpeakingDisambiguation =>
+      _state == VoiceSessionState.speakingDisambiguation ||
+      _status == VoiceSessionStatus.speakingDisambiguation;
+  bool get isTaskCreated =>
+      _state == VoiceSessionState.taskCreated ||
+      _status == VoiceSessionStatus.taskCreated;
+
+  ExtractedTaskResult? get currentTaskResult => _currentTaskResult;
+  String get accumulatedTranscript => _accumulatedTranscript;
+  int get currentChunkIndex => _currentChunkIndex;
+  String? get lastQuestion => _lastQuestion;
+  String? get confirmationMessage => _confirmationMessage;
+  ITextToSpeechService get ttsService => _ttsService;
 
   void startCall() {
+    _accumulatedTranscript = '';
+    _currentChunkIndex = 0;
+    _currentTaskResult = null;
+    _lastQuestion = null;
+    _confirmationMessage = null;
     _startListeningTurn();
   }
 
   void _startListeningTurn() {
     _status = VoiceSessionStatus.userListening;
+    _state = VoiceSessionState.listening;
     _remaining = const Duration(seconds: 30);
     _stopwatch.reset();
     _stopwatch.start();
@@ -53,18 +116,82 @@ class VoiceSessionController extends ChangeNotifier {
     _countdownTimer?.cancel();
     _stopwatch.stop();
     _status = VoiceSessionStatus.processing;
+    _state = VoiceSessionState.processing;
     notifyListeners();
   }
 
-  void playAgentResponse(String ttsAudioPath, {required bool isDisambiguation}) {
-    _status = VoiceSessionStatus.agentSpeaking;
-    notifyListeners();
+  Future<void> processUserInput(String input, {List<int>? audioBytes}) async {
+    _countdownTimer?.cancel();
+    _stopwatch.stop();
 
-    // When TTS playback completes:
+    if (_accumulatedTranscript.isEmpty) {
+      _accumulatedTranscript = input.trim();
+    } else {
+      _accumulatedTranscript = '$_accumulatedTranscript ${input.trim()}';
+    }
+
+    _currentTaskResult = _parser.parse(_accumulatedTranscript);
+
+    if (_currentTaskResult!.missingFields.isNotEmpty) {
+      final question = _currentTaskResult!.disambiguationPrompt ??
+          'When would you like this scheduled?';
+      _lastQuestion = question;
+      _status = VoiceSessionStatus.speakingDisambiguation;
+      _state = VoiceSessionState.speakingDisambiguation;
+      notifyListeners();
+
+      if (audioBytes != null && _cacheManager != null) {
+        await _cacheManager.createChunk(sessionId, _currentChunkIndex, audioBytes);
+      }
+
+      _currentChunkIndex++;
+      await _ttsService.speak(question);
+      onTtsCompleted();
+    } else {
+      final title = _currentTaskResult!.title;
+      final timeStr = _currentTaskResult!.dueDate != null
+          ? _formatTime(_currentTaskResult!.dueDate!)
+          : 'soon';
+      _confirmationMessage = 'Created task: $title for $timeStr';
+      _status = VoiceSessionStatus.taskCreated;
+      _state = VoiceSessionState.taskCreated;
+      notifyListeners();
+
+      if (audioBytes != null && _cacheManager != null) {
+        await _cacheManager.createChunk(sessionId, _currentChunkIndex, audioBytes);
+      }
+      if (_cacheManager != null) {
+        await _cacheManager.purgeSession(sessionId);
+      }
+
+      await _ttsService.speak(_confirmationMessage!);
+      _status = VoiceSessionStatus.completed;
+      notifyListeners();
+    }
+  }
+
+  String _formatTime(DateTime dt) {
+    final h = dt.hour % 12 == 0 ? 12 : dt.hour % 12;
+    final m = dt.minute.toString().padLeft(2, '0');
+    final ampm = dt.hour >= 12 ? 'PM' : 'AM';
+    return '$h:$m $ampm';
+  }
+
+  void onTtsCompleted() {
+    if (_state == VoiceSessionState.speakingDisambiguation ||
+        _status == VoiceSessionStatus.speakingDisambiguation) {
+      _startListeningTurn();
+    }
+  }
+
+  void playAgentResponse(String ttsAudioPath, {required bool isDisambiguation}) {
     if (isDisambiguation) {
-      _startListeningTurn(); // Auto-reopen mic without user interaction
+      _status = VoiceSessionStatus.userListening;
+      _state = VoiceSessionState.listening;
+      _startListeningTurn();
     } else {
       _status = VoiceSessionStatus.completed;
+      _state = VoiceSessionState.taskCreated;
       notifyListeners();
     }
   }
@@ -73,6 +200,7 @@ class VoiceSessionController extends ChangeNotifier {
     _countdownTimer?.cancel();
     _stopwatch.stop();
     _status = VoiceSessionStatus.idle;
+    _state = VoiceSessionState.idle;
     notifyListeners();
   }
 
@@ -83,4 +211,3 @@ class VoiceSessionController extends ChangeNotifier {
     super.dispose();
   }
 }
-

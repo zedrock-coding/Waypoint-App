@@ -3,7 +3,7 @@
 
 #define MyAppName "Waypoint"
 #ifndef MyAppVersion
-#define MyAppVersion "0.4.4"
+#define MyAppVersion "0.4.5"
 #endif
 #define MyAppPublisher "Waypoint Workspace"
 #define MyAppURL "https://helm-omega-blue.vercel.app"
