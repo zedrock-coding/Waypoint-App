@@ -1,6 +1,7 @@
 // lib/features/task/domain/services/task_extraction_parser.dart
 
 import '../models/extracted_task_result.dart';
+import '../models/task.dart';
 
 class TaskExtractionParser {
   final DateTime clientTimestamp;
@@ -15,13 +16,13 @@ class TaskExtractionParser {
   ExtractedTaskResult parse(String input) {
     // 1. Meta-Prefix Strip
     final prefixRegex = RegExp(
-      r'^(create\s+(a\s+)?task\s+(saying\s+that\s+|to\s+)?|remind\s+me\s+to\s+|please\s+add\s+(a\s+)?task\s+to\s+)',
+      r'^(create\s+(a\s+)?task\s+(saying\s+that\s+|to\s+)?|remind\s+me\s+to\s+|please\s+add\s+(a\s+)?task\s+to\s+|add\s+(a\s+)?task\s+(to\s+)?|schedule\s+(a\s+)?(task\s+to\s+|task\s+)?|make\s+(a\s+)?task\s+(to\s+)?)',
       caseSensitive: false,
     );
     var cleaned = input.trim().replaceAll(prefixRegex, '').trim();
 
     // 2. Priority Extraction
-    String priority = 'medium';
+    TaskPriority priorityEnum = TaskPriority.medium;
     bool priorityFound = false;
 
     final urgentRegex = RegExp(r'\b(urgent|critical|asap)\b', caseSensitive: false);
@@ -30,20 +31,22 @@ class TaskExtractionParser {
     final lowRegex = RegExp(r'\b(low\s+priority|keep\s+this\s+low\s+priority|priority\s+low)\b', caseSensitive: false);
 
     if (urgentRegex.hasMatch(cleaned)) {
-      priority = 'urgent';
+      priorityEnum = TaskPriority.urgent;
       priorityFound = true;
     } else if (highRegex.hasMatch(cleaned) ||
         (RegExp(r'\bhigh\b', caseSensitive: false).hasMatch(cleaned) &&
             RegExp(r'\bpriority\b', caseSensitive: false).hasMatch(cleaned))) {
-      priority = 'high';
+      priorityEnum = TaskPriority.high;
       priorityFound = true;
     } else if (mediumRegex.hasMatch(cleaned)) {
-      priority = 'medium';
+      priorityEnum = TaskPriority.medium;
       priorityFound = true;
     } else if (lowRegex.hasMatch(cleaned)) {
-      priority = 'low';
+      priorityEnum = TaskPriority.low;
       priorityFound = true;
     }
+
+    final priorityValue = priorityEnum.name.toLowerCase();
 
     // 3. Relative Time Mapping
     DateTime? dueDate;
@@ -53,14 +56,17 @@ class TaskExtractionParser {
     int? hour;
     int? minute;
 
-    if (lower.contains('morning')) {
+    if (lower.contains('this morning') || lower.contains('morning')) {
       hour = 9;
       minute = 0;
-    } else if (lower.contains('afternoon')) {
+    } else if (lower.contains('this afternoon') || lower.contains('afternoon')) {
       hour = 14;
       minute = 0;
-    } else if (lower.contains('evening')) {
+    } else if (lower.contains('this evening') || lower.contains('evening')) {
       hour = 18;
+      minute = 0;
+    } else if (lower.contains('tonight')) {
+      hour = 20;
       minute = 0;
     } else if (lower.contains('night')) {
       hour = 21;
@@ -86,13 +92,24 @@ class TaskExtractionParser {
       effectiveAnchor.day,
     );
 
-    if (lower.contains('tomorrow')) {
+    final inHoursMatch =
+        RegExp(r'\bin\s+(\d+)\s+hours?\b', caseSensitive: false).firstMatch(lower);
+    if (inHoursMatch != null) {
+      final hours = int.parse(inHoursMatch.group(1)!);
+      dueDate = effectiveAnchor.add(Duration(hours: hours));
+      dueDateFound = true;
+    } else if (lower.contains('tomorrow')) {
       targetDate = targetDate.add(const Duration(days: 1));
       dueDateFound = true;
-    } else if (lower.contains('today')) {
+    } else if (lower.contains('today') ||
+        lower.contains('this evening') ||
+        lower.contains('this morning') ||
+        lower.contains('this afternoon') ||
+        lower.contains('tonight')) {
       dueDateFound = true;
     } else {
-      final inDaysMatch = RegExp(r'\bin\s+(\d+)\s+days?\b', caseSensitive: false).firstMatch(cleaned);
+      final inDaysMatch =
+          RegExp(r'\bin\s+(\d+)\s+days?\b', caseSensitive: false).firstMatch(cleaned);
       if (inDaysMatch != null) {
         final days = int.parse(inDaysMatch.group(1)!);
         targetDate = targetDate.add(Duration(days: days));
@@ -100,71 +117,86 @@ class TaskExtractionParser {
       }
     }
 
-    if (hour != null) {
-      dueDateFound = true;
-      final y = targetDate.year.toString().padLeft(4, '0');
-      final m = targetDate.month.toString().padLeft(2, '0');
-      final d = targetDate.day.toString().padLeft(2, '0');
-      final h = hour.toString().padLeft(2, '0');
-      final min = (minute ?? 0).toString().padLeft(2, '0');
-      if (clientTimestamp.isUtc) {
-        dueDate = DateTime.parse('$y-$m-${d}T$h:$min:00$timeZoneOffset');
-      } else {
-        dueDate = DateTime(
-          targetDate.year,
-          targetDate.month,
-          targetDate.day,
-          hour,
-          minute ?? 0,
-        );
-      }
-    } else if (dueDateFound) {
-      final y = targetDate.year.toString().padLeft(4, '0');
-      final m = targetDate.month.toString().padLeft(2, '0');
-      final d = targetDate.day.toString().padLeft(2, '0');
-      if (clientTimestamp.isUtc) {
-        dueDate = DateTime.parse('$y-$m-${d}T18:00:00$timeZoneOffset');
-      } else {
-        dueDate = DateTime(
-          targetDate.year,
-          targetDate.month,
-          targetDate.day,
-          18,
-          0,
-        );
+    if (inHoursMatch == null) {
+      if (hour != null) {
+        dueDateFound = true;
+        final y = targetDate.year.toString().padLeft(4, '0');
+        final m = targetDate.month.toString().padLeft(2, '0');
+        final d = targetDate.day.toString().padLeft(2, '0');
+        final h = hour.toString().padLeft(2, '0');
+        final min = (minute ?? 0).toString().padLeft(2, '0');
+        if (clientTimestamp.isUtc) {
+          dueDate = DateTime.parse('$y-$m-${d}T$h:$min:00$timeZoneOffset');
+        } else {
+          dueDate = DateTime(
+            targetDate.year,
+            targetDate.month,
+            targetDate.day,
+            hour,
+            minute ?? 0,
+          );
+        }
+      } else if (dueDateFound) {
+        final y = targetDate.year.toString().padLeft(4, '0');
+        final m = targetDate.month.toString().padLeft(2, '0');
+        final d = targetDate.day.toString().padLeft(2, '0');
+        if (clientTimestamp.isUtc) {
+          dueDate = DateTime.parse('$y-$m-${d}T18:00:00$timeZoneOffset');
+        } else {
+          dueDate = DateTime(
+            targetDate.year,
+            targetDate.month,
+            targetDate.day,
+            18,
+            0,
+          );
+        }
       }
     }
 
     // 4. Clean trailing metadata directives from action content
     var content = cleaned;
     content = content.replaceAll(
-      RegExp(r',?\s*(keep\s+this\s+|make\s+it\s+|with\s+)?(urgent|high|medium|low)\s+priority', caseSensitive: false),
+      RegExp(r',?\s*(keep\s+this\s+|make\s+it\s+|with\s+)?(urgent|critical|high|medium|low)\s+priority', caseSensitive: false),
       '',
     );
     content = content.replaceAll(
-      RegExp(r',?\s*(and\s+)?(make\s+it\s+due|due|by)\s+(today|tomorrow|in\s+\d+\s+days?)(\s+(morning|afternoon|evening|night))?', caseSensitive: false),
+      RegExp(r',?\s*(high|urgent|critical|low|medium)\s+priority', caseSensitive: false),
+      '',
+    );
+    content = content.replaceAll(
+      RegExp(r',?\s*(and\s+)?(make\s+it\s+due|due|by|on)\s+(this\s+(morning|afternoon|evening)|tonight|today|tomorrow|in\s+\d+\s+(?:days?|hours?))(\s+(morning|afternoon|evening|night))?', caseSensitive: false),
+      '',
+    );
+    content = content.replaceAll(
+      RegExp(r',?\s*due\s+(this\s+evening|this\s+morning|this\s+afternoon|tonight|today|tomorrow)', caseSensitive: false),
       '',
     );
     content = content.replaceAll(RegExp(r'[,.\s]+$'), '').trim();
 
     // 5. Milestone & Subtask Extraction Rules
-    // Conjunctions: "and then also", "and then", "also", "so that", "after that"
-    final conjunctionRegex = RegExp(
-      r'\s*(?:and\s+then\s+also|and\s+then|also|so\s+that|after\s+that)\s*',
+    // Primary compound conjunctions: "and then also", "and then", "also", "so that we can", "so that", "after that"
+    final primaryConjunctionRegex = RegExp(
+      r'\s*(?:and\s+then\s+also|and\s+then|and\s+also|also|so\s+that\s+we\s+can|so\s+that|after\s+that)\s*',
       caseSensitive: false,
     );
 
-    final rawClauses = content.split(conjunctionRegex);
+    var rawClauses = content.split(primaryConjunctionRegex);
+    if (rawClauses.length < 2 && RegExp(r'\s+and\s+', caseSensitive: false).hasMatch(content)) {
+      final andClauses = content.split(RegExp(r'\s+and\s+', caseSensitive: false));
+      if (andClauses.every((c) => c.trim().length > 3)) {
+        rawClauses = andClauses;
+      }
+    }
+
     final List<ExtractedSubtask> subtasks = [];
 
     String sanitizeClause(String raw) {
       var s = raw.trim();
       s = s.replaceAll(RegExp(r'^(I\s+need\s+to\s+|we\s+need\s+to\s+|need\s+to\s+|I\s+want\s+to\s+)', caseSensitive: false), '');
       s = s.replaceAll(RegExp(r'^(we\s+can\s+|can\s+)', caseSensitive: false), '');
+      s = s.replaceAll(RegExp(r'^(to\s+)', caseSensitive: false), '');
       s = s.trim();
-      if (s.isNotEmpty) {
-        return s[0].toUpperCase() + s.substring(1);
-      }
       return s;
     }
 
@@ -207,7 +239,7 @@ class TaskExtractionParser {
       title: title,
       description: content,
       dueDate: dueDate,
-      priority: priority,
+      priority: priorityValue,
       subtasks: subtasks,
       missingFields: missingFields,
       disambiguationPrompt: disambiguationPrompt,
