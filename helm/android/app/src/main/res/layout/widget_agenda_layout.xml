@@ -4,35 +4,158 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="#1E2124"
-    android:padding="12dp">
+    android:background="@drawable/widget_background"
+    android:padding="10dp">
 
-    <TextView
-        android:id="@+id/widget_agenda_title"
+    <!-- Header -->
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Week Agenda"
-        android:textColor="#FFFFFF"
-        android:textSize="16sp"
-        android:textStyle="bold"
-        android:paddingBottom="8dp" />
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingBottom="6dp">
 
+        <TextView
+            android:id="@+id/widget_agenda_title"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Week Agenda"
+            android:textColor="#FFFFFF"
+            android:textSize="15sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/widget_agenda_selected_date"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Today"
+            android:textColor="#88C0A4"
+            android:textSize="12sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <!-- 7-Day Horizontal Strip with Density Indicators -->
     <LinearLayout
         android:id="@+id/widget_agenda_strip"
         android:layout_width="match_parent"
-        android:layout_height="48dp"
+        android:layout_height="46dp"
         android:orientation="horizontal"
-        android:gravity="center"
-        android:weightSum="7">
+        android:weightSum="7"
+        android:background="#26292C"
+        android:padding="2dp">
+
+        <!-- Column 0 -->
+        <LinearLayout
+            android:id="@+id/day_col_0"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center">
+            <TextView android:id="@+id/day_name_0" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Mon" android:textColor="#78909C" android:textSize="10sp"/>
+            <TextView android:id="@+id/day_num_0" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="1" android:textColor="#FFFFFF" android:textSize="12sp" android:textStyle="bold"/>
+            <TextView android:id="@+id/day_indicator_0" android:layout_width="4dp" android:layout_height="4dp" android:background="#88C0A4" android:visibility="invisible"/>
+        </LinearLayout>
+
+        <!-- Column 1 -->
+        <LinearLayout
+            android:id="@+id/day_col_1"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center">
+            <TextView android:id="@+id/day_name_1" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Tue" android:textColor="#78909C" android:textSize="10sp"/>
+            <TextView android:id="@+id/day_num_1" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="2" android:textColor="#FFFFFF" android:textSize="12sp" android:textStyle="bold"/>
+            <TextView android:id="@+id/day_indicator_1" android:layout_width="4dp" android:layout_height="4dp" android:background="#88C0A4" android:visibility="invisible"/>
+        </LinearLayout>
+
+        <!-- Column 2 -->
+        <LinearLayout
+            android:id="@+id/day_col_2"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center">
+            <TextView android:id="@+id/day_name_2" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Wed" android:textColor="#78909C" android:textSize="10sp"/>
+            <TextView android:id="@+id/day_num_2" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="3" android:textColor="#FFFFFF" android:textSize="12sp" android:textStyle="bold"/>
+            <TextView android:id="@+id/day_indicator_2" android:layout_width="4dp" android:layout_height="4dp" android:background="#88C0A4" android:visibility="invisible"/>
+        </LinearLayout>
+
+        <!-- Column 3 -->
+        <LinearLayout
+            android:id="@+id/day_col_3"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center">
+            <TextView android:id="@+id/day_name_3" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Thu" android:textColor="#78909C" android:textSize="10sp"/>
+            <TextView android:id="@+id/day_num_3" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="4" android:textColor="#FFFFFF" android:textSize="12sp" android:textStyle="bold"/>
+            <TextView android:id="@+id/day_indicator_3" android:layout_width="4dp" android:layout_height="4dp" android:background="#88C0A4" android:visibility="invisible"/>
+        </LinearLayout>
+
+        <!-- Column 4 -->
+        <LinearLayout
+            android:id="@+id/day_col_4"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center">
+            <TextView android:id="@+id/day_name_4" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Fri" android:textColor="#78909C" android:textSize="10sp"/>
+            <TextView android:id="@+id/day_num_4" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="5" android:textColor="#FFFFFF" android:textSize="12sp" android:textStyle="bold"/>
+            <TextView android:id="@+id/day_indicator_4" android:layout_width="4dp" android:layout_height="4dp" android:background="#88C0A4" android:visibility="invisible"/>
+        </LinearLayout>
+
+        <!-- Column 5 -->
+        <LinearLayout
+            android:id="@+id/day_col_5"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center">
+            <TextView android:id="@+id/day_name_5" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Sat" android:textColor="#78909C" android:textSize="10sp"/>
+            <TextView android:id="@+id/day_num_5" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="6" android:textColor="#FFFFFF" android:textSize="12sp" android:textStyle="bold"/>
+            <TextView android:id="@+id/day_indicator_5" android:layout_width="4dp" android:layout_height="4dp" android:background="#88C0A4" android:visibility="invisible"/>
+        </LinearLayout>
+
+        <!-- Column 6 -->
+        <LinearLayout
+            android:id="@+id/day_col_6"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center">
+            <TextView android:id="@+id/day_name_6" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Sun" android:textColor="#78909C" android:textSize="10sp"/>
+            <TextView android:id="@+id/day_num_6" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="7" android:textColor="#FFFFFF" android:textSize="12sp" android:textStyle="bold"/>
+            <TextView android:id="@+id/day_indicator_6" android:layout_width="4dp" android:layout_height="4dp" android:background="#88C0A4" android:visibility="invisible"/>
+        </LinearLayout>
     </LinearLayout>
 
+    <!-- Tasks List for Selected Day -->
     <ListView
         android:id="@+id/widget_agenda_list"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
         android:divider="#2D2F31"
-        android:dividerHeight="1dp" />
+        android:dividerHeight="1dp"
+        android:paddingTop="4dp" />
+
+    <TextView
+        android:id="@+id/widget_agenda_empty"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:gravity="center"
+        android:text="No tasks for this day"
+        android:textColor="#78909C"
+        android:textSize="12sp"
+        android:visibility="gone" />
 
 </LinearLayout>
-

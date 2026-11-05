@@ -2,34 +2,93 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
+    android:orientation="horizontal"
     android:background="@drawable/widget_background"
-    android:padding="12dp">
+    android:padding="8dp">
 
-    <TextView
-        android:id="@+id/widget_title"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="November 2026"
-        android:textColor="#FFFFFF"
-        android:textSize="16sp"
-        android:textStyle="bold" />
+    <!-- Left Partition: 7x6 Calendar Grid -->
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="3"
+        android:orientation="vertical"
+        android:paddingEnd="6dp">
 
-    <!-- 7x6 Calendar Grid View -->
-    <GridView
-        android:id="@+id/calendar_grid"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:numColumns="7"
-        android:verticalSpacing="2dp"
-        android:horizontalSpacing="2dp" />
+        <TextView
+            android:id="@+id/widget_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="November 2026"
+            android:textColor="#FFFFFF"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:paddingBottom="4dp" />
 
-    <!-- Bottom partition: selected day tasks -->
-    <ListView
-        android:id="@+id/selected_day_tasks"
-        android:layout_width="match_parent"
-        android:layout_height="80dp"
-        android:divider="#222222"
-        android:dividerHeight="1dp" />
+        <!-- Day of Week Headers -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:weightSum="7"
+            android:paddingBottom="2dp">
+            <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:text="S" android:textColor="#88C0A4" android:textSize="10sp" android:textStyle="bold"/>
+            <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:text="M" android:textColor="#88C0A4" android:textSize="10sp" android:textStyle="bold"/>
+            <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:text="T" android:textColor="#88C0A4" android:textSize="10sp" android:textStyle="bold"/>
+            <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:text="W" android:textColor="#88C0A4" android:textSize="10sp" android:textStyle="bold"/>
+            <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:text="T" android:textColor="#88C0A4" android:textSize="10sp" android:textStyle="bold"/>
+            <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:text="F" android:textColor="#88C0A4" android:textSize="10sp" android:textStyle="bold"/>
+            <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:text="S" android:textColor="#88C0A4" android:textSize="10sp" android:textStyle="bold"/>
+        </LinearLayout>
+
+        <!-- 7x6 Calendar Grid -->
+        <GridView
+            android:id="@+id/calendar_grid"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:numColumns="7"
+            android:verticalSpacing="1dp"
+            android:horizontalSpacing="1dp" />
+    </LinearLayout>
+
+    <!-- Right Partition: Inline Sidebar Partition with Selected Day's Tasks -->
+    <LinearLayout
+        android:id="@+id/sidebar_partition"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="2"
+        android:orientation="vertical"
+        android:background="#26292C"
+        android:padding="6dp">
+
+        <TextView
+            android:id="@+id/sidebar_day_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Today"
+            android:textColor="#88C0A4"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:paddingBottom="4dp" />
+
+        <ListView
+            android:id="@+id/selected_day_tasks"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:divider="#33373B"
+            android:dividerHeight="1dp" />
+
+        <TextView
+            android:id="@+id/sidebar_empty"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:text="No tasks"
+            android:textColor="#78909C"
+            android:textSize="11sp"
+            android:visibility="gone" />
+    </LinearLayout>
+
 </LinearLayout>

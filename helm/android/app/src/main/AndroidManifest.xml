@@ -76,6 +76,7 @@
             android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="com.waypoint.app.ACTION_SELECT_MONTH_DAY" />
             </intent-filter>
             <meta-data
                 android:name="android.appwidget.provider"
@@ -87,6 +88,7 @@
             android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="com.waypoint.app.ACTION_SELECT_WEEK_DAY" />
             </intent-filter>
             <meta-data
                 android:name="android.appwidget.provider"
@@ -106,6 +108,21 @@
 
         <service
             android:name=".MonthWidgetService"
+            android:permission="android.permission.BIND_REMOTEVIEWS"
+            android:exported="false" />
+
+        <service
+            android:name=".MonthTasksWidgetService"
+            android:permission="android.permission.BIND_REMOTEVIEWS"
+            android:exported="false" />
+
+        <service
+            android:name=".WeekWidgetService"
+            android:permission="android.permission.BIND_REMOTEVIEWS"
+            android:exported="false" />
+
+        <service
+            android:name=".DayWidgetService"
             android:permission="android.permission.BIND_REMOTEVIEWS"
             android:exported="false" />
 

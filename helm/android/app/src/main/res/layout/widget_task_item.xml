@@ -1,18 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/task_item_root"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="horizontal"
-    android:padding="4dp"
+    android:padding="6dp"
     android:gravity="center_vertical">
 
     <TextView
-        android:id="@+id/task_bullet"
+        android:id="@+id/task_priority_badge"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="• "
-        android:textColor="#88C0A4"
-        android:textSize="14sp" />
+        android:text="MED"
+        android:textColor="#FFBF00"
+        android:textSize="10sp"
+        android:textStyle="bold"
+        android:paddingEnd="6dp" />
 
     <TextView
         android:id="@+id/task_title"
@@ -21,7 +24,25 @@
         android:layout_weight="1"
         android:text="Task Title"
         android:textColor="#FFFFFF"
-        android:textSize="12sp"
-        android:singleLine="true" />
-</LinearLayout>
+        android:textSize="13sp"
+        android:singleLine="true"
+        android:ellipsize="end" />
 
+    <TextView
+        android:id="@+id/task_subtask_progress"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="1/3"
+        android:textColor="#88C0A4"
+        android:textSize="11sp"
+        android:paddingStart="6dp"
+        android:paddingEnd="6dp" />
+
+    <TextView
+        android:id="@+id/task_time"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="18:00"
+        android:textColor="#9E9E9E"
+        android:textSize="11sp" />
+</LinearLayout>

@@ -3,6 +3,7 @@
 import 'dart:async';
 import 'package:hive/hive.dart';
 import '../models/task.dart';
+import 'package:waypoint/services/widget_sync_service.dart';
 
 class TaskLocalRepository {
   final Box<dynamic>? tasksBox;
@@ -46,6 +47,10 @@ class TaskLocalRepository {
         await subtasksBox!.put(subtaskId, subtaskData);
       }
     }
+
+    try {
+      await WidgetSyncService.updateAllWidgets(tasks: [task]);
+    } catch (_) {}
   }
 
   Future<Task?> getTask(String id) async {
@@ -103,3 +108,4 @@ class TaskLocalRepository {
     return results;
   }
 }
+

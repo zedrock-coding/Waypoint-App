@@ -9,6 +9,7 @@ import 'models/sync_mutation.dart';
 import '../../task/domain/models/task.dart';
 import '../../../../models/sync_model.dart';
 import '../../../../services/sync_service.dart';
+import 'package:waypoint/services/widget_sync_service.dart';
 
 enum SyncStatus {
   synced,
@@ -270,6 +271,9 @@ class SyncQueueManager extends ChangeNotifier {
       _inMemoryQueue.add(mutation);
     }
     notifyListeners();
+    try {
+      WidgetSyncService.updateAllWidgets();
+    } catch (_) {}
   }
 
   Future<void> mutate({
@@ -318,6 +322,9 @@ class SyncQueueManager extends ChangeNotifier {
       _inMemoryQueue.add(mutation);
     }
     notifyListeners();
+    try {
+      WidgetSyncService.updateAllWidgets();
+    } catch (_) {}
   }
 
   Future<int> drain({bool force = false}) async {
@@ -380,6 +387,9 @@ class SyncQueueManager extends ChangeNotifier {
 
     _isDraining = false;
     notifyListeners();
+    try {
+      WidgetSyncService.updateAllWidgets();
+    } catch (_) {}
     return syncedCount;
   }
 

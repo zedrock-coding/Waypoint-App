@@ -7,6 +7,7 @@ import '../models/hive_models.dart' as hive_model;
 import '../models/unified_task.dart';
 import '../models/sync_model.dart';
 import '../services/sync_service.dart';
+import '../services/widget_sync_service.dart';
 import '../services/task_merge.dart';
 import '../notification_service.dart';
 import 'package:uuid/uuid.dart';
@@ -96,6 +97,9 @@ class TaskProvider with ChangeNotifier {
 
       _personalTasks = allLocal;
       notifyListeners();
+      try {
+        WidgetSyncService.updateAllWidgets(tasks: allLocal);
+      } catch (_) {}
     } catch (e) {
       debugPrint('TaskProvider Error: $e');
     }
@@ -271,6 +275,9 @@ class TaskProvider with ChangeNotifier {
         } else {
           await _supabase.from(table).upsert(payload);
         }
+        try {
+          unawaited(WidgetSyncService.updateAllWidgets());
+        } catch (_) {}
         return true;
       } catch (e) {
         debugPrint('Supabase $action failed for $table/$id, queueing: $e');
@@ -282,6 +289,9 @@ class TaskProvider with ChangeNotifier {
       table: table,
       payload: payload,
     );
+    try {
+      unawaited(WidgetSyncService.updateAllWidgets());
+    } catch (_) {}
     return false;
   }
 
