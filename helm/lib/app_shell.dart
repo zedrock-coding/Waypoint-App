@@ -11,7 +11,7 @@ import 'widgets/notification_bell.dart';
 import 'widgets/user_avatar.dart';
 import 'services/supabase_service.dart';
 import 'services/navigation_provider.dart';
-import 'services/sync_service.dart';
+import 'features/sync/presentation/widgets/sync_badge.dart';
 
 class AppShell extends StatefulWidget {
   final Widget child;
@@ -661,39 +661,7 @@ class _AppShellState extends State<AppShell> {
                                           children: [
                                             if (widget.actions != null)
                                               ...widget.actions!,
-                                            ValueListenableBuilder<int>(
-                                              valueListenable:
-                                                  SyncService().pendingChanges,
-                                              builder: (context, pending, _) {
-                                                if (pending == 0) {
-                                                  return const SizedBox.shrink();
-                                                }
-                                                return Tooltip(
-                                                  message:
-                                                      '$pending change${pending == 1 ? '' : 's'} waiting to sync',
-                                                  child: Padding(
-                                                    padding:
-                                                        const EdgeInsets.symmetric(
-                                                          horizontal: 4,
-                                                        ),
-                                                    child: Badge(
-                                                      label: Text('$pending'),
-                                                      backgroundColor:
-                                                          colorScheme.error,
-                                                      child: Icon(
-                                                        Icons
-                                                            .cloud_upload_outlined,
-                                                        color: colorScheme
-                                                            .onSurface
-                                                            .withValues(
-                                                              alpha: 0.7,
-                                                            ),
-                                                      ),
-                                                    ),
-                                                  ),
-                                                );
-                                              },
-                                            ),
+                                            const SyncBadge(),
                                             IconButton(
                                               visualDensity:
                                                   VisualDensity.compact,

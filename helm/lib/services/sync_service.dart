@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/sync_model.dart';
+import '../features/sync/domain/sync_queue_manager.dart';
 
 class SyncService {
   static final SyncService _instance = SyncService._internal();
@@ -58,7 +59,10 @@ class SyncService {
 
   Future<bool> isOnline() async {
     final results = await Connectivity().checkConnectivity();
-    return results.any((r) => r != ConnectivityResult.none);
+    if (!results.any((r) => r != ConnectivityResult.none)) {
+      return false;
+    }
+    return await SyncQueueManager.checkInternetReachability();
   }
 
   /// Queue key. Includes the table because ids are client-generated UUIDs and
@@ -175,13 +179,19 @@ class SyncService {
   /// to leave it stuck at `true`, which silently disabled syncing for the rest
   /// of the session. Failures back off instead of hot-looping, and give up
   /// after [_maxAttempts] so one poison payload cannot starve the queue.
-  Future<void> processSyncQueue() async {
-    if (_isSyncing || _syncBox.isEmpty) return;
+  Future<int> processSyncQueue({bool force = false}) async {
+    if (_isSyncing || _syncBox.isEmpty) return 0;
 
     final currentUser = _supabase.auth.currentUser;
-    if (currentUser == null) return;
+    if (currentUser == null) return 0;
+
+    if (force) {
+      _attempts.clear();
+      _retryAfter.clear();
+    }
 
     _isSyncing = true;
+    int syncedCount = 0;
     try {
       debugPrint(
         'SyncService: Processing ${_syncBox.length} pending actions...',
@@ -195,23 +205,27 @@ class SyncService {
         final key = entry.key.toString();
         final action = entry.value;
 
-        final retryAt = _retryAfter[key];
-        if (retryAt != null && retryAt.isAfter(now)) {
-          continue;
+        if (!force) {
+          final retryAt = _retryAfter[key];
+          if (retryAt != null && retryAt.isAfter(now)) {
+            continue;
+          }
+
+          final attempts = _attempts[key] ?? 0;
+          if (attempts >= _maxAttempts) {
+            debugPrint('SyncService: giving up on $key after $attempts attempts');
+            continue;
+          }
         }
 
         final attempts = _attempts[key] ?? 0;
-        if (attempts >= _maxAttempts) {
-          debugPrint('SyncService: giving up on $key after $attempts attempts');
-          continue;
-        }
-
         try {
           final bool success = await _performSyncAction(action);
           if (success) {
             await _syncBox.delete(key);
             _attempts.remove(key);
             _retryAfter.remove(key);
+            syncedCount++;
             debugPrint('SyncService: Successfully synced $key');
           } else {
             _attempts[key] = attempts + 1;
@@ -231,6 +245,7 @@ class SyncService {
       _refreshPending();
       debugPrint('SyncService: Sync cycle complete.');
     }
+    return syncedCount;
   }
 
   Duration _backoff(int attempt) {

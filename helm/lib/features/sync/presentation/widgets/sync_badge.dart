@@ -4,77 +4,127 @@ import 'package:flutter/material.dart';
 import '../../domain/sync_queue_manager.dart';
 
 class SyncBadge extends StatelessWidget {
-  final SyncQueueManager queueManager;
+  final SyncQueueManager? queueManager;
 
-  const SyncBadge({super.key, required this.queueManager});
+  const SyncBadge({super.key, this.queueManager});
+
+  SyncQueueManager get _manager => queueManager ?? SyncQueueManager.instance;
 
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
-      animation: queueManager,
+      animation: _manager,
       builder: (context, _) {
-        final count = queueManager.pendingMutationsCount;
-        final isDraining = queueManager.isDraining;
+        final status = _manager.syncStatus;
+        final count = _manager.queueDepth;
 
-        if (isDraining) {
-          return const Padding(
-            padding: EdgeInsets.all(12.0),
-            child: SizedBox(
-              width: 18,
-              height: 18,
-              child: CircularProgressIndicator(strokeWidth: 2),
+        if (status == SyncStatus.syncing || _manager.isDraining) {
+          return Tooltip(
+            message: 'Syncing changes...',
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+              child: SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    Theme.of(context).colorScheme.primary,
+                  ),
+                ),
+              ),
             ),
           );
         }
 
-        if (count == 0) {
-          return IconButton(
-            tooltip: 'All changes synced',
-            icon: const Icon(Icons.cloud_done_rounded, color: Colors.greenAccent),
-            onPressed: () => _showSyncModal(context),
+        if (count == 0 || status == SyncStatus.synced) {
+          return Tooltip(
+            message: 'All changes synced',
+            child: InkWell(
+              onTap: () => _showSyncModal(context, _manager),
+              borderRadius: BorderRadius.circular(12),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 6.0),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFF88C0A4),
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           );
         }
 
-        return IconButton(
-          tooltip: '$count pending sync changes',
-          icon: Badge(
-            label: Text('$count'),
-            backgroundColor: Colors.amber,
-            textColor: Colors.black87,
-            child: const Icon(Icons.cloud_sync_rounded, color: Colors.amber),
+        return Tooltip(
+          message: '$count pending sync ${count == 1 ? "change" : "changes"}',
+          child: InkWell(
+            onTap: () => _showSyncModal(context, _manager),
+            borderRadius: BorderRadius.circular(12),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 4.0),
+              child: Badge(
+                label: Text('$count'),
+                backgroundColor: Colors.amber,
+                textColor: Colors.black87,
+                child: const Icon(
+                  Icons.cloud_upload_outlined,
+                  color: Colors.amber,
+                ),
+              ),
+            ),
           ),
-          onPressed: () => _showSyncModal(context),
         );
       },
     );
   }
 
-  void _showSyncModal(BuildContext context) {
+  void _showSyncModal(BuildContext context, SyncQueueManager manager) {
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (ctx) => _SyncModalSheet(queueManager: queueManager),
+      builder: (ctx) => _SyncModalSheet(queueManager: manager),
     );
   }
 }
 
-class _SyncModalSheet extends StatelessWidget {
+class _SyncModalSheet extends StatefulWidget {
   final SyncQueueManager queueManager;
 
   const _SyncModalSheet({required this.queueManager});
 
   @override
+  State<_SyncModalSheet> createState() => _SyncModalSheetState();
+}
+
+class _SyncModalSheetState extends State<_SyncModalSheet> {
+  bool _isSyncing = false;
+
+  @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
-      animation: queueManager,
+      animation: widget.queueManager,
       builder: (context, _) {
-        final mutations = queueManager.mutations;
-        final count = queueManager.pendingMutationsCount;
+        final mutations = widget.queueManager.mutations;
+        final count = widget.queueManager.queueDepth;
 
         return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+          padding: EdgeInsets.only(
+            left: 20,
+            right: 20,
+            top: 24,
+            bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -85,18 +135,27 @@ class _SyncModalSheet extends StatelessWidget {
                   const SizedBox(width: 12),
                   Text(
                     'Offline Sync Status',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleLarge
+                        ?.copyWith(fontWeight: FontWeight.bold),
                   ),
                   const Spacer(),
                   if (count > 0)
                     Text(
-                      '$count pending',
-                      style: const TextStyle(color: Colors.amber, fontWeight: FontWeight.bold),
+                      '$count Pending',
+                      style: const TextStyle(
+                        color: Colors.amber,
+                        fontWeight: FontWeight.bold,
+                      ),
                     )
                   else
                     const Text(
                       'Synced',
-                      style: TextStyle(color: Colors.greenAccent, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        color: Color(0xFF88C0A4),
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                 ],
               ),
@@ -116,17 +175,28 @@ class _SyncModalSheet extends StatelessWidget {
                     separatorBuilder: (context, index) => const Divider(height: 1),
                     itemBuilder: (ctx, index) {
                       final m = mutations[index];
+                      final title = m.payload['title']?.toString() ??
+                          m.payload['name']?.toString() ??
+                          '${m.entityType} ${m.entityId}';
+                      final action = m.action;
+                      final timestamp = m.queuedAt.toIso8601String().substring(11, 19);
+
                       return ListTile(
                         dense: true,
                         leading: Icon(
-                          m.action == 'CREATE'
+                          action.toUpperCase() == 'CREATE'
                               ? Icons.add_circle_outline
-                              : m.action == 'DELETE'
+                              : action.toUpperCase() == 'DELETE'
                                   ? Icons.delete_outline
                                   : Icons.edit_outlined,
+                          color: action.toUpperCase() == 'DELETE'
+                              ? Colors.redAccent
+                              : null,
                         ),
-                        title: Text('${m.action} ${m.entityType}: ${m.entityId}'),
-                        subtitle: Text('Queued at ${m.queuedAt.toIso8601String().substring(11, 19)} (Retries: ${m.retryCount})'),
+                        title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
+                        subtitle: Text(
+                          '$action • Queued at $timestamp (Retries: ${m.retryCount})',
+                        ),
                       );
                     },
                   ),
@@ -135,13 +205,45 @@ class _SyncModalSheet extends StatelessWidget {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
-                  onPressed: queueManager.isDraining || count == 0
+                  onPressed: _isSyncing
                       ? null
                       : () async {
-                          await queueManager.drain();
+                          setState(() => _isSyncing = true);
+                          try {
+                            final synced = await widget.queueManager.drain(force: true);
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(synced > 0
+                                      ? 'Synced $synced item${synced == 1 ? "" : "s"} successfully'
+                                      : 'All items up to date'),
+                                  duration: const Duration(seconds: 2),
+                                ),
+                              );
+                            }
+                          } catch (e) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Sync error: $e'),
+                                  duration: const Duration(seconds: 2),
+                                ),
+                              );
+                            }
+                          } finally {
+                            if (mounted) {
+                              setState(() => _isSyncing = false);
+                            }
+                          }
                         },
-                  icon: const Icon(Icons.refresh_rounded),
-                  label: Text(queueManager.isDraining ? 'Syncing...' : 'Force Sync Now'),
+                  icon: _isSyncing
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.refresh_rounded),
+                  label: Text(_isSyncing ? 'Syncing...' : 'Force Sync Now'),
                 ),
               ),
             ],
@@ -151,4 +253,3 @@ class _SyncModalSheet extends StatelessWidget {
     );
   }
 }
-

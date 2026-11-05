@@ -4,8 +4,17 @@ import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:hive/hive.dart';
 import 'models/sync_mutation.dart';
 import '../../task/domain/models/task.dart';
+import '../../../../models/sync_model.dart';
+import '../../../../services/sync_service.dart';
+
+enum SyncStatus {
+  synced,
+  syncing,
+  pending,
+}
 
 abstract class ISyncRemoteRepository {
   Future<void> pushMutation(SyncMutation mutation);
@@ -47,6 +56,8 @@ class FakeSupabaseTable {
       }
     }
   }
+
+  Future<void> delete() async {}
 }
 
 class FakeHiveStore {
@@ -59,15 +70,22 @@ class FakeHiveStore {
 }
 
 class SyncQueueManager extends ChangeNotifier {
+  static SyncQueueManager? _appInstance;
+  static SyncQueueManager get instance {
+    _appInstance ??= SyncQueueManager();
+    return _appInstance!;
+  }
+
   final ISyncLocalRepository? localRepo;
   final ISyncRemoteRepository? remoteRepo;
   final Connectivity? connectivity;
   final dynamic remote;
   final dynamic local;
-  final bool isOnline;
+  bool isOnline;
   final List<SyncMutation> _inMemoryQueue = [];
   bool _isDraining = false;
   StreamSubscription? _connectivitySubscription;
+  VoidCallback? _appSyncListener;
 
   SyncQueueManager({
     this.localRepo,
@@ -78,38 +96,110 @@ class SyncQueueManager extends ChangeNotifier {
     this.isOnline = false,
   }) {
     if (connectivity != null) {
-      _connectivitySubscription = connectivity!.onConnectivityChanged.listen((results) {
+      _connectivitySubscription = connectivity!.onConnectivityChanged.listen((results) async {
         if (!results.contains(ConnectivityResult.none)) {
-          drain();
+          isOnline = true;
+          await drain();
+        } else {
+          isOnline = false;
+          notifyListeners();
         }
       });
     }
+
+    // Bridge with app's SyncService if running in app mode (no explicit mock repos)
+    if (remote == null && local == null && localRepo == null && remoteRepo == null) {
+      _appSyncListener = () {
+        notifyListeners();
+      };
+      SyncService().pendingChanges.addListener(_appSyncListener!);
+    }
   }
 
-  int get pendingMutationsCount =>
-      _inMemoryQueue.length + (localRepo?.getPendingMutations().length ?? 0);
+  int _getAppPendingCount() {
+    if (remote == null && local == null && localRepo == null && remoteRepo == null) {
+      return SyncService().pendingCount;
+    }
+    return 0;
+  }
 
-  int get pendingQueueLength => pendingMutationsCount;
+  int get queueDepth =>
+      _inMemoryQueue.length +
+      (localRepo?.getPendingMutations().length ?? 0) +
+      _getAppPendingCount();
+
+  int get pendingQueueLength => queueDepth;
+  int get pendingCount => queueDepth;
+  int get pendingMutationsCount => queueDepth;
 
   bool get isDraining => _isDraining;
+
+  SyncStatus get syncStatus {
+    if (_isDraining) return SyncStatus.syncing;
+    if (queueDepth > 0) return SyncStatus.pending;
+    return SyncStatus.synced;
+  }
 
   List<SyncMutation> get mutations {
     final list = <SyncMutation>[..._inMemoryQueue];
     if (localRepo != null) {
       list.addAll(localRepo!.getPendingMutations());
     }
+
+    // If in app mode, bridge pending items from Hive 'sync_queue' box
+    if (remote == null && local == null && localRepo == null && remoteRepo == null) {
+      try {
+        if (Hive.isBoxOpen('sync_queue')) {
+          final box = Hive.box<SyncAction>('sync_queue');
+          for (final action in box.values) {
+            list.add(SyncMutation(
+              id: action.id,
+              entityId: action.id,
+              entityType: action.table,
+              action: action.action.name.toUpperCase(),
+              payload: Map<String, dynamic>.from(action.payload),
+              queuedAt: action.timestamp,
+            ));
+          }
+        }
+      } catch (_) {}
+    }
+
     return List.unmodifiable(list);
   }
 
   static Future<bool> checkInternetReachability() async {
     try {
+      final lookup = await InternetAddress.lookup('supabase.co')
+          .timeout(const Duration(seconds: 2));
+      if (lookup.isNotEmpty && lookup[0].rawAddress.isNotEmpty) {
+        return true;
+      }
+    } catch (_) {}
+    try {
       final socket = await Socket.connect('api.supabase.co', 443,
-          timeout: const Duration(seconds: 3));
+          timeout: const Duration(seconds: 2));
       socket.destroy();
       return true;
     } catch (_) {
       return false;
     }
+  }
+
+  Future<bool> checkOnline() async {
+    if (connectivity != null) {
+      final results = await connectivity!.checkConnectivity();
+      if (results.contains(ConnectivityResult.none)) {
+        isOnline = false;
+        notifyListeners();
+        return false;
+      }
+      final reachable = await checkInternetReachability();
+      isOnline = reachable;
+      notifyListeners();
+      return reachable;
+    }
+    return isOnline;
   }
 
   Future<void> saveTask(Task task) async {
@@ -133,29 +223,35 @@ class SyncQueueManager extends ChangeNotifier {
 
     // 2. Online: direct dispatch without queueing
     if (isOnline) {
-      if (remote != null) {
-        if (remote is FakeSupabaseClient) {
-          await remote.upsert(payload);
-        } else {
-          try {
-            await remote.from('tasks').upsert(payload);
-          } catch (_) {
+      try {
+        if (remote != null) {
+          if (remote is FakeSupabaseClient) {
             await remote.upsert(payload);
+          } else {
+            try {
+              await remote.from('tasks').upsert(payload);
+            } catch (_) {
+              await remote.upsert(payload);
+            }
           }
+          notifyListeners();
+          return;
         }
-        return;
-      }
-      if (remoteRepo != null) {
-        final mutation = SyncMutation(
-          id: DateTime.now().microsecondsSinceEpoch.toString(),
-          entityId: task.id,
-          entityType: 'tasks',
-          action: 'upsert',
-          payload: payload,
-          queuedAt: DateTime.now(),
-        );
-        await remoteRepo!.pushMutation(mutation);
-        return;
+        if (remoteRepo != null) {
+          final mutation = SyncMutation(
+            id: DateTime.now().microsecondsSinceEpoch.toString(),
+            entityId: task.id,
+            entityType: 'tasks',
+            action: 'CREATE',
+            payload: payload,
+            queuedAt: DateTime.now(),
+          );
+          await remoteRepo!.pushMutation(mutation);
+          notifyListeners();
+          return;
+        }
+      } catch (_) {
+        // Fall back to queueing if remote call throws
       }
     }
 
@@ -164,7 +260,7 @@ class SyncQueueManager extends ChangeNotifier {
       id: DateTime.now().microsecondsSinceEpoch.toString(),
       entityId: task.id,
       entityType: 'tasks',
-      action: 'upsert',
+      action: 'CREATE',
       payload: payload,
       queuedAt: DateTime.now(),
     );
@@ -224,10 +320,14 @@ class SyncQueueManager extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> drain() async {
-    if (_isDraining) return;
+  Future<int> drain({bool force = false}) async {
+    if (_isDraining) return 0;
+    if (!isOnline && !force) return 0;
+
     _isDraining = true;
     notifyListeners();
+
+    int syncedCount = 0;
 
     if (remoteRepo != null && localRepo != null) {
       final pending = List<SyncMutation>.from(localRepo!.getPendingMutations());
@@ -235,6 +335,7 @@ class SyncQueueManager extends ChangeNotifier {
         try {
           await remoteRepo!.pushMutation(mutation);
           await localRepo!.removeMutation(mutation.id);
+          syncedCount++;
         } catch (e) {
           if (mutation.retryCount >= 3 && mutation.rollbackSnapshot != null) {
             await localRepo!.rollback(
@@ -256,24 +357,41 @@ class SyncQueueManager extends ChangeNotifier {
           if (remote is FakeSupabaseClient) {
             await remote.upsert(mutation.payload);
           } else {
-            await remote.from(mutation.entityType).upsert(mutation.payload);
+            try {
+              await remote.from(mutation.entityType).upsert(mutation.payload);
+            } catch (_) {
+              await remote.upsert(mutation.payload);
+            }
           }
           _inMemoryQueue.removeWhere((m) => m.id == mutation.id);
+          syncedCount++;
         } catch (_) {
           break;
         }
       }
+    } else {
+      // In-app delegation to SyncService
+      try {
+        final initial = SyncService().pendingCount;
+        await SyncService().processSyncQueue(force: force);
+        final remaining = SyncService().pendingCount;
+        syncedCount = (initial - remaining).clamp(0, initial);
+      } catch (_) {}
     }
 
     _isDraining = false;
     notifyListeners();
+    return syncedCount;
   }
 
-  Future<void> drainQueue() => drain();
+  Future<int> drainQueue({bool force = false}) => drain(force: force);
 
   @override
   void dispose() {
     _connectivitySubscription?.cancel();
+    if (_appSyncListener != null) {
+      SyncService().pendingChanges.removeListener(_appSyncListener!);
+    }
     super.dispose();
   }
 }
