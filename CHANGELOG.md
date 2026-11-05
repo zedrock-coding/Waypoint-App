@@ -1,5 +1,20 @@
 # Changelog
 
+## [v0.4.2] - 2026-11-05
+
+### Changes
+* chore: bump version to 0.4.2+13 for blueprint release (2a5303b)
+* feat: implement Master Architectural Blueprint and verification suite (e727da9)
+* fix(android): pin targetSdk to 34 and sync versioned release APK (c1283fd)
+* docs: document single-key shortcut removal in release notes (4f33f49)
+* fix(shortcuts): remove single-key shortcuts for C and N (e3167d9)
+* docs: add release notes for v0.4.1 (6f74e01)
+* feat(release): automate GitHub release creation with GCM auth in publish.sh (92a5174)
+* feat: add Inno Setup script for Windows installer (42c02b8)
+* feat: add automated release publishing pipeline and editor configurations (36d5c8c)
+* chore: bump version to 0.4.1+12 (cc5cb8b)
+
+
 ## [v0.4.1] - 2026-11-04
 
 ### Changes

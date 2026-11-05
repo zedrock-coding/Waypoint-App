@@ -4,7 +4,7 @@
 
 ![Aesthetic](https://img.shields.io/badge/Aesthetic-Slate%20%26%20Mint-88C0A4)
 ![Platform](https://img.shields.io/badge/Platform-Android%20%7C%20Windows%20%7C%20Web-blue)
-![Version](https://img.shields.io/badge/Version-v0.4.1-green)
+![Version](https://img.shields.io/badge/Version-v0.4.2-green)
 
 ## 🌟 Major Highlights for the Public Launch
 
@@ -43,8 +43,8 @@
 ## 🔐 Security & Integrity
 Helm 3.0 utilizes PostgreSQL Security Definer functions and strict Row Level Security (RLS) to ensure your team's data is isolated and protected against unauthorized access.
 
-## 📥 Downloads (v0.4.1)
+## 📥 Downloads (v0.4.2)
 
-* 🪟 **Windows**: [`Waypoint-v0.4.1-Setup.exe`](releases/Waypoint-v0.4.1-Setup.exe)
-* 📱 **Android**: [`waypoint-v0.4.1.apk`](releases/waypoint-v0.4.1.apk)
+* 🪟 **Windows**: [`Waypoint-v0.4.2-Setup.exe`](releases/Waypoint-v0.4.2-Setup.exe)
+* 📱 **Android**: [`waypoint-v0.4.2.apk`](releases/waypoint-v0.4.2.apk)
 
