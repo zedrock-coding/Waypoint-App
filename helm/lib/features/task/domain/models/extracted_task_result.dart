@@ -25,3 +25,4 @@ class ExtractedSubtask {
   final DateTime? dueDate;
   const ExtractedSubtask({required this.title, this.dueDate});
 }
+

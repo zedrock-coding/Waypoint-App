@@ -7,3 +7,4 @@
     android:updatePeriodMillis="1800000"
     android:initialLayout="@layout/widget_agenda_layout"
     android:widgetCategory="home_screen" />
+
