@@ -89,19 +89,26 @@ done
 # --- 1. Resolve Version ---
 if [[ -n "$CUSTOM_VERSION" ]]; then
     VERSION="$CUSTOM_VERSION"
+    BUILD_NUMBER=""
 else
     PUBSPEC="$HELM_DIR/pubspec.yaml"
     if [[ ! -f "$PUBSPEC" ]]; then
         fatal "pubspec.yaml not found at: $PUBSPEC"
     fi
     VERSION=$(grep -E '^version:' "$PUBSPEC" | head -n1 | sed -E 's/version:[[:space:]]*([0-9.]+).*/\1/')
+    BUILD_NUMBER=$(grep -E '^version:' "$PUBSPEC" | head -n1 | sed -nE 's/.*\+([0-9]+).*/\1/p')
 fi
 
 if [[ -z "$VERSION" ]]; then
     fatal "Could not determine release version."
 fi
 
-info "Publishing Waypoint version: v${VERSION}"
+RELEASE_TITLE="Waypoint-v${VERSION}"
+if [[ -n "$BUILD_NUMBER" ]]; then
+    RELEASE_TITLE="Waypoint-v${VERSION}+${BUILD_NUMBER}"
+fi
+
+info "Publishing Waypoint version: v${VERSION} (${RELEASE_TITLE})"
 info "Release date: ${TODAY}"
 
 # --- 2. Resolve & Verify Public Repository Path ---
@@ -330,7 +337,7 @@ if command -v gh >/dev/null 2>&1 && [[ -n "${GH_TOKEN:-}" ]]; then
                 --clobber
             gh release edit "v${VERSION}" \
                 --repo "$REPO_NAME" \
-                --title "Waypoint-v${VERSION}+12" \
+                --title "${RELEASE_TITLE}" \
                 --notes "$CHANGELOG_NOTES"
         else
             info "Creating new GitHub Release v${VERSION}..."
@@ -338,7 +345,7 @@ if command -v gh >/dev/null 2>&1 && [[ -n "${GH_TOKEN:-}" ]]; then
                 "$RELEASES_DIR/$WIN_NAME" \
                 "$RELEASES_DIR/$APK_NAME" \
                 --repo "$REPO_NAME" \
-                --title "Waypoint-v${VERSION}+12" \
+                --title "${RELEASE_TITLE}" \
                 --notes "$CHANGELOG_NOTES"
         fi
         pass "GitHub Release successfully published to GitHub Releases!"
