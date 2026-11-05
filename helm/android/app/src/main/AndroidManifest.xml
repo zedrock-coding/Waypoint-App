@@ -104,6 +104,11 @@
                 android:resource="@xml/waypoint_day_widget_info" />
         </receiver>
 
+        <service
+            android:name=".MonthWidgetService"
+            android:permission="android.permission.BIND_REMOTEVIEWS"
+            android:exported="false" />
+
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />

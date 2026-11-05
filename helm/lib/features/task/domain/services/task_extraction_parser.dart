@@ -4,9 +4,13 @@ import '../models/extracted_task_result.dart';
 
 class TaskExtractionParser {
   final DateTime clientTimestamp;
+  final String timeZoneOffset;
 
-  TaskExtractionParser({DateTime? clientTimestamp})
-      : clientTimestamp = clientTimestamp ?? DateTime.now();
+  TaskExtractionParser({
+    DateTime? anchor,
+    DateTime? clientTimestamp,
+    this.timeZoneOffset = '+05:30',
+  }) : clientTimestamp = anchor ?? clientTimestamp ?? DateTime.now();
 
   ExtractedTaskResult parse(String input) {
     // 1. Meta-Prefix Strip
@@ -63,10 +67,23 @@ class TaskExtractionParser {
       minute = 0;
     }
 
+    // Base date anchored to client time zone
+    DateTime effectiveAnchor = clientTimestamp;
+    if (clientTimestamp.isUtc && timeZoneOffset.isNotEmpty) {
+      final sign = timeZoneOffset.startsWith('-') ? -1 : 1;
+      final parts = timeZoneOffset.replaceAll(RegExp(r'^[+-]'), '').split(':');
+      final offsetHours = int.tryParse(parts[0]) ?? 0;
+      final offsetMins = parts.length > 1 ? (int.tryParse(parts[1]) ?? 0) : 0;
+      effectiveAnchor = clientTimestamp.add(Duration(
+        hours: sign * offsetHours,
+        minutes: sign * offsetMins,
+      ));
+    }
+
     DateTime targetDate = DateTime(
-      clientTimestamp.year,
-      clientTimestamp.month,
-      clientTimestamp.day,
+      effectiveAnchor.year,
+      effectiveAnchor.month,
+      effectiveAnchor.day,
     );
 
     if (lower.contains('tomorrow')) {
@@ -85,21 +102,37 @@ class TaskExtractionParser {
 
     if (hour != null) {
       dueDateFound = true;
-      dueDate = DateTime(
-        targetDate.year,
-        targetDate.month,
-        targetDate.day,
-        hour,
-        minute ?? 0,
-      );
+      final y = targetDate.year.toString().padLeft(4, '0');
+      final m = targetDate.month.toString().padLeft(2, '0');
+      final d = targetDate.day.toString().padLeft(2, '0');
+      final h = hour.toString().padLeft(2, '0');
+      final min = (minute ?? 0).toString().padLeft(2, '0');
+      if (clientTimestamp.isUtc) {
+        dueDate = DateTime.parse('$y-$m-${d}T$h:$min:00$timeZoneOffset');
+      } else {
+        dueDate = DateTime(
+          targetDate.year,
+          targetDate.month,
+          targetDate.day,
+          hour,
+          minute ?? 0,
+        );
+      }
     } else if (dueDateFound) {
-      dueDate = DateTime(
-        targetDate.year,
-        targetDate.month,
-        targetDate.day,
-        18,
-        0,
-      );
+      final y = targetDate.year.toString().padLeft(4, '0');
+      final m = targetDate.month.toString().padLeft(2, '0');
+      final d = targetDate.day.toString().padLeft(2, '0');
+      if (clientTimestamp.isUtc) {
+        dueDate = DateTime.parse('$y-$m-${d}T18:00:00$timeZoneOffset');
+      } else {
+        dueDate = DateTime(
+          targetDate.year,
+          targetDate.month,
+          targetDate.day,
+          18,
+          0,
+        );
+      }
     }
 
     // 4. Clean trailing metadata directives from action content
@@ -181,4 +214,3 @@ class TaskExtractionParser {
     );
   }
 }
-

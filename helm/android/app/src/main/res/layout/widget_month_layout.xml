@@ -1,45 +1,35 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@+id/widget_month_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="#1E2124"
+    android:background="@drawable/widget_background"
     android:padding="12dp">
 
-    <LinearLayout
-        android:layout_width="match_parent"
+    <TextView
+        android:id="@+id/widget_title"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center_vertical"
-        android:paddingBottom="8dp">
+        android:text="November 2026"
+        android:textColor="#FFFFFF"
+        android:textSize="16sp"
+        android:textStyle="bold" />
 
-        <TextView
-            android:id="@+id/widget_month_title"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="Waypoint Month"
-            android:textColor="#FFFFFF"
-            android:textSize="16sp"
-            android:textStyle="bold" />
-
-        <TextView
-            android:id="@+id/widget_month_sync_dot"
-            android:layout_width="8dp"
-            android:layout_height="8dp"
-            android:background="#88C0A4" />
-    </LinearLayout>
-
+    <!-- 7x6 Calendar Grid View -->
     <GridView
-        android:id="@+id/widget_month_grid"
+        android:id="@+id/calendar_grid"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
         android:numColumns="7"
         android:verticalSpacing="2dp"
-        android:horizontalSpacing="2dp"
-        android:gravity="center" />
+        android:horizontalSpacing="2dp" />
 
+    <!-- Bottom partition: selected day tasks -->
+    <ListView
+        android:id="@+id/selected_day_tasks"
+        android:layout_width="match_parent"
+        android:layout_height="80dp"
+        android:divider="#222222"
+        android:dividerHeight="1dp" />
 </LinearLayout>
-

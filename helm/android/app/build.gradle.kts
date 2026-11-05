@@ -7,10 +7,23 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+val envProperties = Properties()
+val envCandidates = listOf(
+    rootProject.file("../.env"),
+    rootProject.file("../../.env"),
+    file(".env")
+)
+for (cand in envCandidates) {
+    if (cand.exists()) {
+        cand.inputStream().use { envProperties.load(it) }
+        break
+    }
+}
+
 val keystoreProperties = Properties()
 val keystorePropertiesFile = rootProject.file("key.properties")
 if (keystorePropertiesFile.exists()) {
-    keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+    keystorePropertiesFile.inputStream().use { keystoreProperties.load(it) }
 }
 
 android {
@@ -38,10 +51,34 @@ android {
 
     signingConfigs {
         create("release") {
-            keyAlias = keystoreProperties["keyAlias"] as String?
-            keyPassword = keystoreProperties["keyPassword"] as String?
-            storeFile = keystoreProperties["storeFile"]?.let { file(it) }
-            storePassword = keystoreProperties["storePassword"] as String?
+            val ksPath = envProperties.getProperty("KEYSTORE_PATH")
+                ?: keystoreProperties.getProperty("storeFile")
+                ?: System.getenv("KEYSTORE_PATH")
+
+            val candidateFiles = listOfNotNull(
+                ksPath?.let { file(it) },
+                ksPath?.let { rootProject.file(it) },
+                ksPath?.let { rootProject.file("../$it") },
+                file("upload-keystore.jks")
+            )
+            val resolvedStoreFile = candidateFiles.firstOrNull { it.exists() }
+
+            if (resolvedStoreFile != null && resolvedStoreFile.exists()) {
+                storeFile = resolvedStoreFile
+                storePassword = envProperties.getProperty("KEYSTORE_PASSWORD")
+                    ?: keystoreProperties.getProperty("storePassword")
+                    ?: System.getenv("KEYSTORE_PASSWORD")
+                keyAlias = envProperties.getProperty("KEY_ALIAS")
+                    ?: keystoreProperties.getProperty("keyAlias")
+                    ?: System.getenv("KEY_ALIAS")
+                keyPassword = envProperties.getProperty("KEY_PASSWORD")
+                    ?: keystoreProperties.getProperty("keyPassword")
+                    ?: System.getenv("KEY_PASSWORD")
+                enableV1Signing = true
+                enableV2Signing = true
+                enableV3Signing = true
+                enableV4Signing = true
+            }
         }
     }
 
