@@ -59,7 +59,8 @@ android {
                 ksPath?.let { file(it) },
                 ksPath?.let { rootProject.file(it) },
                 ksPath?.let { rootProject.file("../$it") },
-                file("upload-keystore.jks")
+                file("upload-keystore.jks"),
+                rootProject.file("upload-keystore.jks")
             )
             val resolvedStoreFile = candidateFiles.firstOrNull { it.exists() }
 
@@ -85,6 +86,12 @@ android {
     buildTypes {
         release {
             signingConfig = signingConfigs.getByName("release")
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
         }
     }
 
