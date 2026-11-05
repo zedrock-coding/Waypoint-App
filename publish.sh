@@ -252,7 +252,10 @@ info "Extracting changelog notes from private repository git history..."
 LAST_TAG=$(git -C "$PRIVATE_REPO" describe --tags --match "v*" --abbrev=0 2>/dev/null || echo "")
 CHANGELOG_NOTES=""
 
-if [[ -n "$LAST_TAG" ]]; then
+if [[ -f "$PRIVATE_REPO/docs/release_notes_v${VERSION}.md" ]]; then
+    info "Using comprehensive release notes from docs/release_notes_v${VERSION}.md"
+    CHANGELOG_NOTES="$(cat "$PRIVATE_REPO/docs/release_notes_v${VERSION}.md")"
+elif [[ -n "$LAST_TAG" ]]; then
     CHANGELOG_NOTES=$(git -C "$PRIVATE_REPO" log "${LAST_TAG}..HEAD" --no-merges --pretty=format:"* %s (%h)" || echo "")
 fi
 
