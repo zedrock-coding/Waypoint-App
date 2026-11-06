@@ -665,6 +665,20 @@ class _AppShellState extends State<AppShell> {
                                             IconButton(
                                               visualDensity:
                                                   VisualDensity.compact,
+                                              tooltip: 'AI Voice Assistant',
+                                              icon: const Icon(
+                                                Icons.mic_rounded,
+                                                color: Color(0xFF88C0A4),
+                                              ),
+                                              onPressed: () =>
+                                                  _showAIVoiceOverlay(
+                                                context,
+                                                isDesktop,
+                                              ),
+                                            ),
+                                            IconButton(
+                                              visualDensity:
+                                                  VisualDensity.compact,
                                               icon: Icon(
                                                 Icons.search,
                                                 color: colorScheme.onSurface

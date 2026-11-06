@@ -1,6 +1,48 @@
 # Changelog - Helm Workspace 🚀
 
-All notable changes to the **Helm** project will be documented in this file.
+All notable changes to the **Helm** / **Waypoint** project will be documented in this file.
+
+---
+
+## [0.5.0] - 2026-11-06
+
+### 🚀 Added
+- **Interactive Conversational AI Voice Loop**:
+  - Live on-device audio playback (`flutter_tts` / SAPI / platform TTS) in `SherpaTtsService` for speaking clarification questions aloud.
+  - Automatic audio recording pause during AI speech playback with seamless hands-free auto-resume upon completion.
+  - Multi-turn conversation accumulation to maintain user prompt context across continuous dialogue turns.
+  - Audible confirmation announcements for extracted tasks.
+- **Multimodal Audio Format Sniffing**:
+  - Binary magic byte inspection in `AiService.detectMimeType()` supporting MP4/M4A (`ftyp`), MP3 (`ID3`), WAV (`RIFF`), and OGG (`OggS`).
+  - Strict Content-Type headers in Edge Function audio payloads preventing Gemini API format rejections.
+- **Standardized Header Sync Status Action**:
+  - Replaced 8px dot with standard `IconButton` container with `Icons.sync_rounded`.
+  - Color-coded tri-state indicators: Mint Green (`#88C0A4`) for synced, spinner for syncing, and Amber numeric badge for pending mutations.
+  - Wrapped modal title in `Expanded(overflow: TextOverflow.ellipsis)` eliminating 142px flex overflow on narrow screens.
+- **Windows Desktop Build & Audio Pipeline**:
+  - Verified native WASAPI audio recording and SAPI speech playback on Windows desktop.
+  - Automated `nuget.exe` package restoration for C++/WinRT dependencies.
+
+### 🐛 Fixed
+- **Audio Recording Countup Timer**:
+  - Corrected timer disposal order in `AudioRecordingService` eliminating immediate cancellation race conditions.
+  - Added monotonic 100ms ticker rendering smooth elapsed duration (`00:ss / 00:30`).
+  - Added `AudioRecordingService.elapsed` getter for instant UI state synchronization.
+
+---
+
+## [0.4.9] - 2026-11-06
+
+### 🚀 Added
+- **Dual-Write Synchronization Engine**:
+  - Parallel writes directly to local Hive NoSQL storage and Supabase cloud tables with auto-drain on reconnect.
+  - Socket reachability checks verifying true Internet routing.
+- **Android Home Screen Widgets**:
+  - Interactive Month View (4x4 & 4x5), 7-day horizontal workload bar, and high-density Day Agenda widgets.
+- **Needle Morning Dispatch**:
+  - Scheduled 8:00 AM daily task briefing via WorkManager with Android 13+ runtime notification permissions.
+- **Production APK Release Signing**:
+  - Configured scheme v2/v3 cryptographic signing and R8 minification rules.
 
 ---
 

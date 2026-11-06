@@ -76,6 +76,34 @@ void main() {
       service.dispose();
     });
 
+    test('startRecording emits increasing countup duration on durationStream', () async {
+      final service = AudioRecordingService();
+      final emittedDurations = <Duration>[];
+      final sub = service.durationStream.listen((d) {
+        emittedDurations.add(d);
+      });
+
+      final started = await service.startRecording();
+      expect(started, isTrue);
+      expect(service.isRecording, isTrue);
+
+      // Wait 250ms so at least 2 ticks at 100ms occur
+      await Future.delayed(const Duration(milliseconds: 250));
+
+      expect(emittedDurations.length, greaterThanOrEqualTo(2));
+      // First is Duration.zero
+      expect(emittedDurations.first, Duration.zero);
+      // Later durations are strictly increasing countup
+      for (int i = 1; i < emittedDurations.length; i++) {
+        expect(emittedDurations[i] >= emittedDurations[i - 1], isTrue);
+      }
+      expect(emittedDurations.last > Duration.zero, isTrue);
+
+      await sub.cancel();
+      await service.stopRecording();
+      service.dispose();
+    });
+
     test('stopRecording returns null when nothing was recorded and is idempotent', () async {
       final service = AudioRecordingService();
       final res1 = await service.stopRecording();

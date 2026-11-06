@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:record/record.dart';
 
 class AudioRecordingService {
@@ -27,6 +28,9 @@ class AudioRecordingService {
   bool get isRecording => _isRecording;
   Stream<double> get amplitudeStream => _amplitudeController.stream;
   Stream<Duration> get durationStream => _durationController.stream;
+  Duration get elapsed => _recordStartTime == null
+      ? Duration.zero
+      : DateTime.now().difference(_recordStartTime!);
 
   /// Computes Root-Mean-Square (RMS) amplitude from 16-bit signed PCM audio bytes.
   /// Returns a normalized value between 0.0 and 1.0.
@@ -48,10 +52,22 @@ class AudioRecordingService {
 
   Future<bool> hasPermission() async {
     try {
-      return await _recorder.hasPermission();
+      final permitted = await _recorder.hasPermission();
+      if (permitted) return true;
+      try {
+        final status = await Permission.microphone.request();
+        return status.isGranted;
+      } catch (_) {
+        return false;
+      }
     } catch (e) {
       debugPrint('AudioRecordingService permission check error: $e');
-      return false;
+      try {
+        final status = await Permission.microphone.request();
+        return status.isGranted;
+      } catch (_) {
+        return false;
+      }
     }
   }
 
@@ -67,14 +83,15 @@ class AudioRecordingService {
         await stopRecording();
       }
 
+      _stopDurationTimer();
       _lastRecordedWav = null;
       _audioBuffer.clear();
       _isRecording = true;
       _recordStartTime = DateTime.now();
       _durationController.add(Duration.zero);
 
-      _stopDurationTimer();
-      _durationTimer = Timer.periodic(const Duration(milliseconds: 200), (timer) {
+      _durationTimer =
+          Timer.periodic(const Duration(milliseconds: 100), (timer) {
         if (!_isRecording || _recordStartTime == null) {
           timer.cancel();
           return;

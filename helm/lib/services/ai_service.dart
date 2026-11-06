@@ -155,6 +155,30 @@ class AiService {
     return [];
   }
 
+  static String detectMimeType(Uint8List bytes) {
+    if (bytes.length >= 8) {
+      if (bytes[4] == 0x66 &&
+          bytes[5] == 0x74 &&
+          bytes[6] == 0x79 &&
+          bytes[7] == 0x70) {
+        return 'audio/mp4';
+      }
+      if (bytes[0] == 0x49 && bytes[1] == 0x44 && bytes[2] == 0x33) {
+        return 'audio/mp3';
+      }
+      if (bytes[0] == 0xFF && (bytes[1] & 0xE0) == 0xE0) {
+        return 'audio/mp3';
+      }
+      if (bytes[0] == 0x52 &&
+          bytes[1] == 0x49 &&
+          bytes[2] == 0x46 &&
+          bytes[3] == 0x46) {
+        return 'audio/wav';
+      }
+    }
+    return 'audio/wav';
+  }
+
   /// Single network entry point.
   ///
   /// The Gemini credential lives only in the `ai` Edge Function's environment.
@@ -165,12 +189,13 @@ class AiService {
   Future<String> _generate({
     required String prompt,
     Uint8List? audioBytes,
+    String? audioMimeType,
   }) async {
     final body = <String, dynamic>{
       'prompt': prompt,
       if (audioBytes != null) ...{
         'audio_base64': base64Encode(audioBytes),
-        'audio_mime_type': 'audio/wav',
+        'audio_mime_type': audioMimeType ?? detectMimeType(audioBytes),
       },
     };
 
@@ -318,6 +343,7 @@ User Input: "$userInput"
     required List<Map<String, dynamic>> availableMembers,
     Map<String, dynamic>? currentDraft,
     List<Map<String, String>> conversationHistory = const [],
+    String? audioMimeType,
   }) async {
     final now = DateTime.now();
     final List<String> weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -358,7 +384,11 @@ INSTRUCTIONS:
 ''';
 
     try {
-      final text = await _generate(prompt: prompt, audioBytes: audioBytes);
+      final text = await _generate(
+        prompt: prompt,
+        audioBytes: audioBytes,
+        audioMimeType: audioMimeType,
+      );
       final Map<String, dynamic> cloudTemplate = _cleanAndDecodeJson(text);
 
       // Normalise the cloud answer through the local parser

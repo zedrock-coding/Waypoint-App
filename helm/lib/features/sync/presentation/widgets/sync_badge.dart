@@ -19,66 +19,79 @@ class SyncBadge extends StatelessWidget {
         final count = _manager.queueDepth;
 
         if (status == SyncStatus.syncing || _manager.isDraining) {
-          return Tooltip(
-            message: 'Syncing changes...',
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
-              child: SizedBox(
-                width: 16,
-                height: 16,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation<Color>(
-                    Theme.of(context).colorScheme.primary,
+          return IconButton(
+            visualDensity: VisualDensity.compact,
+            tooltip: 'Syncing changes...',
+            onPressed: () => _showSyncModal(context, _manager),
+            icon: SizedBox(
+              width: 22,
+              height: 22,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      Theme.of(context).colorScheme.primary,
+                    ),
                   ),
-                ),
+                  Icon(
+                    Icons.sync_rounded,
+                    size: 13,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                ],
               ),
             ),
           );
         }
 
         if (count == 0 || status == SyncStatus.synced) {
-          return Tooltip(
-            message: 'All changes synced',
-            child: InkWell(
-              onTap: () => _showSyncModal(context, _manager),
-              borderRadius: BorderRadius.circular(12),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 6.0),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 8,
-                      height: 8,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFF88C0A4),
-                        shape: BoxShape.circle,
+          return IconButton(
+            visualDensity: VisualDensity.compact,
+            tooltip: 'All changes synced',
+            onPressed: () => _showSyncModal(context, _manager),
+            icon: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                const Icon(
+                  Icons.sync_rounded,
+                  color: Color(0xFF88C0A4),
+                  size: 22,
+                ),
+                Positioned(
+                  right: -1,
+                  bottom: -1,
+                  child: Container(
+                    width: 7,
+                    height: 7,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF88C0A4),
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: Theme.of(context).colorScheme.surface,
+                        width: 1.2,
                       ),
                     ),
-                  ],
+                  ),
                 ),
-              ),
+              ],
             ),
           );
         }
 
-        return Tooltip(
-          message: '$count pending sync ${count == 1 ? "change" : "changes"}',
-          child: InkWell(
-            onTap: () => _showSyncModal(context, _manager),
-            borderRadius: BorderRadius.circular(12),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 4.0),
-              child: Badge(
-                label: Text('$count'),
-                backgroundColor: Colors.amber,
-                textColor: Colors.black87,
-                child: const Icon(
-                  Icons.cloud_upload_outlined,
-                  color: Colors.amber,
-                ),
-              ),
+        return IconButton(
+          visualDensity: VisualDensity.compact,
+          tooltip: '$count pending sync ${count == 1 ? "change" : "changes"}',
+          onPressed: () => _showSyncModal(context, _manager),
+          icon: Badge(
+            label: Text('$count'),
+            backgroundColor: Colors.amber,
+            textColor: Colors.black87,
+            child: const Icon(
+              Icons.sync_rounded,
+              color: Colors.amber,
+              size: 22,
             ),
           ),
         );
@@ -90,6 +103,7 @@ class SyncBadge extends StatelessWidget {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      backgroundColor: const Color(0xFF1E2124),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -133,14 +147,17 @@ class _SyncModalSheetState extends State<_SyncModalSheet> {
                 children: [
                   const Icon(Icons.sync_rounded, size: 24),
                   const SizedBox(width: 12),
-                  Text(
-                    'Offline Sync Status',
-                    style: Theme.of(context)
-                        .textTheme
-                        .titleLarge
-                        ?.copyWith(fontWeight: FontWeight.bold),
+                  Expanded(
+                    child: Text(
+                      'Offline Sync Status',
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context)
+                          .textTheme
+                          .titleLarge
+                          ?.copyWith(fontWeight: FontWeight.bold),
+                    ),
                   ),
-                  const Spacer(),
+                  const SizedBox(width: 8),
                   if (count > 0)
                     Text(
                       '$count Pending',

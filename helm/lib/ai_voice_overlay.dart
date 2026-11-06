@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -12,6 +12,8 @@ import 'services/supabase_service.dart';
 import 'widgets/audio_waveform_visualizer.dart';
 import 'features/voice/domain/controllers/audio_capture_controller.dart';
 import 'features/voice/domain/models/recording_state.dart';
+import 'features/voice/data/sherpa_tts_service.dart';
+import 'features/voice/domain/services/tts_service.dart';
 
 enum AIState { listening, processing, clarifying, preview, success, error }
 
@@ -28,6 +30,8 @@ class _AIVoiceOverlayState extends State<AIVoiceOverlay>
   late Animation<double> _scaleAnimation;
   final AudioRecordingService _audioService = AudioRecordingService();
   final AudioCaptureController _captureController = AudioCaptureController();
+  final ITextToSpeechService _ttsService = SherpaTtsService();
+  bool _isAiSpeaking = false;
   AIState _currentState = AIState.listening;
   String _errorMessage = '';
   String _processingStageText = 'Analyzing audio with Gemini...';
@@ -83,6 +87,7 @@ class _AIVoiceOverlayState extends State<AIVoiceOverlay>
   @override
   void initState() {
     super.initState();
+    unawaited(_ttsService.initialize());
     _pulseController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1000),
@@ -119,7 +124,9 @@ class _AIVoiceOverlayState extends State<AIVoiceOverlay>
       _captureController.stop();
       setState(() {
         _currentState = AIState.error;
-        _errorMessage = 'Microphone permission denied or not available';
+        _errorMessage = defaultTargetPlatform == TargetPlatform.windows
+            ? 'Microphone not accessible. Check Windows Settings > Privacy & security > Microphone.'
+            : 'Microphone permission denied or not available';
       });
     }
   }
@@ -195,8 +202,25 @@ class _AIVoiceOverlayState extends State<AIVoiceOverlay>
               _currentDraft = result;
               _clarificationQuestion = question;
               _currentState = AIState.clarifying;
+              _isAiSpeaking = true;
             });
-            await _startListening();
+
+            try {
+              await _ttsService.speak(question);
+            } catch (e) {
+              debugPrint('AIVoiceOverlay TTS playback error: $e');
+            }
+
+            // Small delay to let audio output buffer settle before microphone capture
+            await Future.delayed(const Duration(milliseconds: 300));
+
+            if (mounted) {
+              setState(() => _isAiSpeaking = false);
+            }
+
+            if (mounted && _currentState == AIState.clarifying) {
+              await _startListening();
+            }
           }
           return;
         }
@@ -244,6 +268,13 @@ class _AIVoiceOverlayState extends State<AIVoiceOverlay>
             _isAddingManualSubtask = false;
             _currentState = AIState.preview;
           });
+
+          final timeStr = dueDate != null
+              ? '${DateFormat.jm().format(dueDate)} on ${DateFormat.MMMd().format(dueDate)}'
+              : 'soon';
+          final confirmMsg = 'Created task: $title for $timeStr';
+          unawaited(_ttsService.speak(confirmMsg));
+
           _startAutoConfirm();
         }
       } else {
@@ -314,6 +345,7 @@ class _AIVoiceOverlayState extends State<AIVoiceOverlay>
     _pulseController.dispose();
     _captureController.dispose();
     _audioService.dispose();
+    _ttsService.dispose();
     _newSubtaskController.dispose();
     _titleEditController.dispose();
     super.dispose();
@@ -840,11 +872,11 @@ class _AIVoiceOverlayState extends State<AIVoiceOverlay>
             stream: _captureController.stream,
             initialData: _captureController.state,
             builder: (context, snapshot) {
-              final remaining =
-                  snapshot.data?.remaining ?? const Duration(seconds: 30);
-              final seconds = remaining.inSeconds.clamp(0, 30);
+              final elapsed =
+                  snapshot.data?.elapsed ?? Duration.zero;
+              final seconds = elapsed.inSeconds.clamp(0, 30);
               return Text(
-                '00:${seconds.toString().padLeft(2, '0')}',
+                '00:${seconds.toString().padLeft(2, '0')} / 00:30',
                 style: const TextStyle(
                   color: Colors.white54,
                   fontFamily: 'monospace',
@@ -904,10 +936,12 @@ class _AIVoiceOverlayState extends State<AIVoiceOverlay>
                 ),
               ),
             ),
-          const Text(
-            'Speak your answer, then tap to process',
+          Text(
+            _isAiSpeaking
+                ? 'Waypoint is asking...'
+                : 'Speak your answer, then tap to process',
             textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.white54, fontSize: 13),
+            style: const TextStyle(color: Colors.white54, fontSize: 13),
           ),
           const SizedBox(height: 12),
           ElevatedButton(
@@ -962,7 +996,7 @@ class _AIVoiceOverlayState extends State<AIVoiceOverlay>
                         ),
                       ),
                       child: Icon(
-                        Icons.mic,
+                        _isAiSpeaking ? Icons.volume_up_rounded : Icons.mic,
                         size: 40,
                         color: accentColor,
                       ),
