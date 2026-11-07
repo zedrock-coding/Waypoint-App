@@ -206,7 +206,11 @@ class _AIVoiceOverlayState extends State<AIVoiceOverlay>
             });
 
             try {
-              await _ttsService.speak(question);
+              await _ttsService
+                  .speak(question)
+                  .timeout(const Duration(seconds: 4), onTimeout: () {
+                debugPrint('AIVoiceOverlay TTS playback timed out. Recovering...');
+              });
             } catch (e) {
               debugPrint('AIVoiceOverlay TTS playback error: $e');
             }

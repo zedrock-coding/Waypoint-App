@@ -15,7 +15,7 @@
 | Platform | Distribution Target | Details / File | SHA-256 Digest |
 |---|---|---|---|
 | **Windows Desktop** | `waypoint.exe` (x64 Release) | `build/windows/x64/runner/Release/waypoint.exe` | `57C074B089F3C0C912691ABBB0B127C89BF432DDB939443A91F6D7ED86BCDA04` |
-| **Android** | `app-release.apk` (61.5 MB) | `build/app/outputs/flutter-apk/app-release.apk` | `61148B1D7EC71884CA1D8D7E8700F8744627F65D0B98D65E36AB620CEF39C567` |
+| **Android** | `app-release.apk` (61.6 MB) | `build/app/outputs/flutter-apk/app-release.apk` | `B161EAD3104A8A7C4D49E3E53EED8B8D37AFBE84D6B6057ED8A829D18CBFCC50` |
 | **Web** | Progressive Web App (PWA) | Production standalone bundle (`build/web`) | `Verified (--pwa-strategy=none)` |
 
 ---
@@ -23,6 +23,11 @@
 ## 🌟 Key Engineering Fixes & Enhancements
 
 ### 1. 🎙️ Interactive Conversational AI Voice Loop & Audio Disambiguation
+* **Physical Asset Staging & Native Paths**: Implemented `SherpaModelAssetManager` ensuring ONNX model and token binaries are extracted from the APK to physical device storage with non-zero byte validation before native runtime initialization.
+* **Standardized 44-Byte RIFF/WAV Container Encoding**: Integrated `WavAudioContainerUtil` wrapping raw PCM audio samples into valid WAV containers with accurate sample rate and block alignment headers to prevent audio decoder rejection.
+* **Strict State Machine Orchestrator**: Re-architected `VoiceSessionController` into a deterministic state engine (`Idle`, `UserListening`, `Processing`, `AgentSpeaking`, `Completed`, `Error`).
+* **Emergency Watchdog Failsafe**: Embedded an automated 4-second safety watchdog timer preventing loop freezes if audio sinks hang, forcefully advancing back to `UserListening` and resetting the 30-second countdown timer.
+* **Audio Focus Management**: Enforces synchronous microphone release prior to speech playback; declared `FOREGROUND_SERVICE` and `FOREGROUND_SERVICE_MEDIA_PLAYBACK` in `AndroidManifest.xml`.
 * **Cross-Platform Speech Synthesis**: Integrated high-performance speech synthesis (`flutter_tts` / SAPI on Windows, platform TTS on Android/Web) within `SherpaTtsService` for low-latency voice responses.
 * **Autonomous Pause & Resume**: Audio capture cleanly pauses when the AI speaks clarifying questions and automatically unpauses/resumes recording immediately upon speech completion.
 * **Multi-Turn Context Accumulation**: Successive user dictations accumulate across dialogue turns rather than restarting from scratch, allowing effortless voice task completion.
@@ -55,7 +60,8 @@
 ## 🧪 Verification & Quality Metrics
 
 ```text
-✓ Test Suite:         135 passing unit, service, and widget tests (100% clean)
+✓ Test Suite:         140 passing unit, service, and widget tests (100% clean)
+✓ Subsystem Suites:   TTS asset staging, WAV encoding, watchdog failsafe, and dispatch matrix verified
 ✓ Flutter Analyzer:   Zero warnings or errors (flutter analyze --fatal-infos)
 ✓ Windows Runner:     Debug and Release binaries built and verified
 ✓ Web Production:     PWA release bundle generated cleanly

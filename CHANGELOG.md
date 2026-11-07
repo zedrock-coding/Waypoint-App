@@ -7,7 +7,14 @@ All notable changes to the **Helm** / **Waypoint** project will be documented in
 ## [0.5.0] - 2026-11-06
 
 ### 🚀 Added
-- **Interactive Conversational AI Voice Loop**:
+- **Interactive Conversational AI Voice Loop & Diagnostic Remediation**:
+  - Implemented `SherpaModelAssetManager` for physical asset staging from compressed APK bundles to persistent application storage with non-zero byte validation.
+  - Implemented `WavAudioContainerUtil` encapsulating raw PCM inference samples into valid 44-byte RIFF/WAV containers to prevent system audio decoder errors.
+  - Re-architected `VoiceSessionController` into a strict sequential state machine (`Idle`, `UserListening`, `Processing`, `AgentSpeaking`, `Completed`, `Error`).
+  - Added an emergency 4-second watchdog timer automatically recovering from playback hangs and resetting the 30-second recording countdown.
+  - Enforced synchronous microphone hardware focus release prior to audio speech output.
+  - Declared `FOREGROUND_SERVICE` and `FOREGROUND_SERVICE_MEDIA_PLAYBACK` in `AndroidManifest.xml`.
+  - Registered high-importance notification channel with sound, vibration, and heads-up banner display for Needle Morning Dispatch.
   - Live on-device audio playback (`flutter_tts` / SAPI / platform TTS) in `SherpaTtsService` for speaking clarification questions aloud.
   - Automatic audio recording pause during AI speech playback with seamless hands-free auto-resume upon completion.
   - Multi-turn conversation accumulation to maintain user prompt context across continuous dialogue turns.

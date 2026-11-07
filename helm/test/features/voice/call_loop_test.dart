@@ -28,7 +28,7 @@ void main() {
 
       // Controller should detect missing time and transition to speakingDisambiguation
       expect(controller.state, VoiceSessionState.speakingDisambiguation);
-      expect(controller.status, VoiceSessionStatus.speakingDisambiguation);
+      expect(controller.status, VoiceSessionStatus.agentSpeaking);
       expect(controller.isSpeakingDisambiguation, isTrue);
       expect(controller.lastQuestion, isNotNull);
       expect(mockTts.isSpeaking, isTrue);

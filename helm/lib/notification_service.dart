@@ -77,6 +77,19 @@ class NotificationService {
             }
           },
         );
+        final androidPlugin = _notificationsPlugin.resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>();
+        if (androidPlugin != null) {
+          const AndroidNotificationChannel dispatchChannel = AndroidNotificationChannel(
+            NeedleMorningDispatchService.channelId,
+            NeedleMorningDispatchService.channelName,
+            description: 'Daily morning briefing and task alerts',
+            importance: Importance.max,
+            playSound: true,
+            enableVibration: true,
+          );
+          await androidPlugin.createNotificationChannel(dispatchChannel);
+        }
       }
     } catch (e) {
       debugPrint('NotificationService init error: $e');

@@ -10,8 +10,20 @@ import '../services/tts_service.dart';
 
 enum VoiceSessionStatus {
   idle,
-  listening,
   userListening,
+  processing,
+  agentSpeaking,
+  completed,
+  error,
+  // Backwards compatibility aliases
+  listening,
+  speakingDisambiguation,
+  taskCreated,
+}
+
+enum VoiceSessionState {
+  idle,
+  listening,
   processing,
   speakingDisambiguation,
   agentSpeaking,
@@ -20,25 +32,18 @@ enum VoiceSessionStatus {
   error,
 }
 
-enum VoiceSessionState {
-  idle,
-  listening,
-  processing,
-  speakingDisambiguation,
-  taskCreated,
-  error,
-}
-
 class VoiceSessionController extends ChangeNotifier {
   final TaskExtractionParser _parser;
   final ITextToSpeechService _ttsService;
   final AudioCacheManager? _cacheManager;
   final String sessionId;
+  final Duration watchdogDuration;
 
   VoiceSessionStatus _status = VoiceSessionStatus.idle;
   VoiceSessionState _state = VoiceSessionState.idle;
   Duration _remaining = const Duration(seconds: 30);
   Timer? _countdownTimer;
+  Timer? _watchdogTimer;
   final Stopwatch _stopwatch = Stopwatch();
 
   String _accumulatedTranscript = '';
@@ -46,12 +51,14 @@ class VoiceSessionController extends ChangeNotifier {
   ExtractedTaskResult? _currentTaskResult;
   String? _lastQuestion;
   String? _confirmationMessage;
+  bool _watchdogFired = false;
 
   VoiceSessionController({
     TaskExtractionParser? parser,
     ITextToSpeechService? ttsService,
     AudioCacheManager? cacheManager,
     String? sessionId,
+    this.watchdogDuration = const Duration(seconds: 4),
   })  : _parser = parser ?? TaskExtractionParser(),
         _ttsService = ttsService ?? SherpaTtsService(),
         _cacheManager = cacheManager,
@@ -67,10 +74,13 @@ class VoiceSessionController extends ChangeNotifier {
       _status == VoiceSessionStatus.listening;
   bool get isSpeakingDisambiguation =>
       _state == VoiceSessionState.speakingDisambiguation ||
+      _state == VoiceSessionState.agentSpeaking ||
+      _status == VoiceSessionStatus.agentSpeaking ||
       _status == VoiceSessionStatus.speakingDisambiguation;
   bool get isTaskCreated =>
       _state == VoiceSessionState.taskCreated ||
       _status == VoiceSessionStatus.taskCreated;
+  bool get watchdogFired => _watchdogFired;
 
   ExtractedTaskResult? get currentTaskResult => _currentTaskResult;
   String get accumulatedTranscript => _accumulatedTranscript;
@@ -85,6 +95,7 @@ class VoiceSessionController extends ChangeNotifier {
     _currentTaskResult = null;
     _lastQuestion = null;
     _confirmationMessage = null;
+    _watchdogFired = false;
     _startListeningTurn();
   }
 
@@ -123,6 +134,9 @@ class VoiceSessionController extends ChangeNotifier {
   Future<void> processUserInput(String input, {List<int>? audioBytes}) async {
     _countdownTimer?.cancel();
     _stopwatch.stop();
+    _status = VoiceSessionStatus.processing;
+    _state = VoiceSessionState.processing;
+    notifyListeners();
 
     if (_accumulatedTranscript.isEmpty) {
       _accumulatedTranscript = input.trim();
@@ -136,7 +150,7 @@ class VoiceSessionController extends ChangeNotifier {
       final question = _currentTaskResult!.disambiguationPrompt ??
           'When would you like this scheduled?';
       _lastQuestion = question;
-      _status = VoiceSessionStatus.speakingDisambiguation;
+      _status = VoiceSessionStatus.agentSpeaking;
       _state = VoiceSessionState.speakingDisambiguation;
       notifyListeners();
 
@@ -145,8 +159,18 @@ class VoiceSessionController extends ChangeNotifier {
       }
 
       _currentChunkIndex++;
-      await _ttsService.speak(question);
-      onTtsCompleted();
+
+      // Arm emergency watchdog failsafe timer
+      _armWatchdogTimer();
+
+      try {
+        await _ttsService.speak(question);
+      } catch (e) {
+        debugPrint('VoiceSessionController: TTS synthesis error: $e');
+      } finally {
+        _watchdogTimer?.cancel();
+        onTtsCompleted();
+      }
     } else {
       final title = _currentTaskResult!.title;
       final timeStr = _currentTaskResult!.dueDate != null
@@ -164,10 +188,29 @@ class VoiceSessionController extends ChangeNotifier {
         await _cacheManager.purgeSession(sessionId);
       }
 
-      await _ttsService.speak(_confirmationMessage!);
+      try {
+        await _ttsService.speak(_confirmationMessage!);
+      } catch (_) {}
+
       _status = VoiceSessionStatus.completed;
+      _state = VoiceSessionState.completed;
       notifyListeners();
     }
+  }
+
+  void _armWatchdogTimer() {
+    _watchdogTimer?.cancel();
+    _watchdogTimer = Timer(watchdogDuration, () {
+      if (_status == VoiceSessionStatus.agentSpeaking ||
+          _status == VoiceSessionStatus.speakingDisambiguation ||
+          _state == VoiceSessionState.speakingDisambiguation) {
+        debugPrint(
+            'VoiceSessionController: Watchdog safety timer triggered: TTS playback did not complete in ${watchdogDuration.inSeconds}s. Recovering...');
+        _watchdogFired = true;
+        _ttsService.stop();
+        onTtsCompleted();
+      }
+    });
   }
 
   String _formatTime(DateTime dt) {
@@ -178,8 +221,10 @@ class VoiceSessionController extends ChangeNotifier {
   }
 
   void onTtsCompleted() {
+    _watchdogTimer?.cancel();
     if (_state == VoiceSessionState.speakingDisambiguation ||
-        _status == VoiceSessionStatus.speakingDisambiguation) {
+        _status == VoiceSessionStatus.speakingDisambiguation ||
+        _status == VoiceSessionStatus.agentSpeaking) {
       _startListeningTurn();
     }
   }
@@ -191,13 +236,14 @@ class VoiceSessionController extends ChangeNotifier {
       _startListeningTurn();
     } else {
       _status = VoiceSessionStatus.completed;
-      _state = VoiceSessionState.taskCreated;
+      _state = VoiceSessionState.completed;
       notifyListeners();
     }
   }
 
   void endCall() {
     _countdownTimer?.cancel();
+    _watchdogTimer?.cancel();
     _stopwatch.stop();
     _status = VoiceSessionStatus.idle;
     _state = VoiceSessionState.idle;
@@ -207,6 +253,7 @@ class VoiceSessionController extends ChangeNotifier {
   @override
   void dispose() {
     _countdownTimer?.cancel();
+    _watchdogTimer?.cancel();
     _stopwatch.stop();
     super.dispose();
   }

@@ -305,7 +305,11 @@ class _CommandBarWidgetState extends State<CommandBarWidget>
 
         // 1. Spoken clarification question aloud ("audio talk back")
         try {
-          await _ttsService.speak(msg);
+          await _ttsService
+              .speak(msg)
+              .timeout(const Duration(seconds: 4), onTimeout: () {
+            debugPrint('CommandBar TTS playback timed out. Recovering...');
+          });
         } catch (e) {
           debugPrint('CommandBar TTS playback error: $e');
         }
