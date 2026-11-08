@@ -1,50 +1,75 @@
-# Helm 3.0 - The Public Launch 🚀
+# Waypoint 0.5.0 - Production Release 🚀
 
-**Helm 3.0** marks our first official public release! We've evolved from a simple task tracker into a comprehensive, AI-powered team orchestration workspace. Optimized for **Android**, **Windows**, and **Web**, Helm provides a professional, reactive experience for real-time team collaboration and personal productivity.
+**Waypoint 0.5.0** is an AI-orchestrated task management workspace. Evolved from Helm into a comprehensive, AI-powered team orchestration system. Optimized for **Android**, **Windows**, and **Web**, Waypoint provides a professional, reactive experience for real-time team collaboration and personal productivity.
 
 ![Aesthetic](https://img.shields.io/badge/Aesthetic-Slate%20%26%20Mint-88C0A4)
 ![Platform](https://img.shields.io/badge/Platform-Android%20%7C%20Windows%20%7C%20Web-blue)
 ![Version](https://img.shields.io/badge/Version-v0.5.0-green)
+![License](https://img.shields.io/badge/License-Source--Available-orange)
 
-## 🌟 Major Highlights for the Public Launch
+---
 
-### 🤖 Generative AI Command Center
-*   **Voice & Text Orchestration**: Create complex tasks using natural language. Powered by **Gemini 1.5 Flash**.
-*   **Context-Aware Parsing**: The AI understands your communities and team members, allowing commands like *"Assign a high priority bug fix to Shivam by Friday"*.
+## 📥 Download & Live Access (v0.5.0)
 
-### 📅 Interactive Task Calendar
-*   **Monthly Timeline**: Visualize your deadlines with a dedicated monthly calendar view.
-*   **Subtle Status Badges**: Quickly identify days with pending or urgent tasks.
-*   **Date-Based Filtering**: Tap any day to see exactly what's due, or view all tasks with a single click.
+Get the latest production build for your platform directly from the [Waypoint Releases](https://github.com/zedrock-coding/Waypoint-App/releases/latest) page:
 
-### 💬 Community Discussion & 2-Comment Limit
-*   **Task-Specific Chat**: Discuss details directly on the task card.
-*   **Smart Discussion Reset**: Encourages action over endless chatter. Users have a 2-comment limit that resets automatically whenever the task is updated (status, title, or subtasks).
+| Platform | Type | Direct Download Link |
+| :--- | :--- | :--- |
+| **Android** | APK (`v0.5.0`) | [📲 Download Android APK](https://github.com/zedrock-coding/Waypoint-App/releases/latest/download/waypoint-v0.5.0.apk) |
+| **Windows** | Executable (`v0.5.0`) | [💻 Download Windows App](https://github.com/zedrock-coding/Waypoint-App/releases/latest/download/waypoint-v0.5.0.exe) |
+| **Web** | Live Production PWA | [🌐 Launch Web App](https://helm-omega-blue.vercel.app) |
 
-### 🛡️ Weighted Role-Based Access (RBAC)
-*   **Hierarchy of Authority**: Introduced **Owner**, **Admin**, and **Member** roles.
-*   **Security Lockdown**: Tasks created by high-authority roles (Owners/Admins) are read-only for standard members to maintain project integrity.
+*Local Repository Mirrors*:
+* 🪟 Windows Installer: [`Waypoint-v0.5.0-Setup.exe`](releases/Waypoint-v0.5.0-Setup.exe)
+* 📱 Android APK: [`waypoint-v0.5.0.apk`](releases/waypoint-v0.5.0.apk)
 
-### 🖼️ Profile & Identity
-*   **Global Avatars**: Fully functional profile picture system with auto-compression and Supabase storage.
-*   **Initial Fallbacks**: WhatsApp-style colored avatars for users who haven't uploaded a photo yet.
+---
+
+## 🌟 What's New in 0.5.0
+
+### 🎙️ Conversational Call-Style Multi-Turn Voice Loop
+*   **Symmetrical Context Tracking**: Captures both user utterances and assistant clarification turns in session history.
+*   **Deep Draft Delta-Merging**: Retains captured titles, descriptions, and tags across follow-up disambiguation turns without overwriting data.
+*   **Audio Focus Synchronization**: Dynamic TTS speech watchdogs scaled to text length with 500ms hardware drain delay to prevent audio clipping.
+*   **Sub-Second Voice Processing**: Pre-flight remote queries replaced with local Hive caching; audio Base64 encoding offloaded to background Dart isolates.
+
+### 🧠 Natural Language & Heuristic Parsing Engine
+*   **Flexible Time & Date Recognition**: Supports relative weekdays (`next monday`), 12-hour clock (`5pm`, `9:30 am`), and 24-hour formats (`17:30`).
+*   **Standalone Priority Detection**: Automatically extracts priority words (`urgent`, `critical`, `high`, `medium`, `low`) without requiring syntax prefixes.
+*   **Graceful Default Fallback**: Defaults missing priority to `medium` when deadline is specified, eliminating redundant conversational loops.
+
+### ⚡ Performance & Caching Engine
+*   **Skeleton Loaders**: Integrated animated `TaskCardSkeleton` layouts to eliminate perceived network latency during initial fetch.
+*   **Request Deduplication & Debouncing**: In-flight concurrent duplicate query collapsing and keystroke debouncing for search inputs.
+*   **Immutable CDN Edge Caching**: Optimized cache headers configured in `vercel.json` for web assets and font pre-fetching.
+
+### 🛡️ Enterprise Data Protection & Reliability
+*   **Soft Deletion Safeguards**: Soft deletes using `deleted_at` timestamps with automatic filter enforcement.
+*   **Mutation Audit Logs (CDC)**: Database triggers track row changes into dedicated audit tables.
+*   **Batch Ceilings & Typed Safeguards**: Enforces strict mutation batch ceilings (100 rows per transaction) and prevents accidental cascade drops.
 
 ---
 
 ## 🛠 Tech Stack
 *   **Framework**: Flutter (Material 3)
-*   **AI Engine**: Google Generative AI 
+*   **AI Engine**: Gemini (`gemini-3.5-flash-lite`) proxied via Supabase Edge Functions
 *   **Cloud Backend**: Supabase (PostgreSQL, Realtime, RLS, Storage)
 *   **Local Storage**: Hive (Reactive high-speed NoSQL)
-*   **State Management**: Provider
+*   **State Management**: Provider (`ChangeNotifier`)
+*   **Voice & Audio**: Native Sherpa-ONNX TTS runtime and `audio_session` focus orchestration
 
 ---
 
 ## 🔐 Security & Integrity
-Helm 3.0 utilizes PostgreSQL Security Definer functions and strict Row Level Security (RLS) to ensure your team's data is isolated and protected against unauthorized access.
+Waypoint utilizes PostgreSQL Security Definer functions and strict Row Level Security (RLS) to ensure workspace isolation and tamper-proof multi-tenant security.
 
-## 📥 Downloads (v0.5.0)
+---
 
-* 🪟 **Windows**: [`Waypoint-v0.5.0-Setup.exe`](releases/Waypoint-v0.5.0-Setup.exe)
-* 📱 **Android**: [`waypoint-v0.5.0.apk`](releases/waypoint-v0.5.0.apk)
+## 📄 License
 
+Waypoint is **source-available, not open source**.
+
+- **Source code**: proprietary, all rights reserved.
+- **Compiled builds**: free to download, install, and use for personal or commercial purposes.
+
+See [`LICENSE`](LICENSE) for complete terms.
