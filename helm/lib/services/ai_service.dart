@@ -191,11 +191,18 @@ class AiService {
     Uint8List? audioBytes,
     String? audioMimeType,
   }) async {
+    String? audioBase64;
+    if (audioBytes != null) {
+      audioBase64 = audioBytes.length > 50000
+          ? await compute(base64Encode, audioBytes)
+          : base64Encode(audioBytes);
+    }
+
     final body = <String, dynamic>{
       'prompt': prompt,
-      if (audioBytes != null) ...{
-        'audio_base64': base64Encode(audioBytes),
-        'audio_mime_type': audioMimeType ?? detectMimeType(audioBytes),
+      if (audioBase64 != null) ...{
+        'audio_base64': audioBase64,
+        'audio_mime_type': audioMimeType ?? detectMimeType(audioBytes!),
       },
     };
 

@@ -87,9 +87,9 @@ class LocalHeuristicParser implements NeedleEngine {
 
     // 2. Rule-based priority extraction
     if (templateContext?['priority'] == null) {
-      if (lower.contains('urgent') || lower.contains('high priority') || lower.contains('asap')) {
+      if (RegExp(r'\b(urgent|critical|asap|high(\s+priority)?)\b').hasMatch(lower)) {
         priorityStr = 'HIGH';
-      } else if (lower.contains('low priority') || lower.contains('when possible') || lower.contains('minor')) {
+      } else if (RegExp(r'\b(low(\s+priority)?|minor|when possible)\b').hasMatch(lower)) {
         priorityStr = 'LOW';
       } else {
         priorityStr = 'MEDIUM';

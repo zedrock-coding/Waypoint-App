@@ -19,6 +19,7 @@ import 'services/task_rules.dart';
 import 'providers/task_provider.dart';
 
 import 'widgets/task_item_card.dart';
+import 'widgets/task_card_skeleton.dart';
 import 'widgets/app_snackbar.dart';
 import 'widgets/empty_states.dart';
 import 'widgets/velocity_dashboard.dart';
@@ -290,10 +291,10 @@ class _MyHomePageState extends State<MyHomePage> {
   Future<void> _requestNotificationPermissionOnce() async {
     if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) return;
     if (Supabase.instance.client.auth.currentUser == null) return;
-    if (!Hive.isBoxOpen('settings')) return;
+    if (!Hive.isBoxOpen('user_stats')) return;
 
-    final settingsBox = Hive.box('settings');
-    if (settingsBox.get('notification_permission_requested') == true) return;
+    final statsBox = Hive.box('user_stats');
+    if (statsBox.get('notification_permission_requested') == true) return;
 
     if (!mounted) return;
     final wantsReminders = await showDialog<bool>(
@@ -320,7 +321,7 @@ class _MyHomePageState extends State<MyHomePage> {
     if (wantsReminders == true) {
       await NotificationService().requestPermissions();
     }
-    await settingsBox.put('notification_permission_requested', true);
+    await statsBox.put('notification_permission_requested', true);
   }
 
   @override
@@ -510,7 +511,10 @@ class _MyHomePageState extends State<MyHomePage> {
       stream: taskProvider.communityTasksStream(communityId),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
+          return const Padding(
+            padding: EdgeInsets.only(top: 8.0),
+            child: TaskCardSkeleton(count: 4),
+          );
         }
         
         final tasks = snapshot.data ?? [];

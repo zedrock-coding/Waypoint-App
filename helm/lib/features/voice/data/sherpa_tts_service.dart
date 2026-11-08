@@ -143,11 +143,12 @@ class SherpaTtsService implements ITextToSpeechService {
       } else if (_flutterTts != null) {
         _speakCompleter = Completer<void>();
 
-        // Failsafe watchdog timer (4 seconds) prevents freezing if playback hangs
-        watchdogTimer = Timer(const Duration(seconds: 4), () {
+        // Failsafe watchdog timer dynamically scaled to utterance length (min 7s, +80ms per char)
+        final timeoutMs = 7000 + (cleanText.length * 80);
+        watchdogTimer = Timer(Duration(milliseconds: timeoutMs), () {
           if (_isPlaying) {
             debugPrint(
-                'SherpaTtsService: Watchdog timeout (4s) fired. Forcefully advancing state.');
+                'SherpaTtsService: Watchdog timeout (${timeoutMs}ms) fired. Forcefully advancing state.');
             _isPlaying = false;
             _finishSpeaking();
           }

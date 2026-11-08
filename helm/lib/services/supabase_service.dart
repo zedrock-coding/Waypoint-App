@@ -1,8 +1,10 @@
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'request_deduplicator.dart';
 
 class SupabaseService {
   static final client = Supabase.instance.client;
+  final RequestDeduplicator _deduplicator = RequestDeduplicator.instance;
 
   /// Short-lived roster cache. Every task card used to refetch the same member
   /// list, and the assignee avatar had no name to show at all. Keyed by
@@ -19,16 +21,18 @@ class SupabaseService {
   }
 
   /// Fetch all communities the current logged-in user is a member of.
-  Future<List<Map<String, dynamic>>> fetchUserCommunities() async {
+  Future<List<Map<String, dynamic>>> fetchUserCommunities() {
     final userId = client.auth.currentUser?.id;
-    if (userId == null) return [];
+    if (userId == null) return Future.value([]);
 
-    try {
-      return await _fetchCommunitiesWithRetry();
-    } catch (e) {
-      debugPrint('Error fetching communities: $e');
-      return [];
-    }
+    return _deduplicator.run('fetchUserCommunities:$userId', () async {
+      try {
+        return await _fetchCommunitiesWithRetry();
+      } catch (e) {
+        debugPrint('Error fetching communities: $e');
+        return [];
+      }
+    });
   }
 
   Future<List<Map<String, dynamic>>> _fetchCommunitiesWithRetry({int retries = 2}) async {
@@ -112,26 +116,31 @@ class SupabaseService {
   }
 
   /// Fetch all members across all communities the user belongs to.
-  Future<List<Map<String, dynamic>>> fetchAllAccessibleMembers() async {
-    try {
-      final communities = await fetchUserCommunities().timeout(const Duration(seconds: 5));
-      final List<Map<String, dynamic>> allMembers = [];
-      final Set<String> seenUserIds = {};
+  Future<List<Map<String, dynamic>>> fetchAllAccessibleMembers() {
+    final userId = client.auth.currentUser?.id;
+    if (userId == null) return Future.value([]);
 
-      for (var community in communities) {
-        final members = await getCommunityMembers(community['id']).timeout(const Duration(seconds: 3));
-        for (var member in members) {
-          if (!seenUserIds.contains(member['user_id'])) {
-            allMembers.add(member);
-            seenUserIds.add(member['user_id']);
+    return _deduplicator.run('fetchAllAccessibleMembers:$userId', () async {
+      try {
+        final communities = await fetchUserCommunities().timeout(const Duration(seconds: 5));
+        final List<Map<String, dynamic>> allMembers = [];
+        final Set<String> seenUserIds = {};
+
+        for (var community in communities) {
+          final members = await getCommunityMembers(community['id']).timeout(const Duration(seconds: 3));
+          for (var member in members) {
+            if (!seenUserIds.contains(member['user_id'])) {
+              allMembers.add(member);
+              seenUserIds.add(member['user_id']);
+            }
           }
         }
+        return allMembers;
+      } catch (e) {
+        debugPrint('SupabaseService: Context fetch timed out or failed: $e');
+        return []; // Return empty context rather than hanging
       }
-      return allMembers;
-    } catch (e) {
-      debugPrint('SupabaseService: Context fetch timed out or failed: $e');
-      return []; // Return empty context rather than hanging
-    }
+    });
   }
 
   /// Join a community via invite ID.

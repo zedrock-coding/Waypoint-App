@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Helm Feedback Dashboard</title>
+    <title>Helm Operator Console & Feedback Dashboard</title>
     <!-- Use a specific version to ensure stability -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.1/dist/umd/supabase.js"></script>
     <style>
@@ -14,6 +14,7 @@
             --text-color: #FFFFFF;
             --text-secondary: #A0A2A4;
             --error-color: #FF6B6B;
+            --warning-color: #FFA500;
         }
 
         body {
@@ -21,24 +22,53 @@
             background-color: var(--bg-color);
             color: var(--text-color);
             margin: 0;
-            padding: 40px;
+            padding: 0 0 40px 0;
+        }
+
+        /* Video 4 Safeguard 2: Environment Banner */
+        .env-banner {
+            background: linear-gradient(90deg, #B71C1C, #D32F2F);
+            color: #FFFFFF;
+            text-align: center;
+            padding: 10px 16px;
+            font-weight: 800;
+            font-size: 13px;
+            letter-spacing: 1px;
+            border-bottom: 2px solid #FF8A80;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 24px;
         }
 
         .header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            max-width: 1200px;
-            margin: 0 auto 40px;
+            margin-bottom: 30px;
         }
 
         .auth-panel {
             background-color: var(--surface-color);
             padding: 20px;
             border-radius: 12px;
-            margin: 0 auto 40px;
-            max-width: 600px;
+            margin-bottom: 30px;
             border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        /* Video 4 Safeguard 9 & 10: Mutation Guardrails */
+        .ops-panel {
+            background-color: rgba(183, 28, 28, 0.15);
+            border: 1px solid rgba(255, 107, 107, 0.4);
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 30px;
         }
 
         input {
@@ -54,22 +84,37 @@
 
         h1 { color: var(--primary-color); margin: 0; }
 
-        .refresh-btn {
-            background-color: var(--primary-color);
-            color: var(--bg-color);
+        .btn {
             border: none;
             padding: 10px 20px;
             border-radius: 8px;
             font-weight: bold;
             cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        .btn:hover { opacity: 0.9; }
+
+        .refresh-btn {
+            background-color: var(--primary-color);
+            color: var(--bg-color);
+        }
+
+        .danger-btn {
+            background-color: var(--error-color);
+            color: #FFFFFF;
+        }
+
+        .danger-btn:disabled {
+            background-color: #555;
+            cursor: not-allowed;
+            opacity: 0.5;
         }
 
         .feedback-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
             gap: 24px;
-            max-width: 1200px;
-            margin: 0 auto;
         }
 
         .card {
@@ -101,36 +146,121 @@
             margin-bottom: 20px;
             display: none;
         }
+
+        .preview-badge {
+            display: inline-block;
+            background-color: rgba(255,255,255,0.1);
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            margin-top: 6px;
+        }
     </style>
 </head>
 <body>
-    <div class="header">
-        <h1>Feedback Dashboard</h1>
-        <button class="refresh-btn" onclick="fetchFeedback()">REFRESH</button>
+    <!-- Video 4 Safeguard 2: Environment Banner -->
+    <div class="env-banner">
+        🔴 LIVE PRODUCTION ENVIRONMENT • PROJECT: eknzdxexfcfdmqvbyvxt • ALL ACTIONS ARE AUDITED
     </div>
 
-    <div class="auth-panel">
-        <label style="font-size: 12px; font-weight: bold;">SUPABASE SERVICE ROLE KEY</label>
-        <input type="password" id="service-key" placeholder="Paste your service_role key here to bypass RLS">
-        <p style="font-size: 11px; color: var(--text-secondary); margin-top: 8px;">
-            Operator tool. Open this file locally from <code>tools/admin/</code> — it is not part of the
-            Flutter web build and must never be deployed. Use the <b>service_role</b> key from your
-            Supabase Project Settings &gt; API; it is held in memory only and never persisted.
-        </p>
-    </div>
+    <div class="container">
+        <div class="header">
+            <h1>Helm Operator Console</h1>
+            <button class="btn refresh-btn" onclick="fetchFeedback()">REFRESH DATA</button>
+        </div>
 
-    <div id="error-banner" class="error-banner"></div>
-    <div id="loading" style="text-align: center; color: var(--text-secondary); margin-top: 40px;">Enter your key and click Refresh.</div>
-    <div class="feedback-grid" id="feedback-grid"></div>
+        <div class="auth-panel">
+            <label style="font-size: 12px; font-weight: bold;">SUPABASE SERVICE ROLE KEY</label>
+            <input type="password" id="service-key" placeholder="Paste service_role key to authenticate">
+            <p style="font-size: 11px; color: var(--text-secondary); margin-top: 8px;">
+                Operator tool. Open locally from <code>tools/admin/</code> — never deployed to public web.
+                Held in volatile memory only.
+            </p>
+        </div>
+
+        <!-- Video 4 Safeguard 9 (Impact Previews) & Safeguard 10 (Typed Confirmation Strings) -->
+        <div class="ops-panel">
+            <h3 style="margin-top:0; color: var(--error-color);">Destructive Operations Safeguard Gate</h3>
+            <p style="font-size: 13px; color: var(--text-secondary); margin: 0 0 12px 0;">
+                To execute bulk cleanup or deletion, preview affected rows and type <b>DELETE</b> to unlock.
+            </p>
+            <div style="display: flex; gap: 12px; align-items: center; margin-bottom: 12px;">
+                <button class="btn" style="background:#444; color:#fff;" onclick="previewFeedbackCount()">Impact Preview (Count Records)</button>
+                <span id="preview-result" class="preview-badge">No preview requested</span>
+            </div>
+            <div style="display: flex; gap: 12px; align-items: center;">
+                <input type="text" id="confirm-type" placeholder='Type "DELETE" here' style="width: 200px; margin-top:0;" oninput="onConfirmInput()">
+                <button id="purge-btn" class="btn danger-btn" disabled onclick="executeDestructivePurge()">Execute Operation</button>
+            </div>
+        </div>
+
+        <div id="error-banner" class="error-banner"></div>
+        <div id="loading" style="text-align: center; color: var(--text-secondary); margin-top: 40px;">Enter your key and click Refresh.</div>
+        <div class="feedback-grid" id="feedback-grid"></div>
+    </div>
 
     <script>
         const supabaseUrl = 'https://eknzdxexfcfdmqvbyvxt.supabase.co';
-
-        // Feedback rows are attacker-controlled (anyone can insert through the
-        // public feedback form). Never interpolate them into innerHTML: build
-        // DOM nodes and assign textContent so a malicious payload is rendered
-        // as inert text instead of executing and stealing the service_role key.
         const EMAIL_PATTERN = /^[^\s@<>"']+@[^\s@<>"']+\.[^\s@<>"']+$/;
+
+        function getClient() {
+            const serviceKey = document.getElementById('service-key').value.trim();
+            if (!serviceKey) return null;
+            return typeof supabase !== 'undefined'
+                ? supabase.createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } })
+                : null;
+        }
+
+        function onConfirmInput() {
+            const val = document.getElementById('confirm-type').value.trim();
+            const btn = document.getElementById('purge-btn');
+            btn.disabled = (val !== 'DELETE');
+        }
+
+        async function previewFeedbackCount() {
+            const client = getClient();
+            const badge = document.getElementById('preview-result');
+            if (!client) {
+                alert('Enter service_role key first.');
+                return;
+            }
+            badge.textContent = 'Counting rows...';
+            try {
+                const { count, error } = await client
+                    .from('feedback')
+                    .select('*', { count: 'exact', head: true });
+                if (error) throw error;
+                badge.textContent = `Target impact: ${count} feedback record(s) found`;
+            } catch (err) {
+                badge.textContent = 'Preview error: ' + err.message;
+            }
+        }
+
+        async function executeDestructivePurge() {
+            const val = document.getElementById('confirm-type').value.trim();
+            if (val !== 'DELETE') return;
+
+            const client = getClient();
+            if (!client) return;
+
+            if (!confirm('FINAL CONFIRMATION: Are you certain you want to purge old test feedback?')) {
+                return;
+            }
+
+            try {
+                const { error } = await client
+                    .from('feedback')
+                    .delete()
+                    .lt('created_at', new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString());
+                if (error) throw error;
+                alert('Operation complete.');
+                document.getElementById('confirm-type').value = '';
+                onConfirmInput();
+                fetchFeedback();
+            } catch (err) {
+                alert('Operation failed: ' + err.message);
+            }
+        }
 
         function el(tag, className, text) {
             const node = document.createElement(tag);
@@ -165,12 +295,12 @@
         }
 
         async function fetchFeedback() {
-            const serviceKey = document.getElementById('service-key').value.trim();
             const grid = document.getElementById('feedback-grid');
             const loading = document.getElementById('loading');
             const errorBanner = document.getElementById('error-banner');
+            const client = getClient();
 
-            if (!serviceKey) {
+            if (!client) {
                 alert('Please enter your service_role key first.');
                 return;
             }
@@ -181,13 +311,6 @@
             loading.innerText = 'Fetching from cloud...';
 
             try {
-                // Initialize client with the provided key
-                const client = typeof supabase !== 'undefined'
-                    ? supabase.createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } })
-                    : null;
-
-                if (!client) throw new Error('Supabase library failed to load. Check your internet connection.');
-
                 const { data, error } = await client
                     .from('feedback')
                     .select('*')

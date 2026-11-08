@@ -47,6 +47,7 @@ class VoiceSessionController extends ChangeNotifier {
   final Stopwatch _stopwatch = Stopwatch();
 
   String _accumulatedTranscript = '';
+  final List<Map<String, String>> _conversationHistory = [];
   int _currentChunkIndex = 0;
   ExtractedTaskResult? _currentTaskResult;
   String? _lastQuestion;
@@ -79,11 +80,14 @@ class VoiceSessionController extends ChangeNotifier {
       _status == VoiceSessionStatus.speakingDisambiguation;
   bool get isTaskCreated =>
       _state == VoiceSessionState.taskCreated ||
-      _status == VoiceSessionStatus.taskCreated;
+      _state == VoiceSessionState.completed ||
+      _status == VoiceSessionStatus.taskCreated ||
+      _status == VoiceSessionStatus.completed;
   bool get watchdogFired => _watchdogFired;
 
   ExtractedTaskResult? get currentTaskResult => _currentTaskResult;
   String get accumulatedTranscript => _accumulatedTranscript;
+  List<Map<String, String>> get conversationHistory => List.unmodifiable(_conversationHistory);
   int get currentChunkIndex => _currentChunkIndex;
   String? get lastQuestion => _lastQuestion;
   String? get confirmationMessage => _confirmationMessage;
@@ -91,6 +95,7 @@ class VoiceSessionController extends ChangeNotifier {
 
   void startCall() {
     _accumulatedTranscript = '';
+    _conversationHistory.clear();
     _currentChunkIndex = 0;
     _currentTaskResult = null;
     _lastQuestion = null;
@@ -138,18 +143,43 @@ class VoiceSessionController extends ChangeNotifier {
     _state = VoiceSessionState.processing;
     notifyListeners();
 
+    final cleanInput = input.trim();
     if (_accumulatedTranscript.isEmpty) {
-      _accumulatedTranscript = input.trim();
+      _accumulatedTranscript = cleanInput;
     } else {
-      _accumulatedTranscript = '$_accumulatedTranscript ${input.trim()}';
+      _accumulatedTranscript = '$_accumulatedTranscript $cleanInput';
     }
 
-    _currentTaskResult = _parser.parse(_accumulatedTranscript);
+    _conversationHistory.add({'role': 'user', 'content': cleanInput});
+
+    final newResult = _parser.parse(_accumulatedTranscript);
+    if (_currentTaskResult != null &&
+        _currentTaskResult!.title.isNotEmpty &&
+        _currentTaskResult!.title != 'New Task') {
+      _currentTaskResult = ExtractedTaskResult(
+        title: _currentTaskResult!.title,
+        description: _currentTaskResult!.description.isNotEmpty
+            ? _currentTaskResult!.description
+            : newResult.description,
+        dueDate: newResult.dueDate ?? _currentTaskResult!.dueDate,
+        priority: (newResult.priority.isNotEmpty && newResult.priority != 'medium')
+            ? newResult.priority
+            : _currentTaskResult!.priority,
+        subtasks: _currentTaskResult!.subtasks.isNotEmpty
+            ? _currentTaskResult!.subtasks
+            : newResult.subtasks,
+        missingFields: newResult.missingFields,
+        disambiguationPrompt: newResult.disambiguationPrompt,
+      );
+    } else {
+      _currentTaskResult = newResult;
+    }
 
     if (_currentTaskResult!.missingFields.isNotEmpty) {
       final question = _currentTaskResult!.disambiguationPrompt ??
           'When would you like this scheduled?';
       _lastQuestion = question;
+      _conversationHistory.add({'role': 'assistant', 'content': question});
       _status = VoiceSessionStatus.agentSpeaking;
       _state = VoiceSessionState.speakingDisambiguation;
       notifyListeners();
@@ -160,8 +190,8 @@ class VoiceSessionController extends ChangeNotifier {
 
       _currentChunkIndex++;
 
-      // Arm emergency watchdog failsafe timer
-      _armWatchdogTimer();
+      // Arm emergency watchdog failsafe timer dynamically scaled to question length
+      _armWatchdogTimer(question);
 
       try {
         await _ttsService.speak(question);
@@ -169,6 +199,8 @@ class VoiceSessionController extends ChangeNotifier {
         debugPrint('VoiceSessionController: TTS synthesis error: $e');
       } finally {
         _watchdogTimer?.cancel();
+        // Hardware settle delay between speaker finish and microphone opening
+        await Future.delayed(const Duration(milliseconds: 300));
         onTtsCompleted();
       }
     } else {
@@ -177,6 +209,7 @@ class VoiceSessionController extends ChangeNotifier {
           ? _formatTime(_currentTaskResult!.dueDate!)
           : 'soon';
       _confirmationMessage = 'Created task: $title for $timeStr';
+      _conversationHistory.add({'role': 'assistant', 'content': _confirmationMessage!});
       _status = VoiceSessionStatus.taskCreated;
       _state = VoiceSessionState.taskCreated;
       notifyListeners();
@@ -198,14 +231,17 @@ class VoiceSessionController extends ChangeNotifier {
     }
   }
 
-  void _armWatchdogTimer() {
+  void _armWatchdogTimer([String? text]) {
     _watchdogTimer?.cancel();
-    _watchdogTimer = Timer(watchdogDuration, () {
+    final effectiveTimeout = text != null
+        ? Duration(milliseconds: 7000 + (text.length * 80))
+        : watchdogDuration;
+    _watchdogTimer = Timer(effectiveTimeout, () {
       if (_status == VoiceSessionStatus.agentSpeaking ||
           _status == VoiceSessionStatus.speakingDisambiguation ||
           _state == VoiceSessionState.speakingDisambiguation) {
         debugPrint(
-            'VoiceSessionController: Watchdog safety timer triggered: TTS playback did not complete in ${watchdogDuration.inSeconds}s. Recovering...');
+            'VoiceSessionController: Watchdog safety timer triggered: TTS playback did not complete in ${effectiveTimeout.inSeconds}s. Recovering...');
         _watchdogFired = true;
         _ttsService.stop();
         onTtsCompleted();

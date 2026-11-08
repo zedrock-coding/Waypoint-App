@@ -1,14 +1,15 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
+import 'models/hive_models.dart';
 import 'models/unified_task.dart';
 import 'providers/task_provider.dart';
 import 'services/ai_service.dart';
 import 'services/audio_recording_service.dart';
-import 'services/supabase_service.dart';
 import 'widgets/audio_waveform_visualizer.dart';
 import 'features/voice/domain/controllers/audio_capture_controller.dart';
 import 'features/voice/domain/models/recording_state.dart';
@@ -166,17 +167,21 @@ class _AIVoiceOverlayState extends State<AIVoiceOverlay>
     }
 
     if (!mounted) return;
+    _conversationHistory.add({'role': 'user', 'content': '[Voice Audio Input]'});
     final aiService = context.read<AiService>();
-    final supabaseService = SupabaseService();
 
     try {
       List<Map<String, dynamic>> communities = [];
       List<Map<String, dynamic>> members = [];
-      try {
-        communities = await supabaseService.fetchUserCommunities();
-        members = await supabaseService.fetchAllAccessibleMembers();
-      } catch (e) {
-        debugPrint('AIVoiceOverlay: Remote community fetch skipped: $e');
+      if (Hive.isBoxOpen('communities')) {
+        communities = Hive.box<Community>('communities').values
+            .map((c) => {'id': c.id, 'name': c.name})
+            .toList();
+      }
+      if (Hive.isBoxOpen('community_members')) {
+        members = Hive.box<CommunityMember>('community_members').values
+            .map((m) => {'id': m.userId, 'full_name': m.fullName, 'community_id': m.communityId})
+            .toList();
       }
 
       final result = await aiService.parseVoiceCommand(
@@ -193,30 +198,46 @@ class _AIVoiceOverlayState extends State<AIVoiceOverlay>
         final bool needsClarification = result['clarification_needed'] == true;
 
         if (needsClarification) {
-          final question = result['clarification_message'] ??
-              'Could you clarify when this task is due or needed?';
+          final String question = (result['clarification_message'] ??
+              'Could you clarify when this task is due or needed?').toString();
           _conversationHistory.add({'role': 'assistant', 'content': question});
 
           if (mounted) {
             setState(() {
-              _currentDraft = result;
+              _currentDraft = {
+                ...?_currentDraft,
+                ...result,
+                'title': (result['title'] != null &&
+                        result['title'].toString().isNotEmpty &&
+                        result['title'] != 'Voice Task' &&
+                        result['title'] != 'New Task')
+                    ? result['title']
+                    : _currentDraft?['title'] ?? result['title'] ?? 'New Task',
+                'description': result['description'] ?? _currentDraft?['description'],
+                'due_date': result['due_date'] ?? _currentDraft?['due_date'],
+                'priority': result['priority'] ?? _currentDraft?['priority'] ?? 'MEDIUM',
+                'subtasks': (result['subtasks'] is List && (result['subtasks'] as List).isNotEmpty)
+                    ? result['subtasks']
+                    : _currentDraft?['subtasks'] ?? [],
+              };
               _clarificationQuestion = question;
               _currentState = AIState.clarifying;
               _isAiSpeaking = true;
             });
 
+            final int timeoutMs = 7000 + (question.length * 80);
             try {
               await _ttsService
                   .speak(question)
-                  .timeout(const Duration(seconds: 4), onTimeout: () {
-                debugPrint('AIVoiceOverlay TTS playback timed out. Recovering...');
+                  .timeout(Duration(milliseconds: timeoutMs), onTimeout: () {
+                debugPrint('AIVoiceOverlay TTS playback timed out (${timeoutMs}ms). Recovering...');
               });
             } catch (e) {
               debugPrint('AIVoiceOverlay TTS playback error: $e');
             }
 
-            // Small delay to let audio output buffer settle before microphone capture
-            await Future.delayed(const Duration(milliseconds: 300));
+            // Mandatory hardware settling delay to allow speaker output buffer to clear before mic capture
+            await Future.delayed(const Duration(milliseconds: 500));
 
             if (mounted) {
               setState(() => _isAiSpeaking = false);

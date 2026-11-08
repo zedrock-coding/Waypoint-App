@@ -26,9 +26,9 @@ class TaskExtractionParser {
     bool priorityFound = false;
 
     final urgentRegex = RegExp(r'\b(urgent|critical|asap)\b', caseSensitive: false);
-    final highRegex = RegExp(r'\b(high\s+priority|keep\s+this\s+high\s+priority|priority\s+high)\b', caseSensitive: false);
-    final mediumRegex = RegExp(r'\b(medium\s+priority|keep\s+this\s+medium\s+priority|priority\s+medium)\b', caseSensitive: false);
-    final lowRegex = RegExp(r'\b(low\s+priority|keep\s+this\s+low\s+priority|priority\s+low)\b', caseSensitive: false);
+    final highRegex = RegExp(r'\b(high(\s+priority)?|keep\s+this\s+high\s+priority|priority\s+high)\b', caseSensitive: false);
+    final mediumRegex = RegExp(r'\b(medium(\s+priority)?|normal(\s+priority)?|keep\s+this\s+medium\s+priority|priority\s+medium)\b', caseSensitive: false);
+    final lowRegex = RegExp(r'\b(low(\s+priority)?|minor|keep\s+this\s+low\s+priority|priority\s+low)\b', caseSensitive: false);
 
     if (urgentRegex.hasMatch(cleaned)) {
       priorityEnum = TaskPriority.urgent;
@@ -48,7 +48,7 @@ class TaskExtractionParser {
 
     final priorityValue = priorityEnum.name.toLowerCase();
 
-    // 3. Relative Time Mapping
+    // 3. Relative Time & Weekday Mapping
     DateTime? dueDate;
     bool dueDateFound = false;
 
@@ -56,21 +56,50 @@ class TaskExtractionParser {
     int? hour;
     int? minute;
 
-    if (lower.contains('this morning') || lower.contains('morning')) {
-      hour = 9;
-      minute = 0;
-    } else if (lower.contains('this afternoon') || lower.contains('afternoon')) {
-      hour = 14;
-      minute = 0;
-    } else if (lower.contains('this evening') || lower.contains('evening')) {
-      hour = 18;
-      minute = 0;
-    } else if (lower.contains('tonight')) {
-      hour = 20;
-      minute = 0;
-    } else if (lower.contains('night')) {
-      hour = 21;
-      minute = 0;
+    // Standard 12-hour clock (e.g. 5pm, 5:30 pm, 10 am)
+    final timeAmPmMatch = RegExp(
+      r'\b(?:at\s+)?(\d{1,2})(?::(\d{2}))?\s*(am|pm)\b',
+      caseSensitive: false,
+    ).firstMatch(lower);
+
+    // 24-hour clock (e.g. 17:00, 14:30)
+    final time24Match = RegExp(
+      r'\b(?:at\s+)?([01]?\d|2[0-3]):([0-5]\d)\b',
+      caseSensitive: false,
+    ).firstMatch(lower);
+
+    if (timeAmPmMatch != null) {
+      int h = int.parse(timeAmPmMatch.group(1)!);
+      final m = timeAmPmMatch.group(2) != null ? int.parse(timeAmPmMatch.group(2)!) : 0;
+      final isPm = timeAmPmMatch.group(3)!.toLowerCase() == 'pm';
+      if (isPm && h < 12) h += 12;
+      if (!isPm && h == 12) h = 0;
+      hour = h;
+      minute = m;
+      dueDateFound = true;
+    } else if (time24Match != null) {
+      hour = int.parse(time24Match.group(1)!);
+      minute = int.parse(time24Match.group(2)!);
+      dueDateFound = true;
+    }
+
+    if (hour == null) {
+      if (lower.contains('this morning') || lower.contains('morning')) {
+        hour = 9;
+        minute = 0;
+      } else if (lower.contains('this afternoon') || lower.contains('afternoon')) {
+        hour = 14;
+        minute = 0;
+      } else if (lower.contains('this evening') || lower.contains('evening')) {
+        hour = 18;
+        minute = 0;
+      } else if (lower.contains('tonight')) {
+        hour = 20;
+        minute = 0;
+      } else if (lower.contains('night')) {
+        hour = 21;
+        minute = 0;
+      }
     }
 
     // Base date anchored to client time zone
@@ -108,12 +137,37 @@ class TaskExtractionParser {
         lower.contains('tonight')) {
       dueDateFound = true;
     } else {
-      final inDaysMatch =
-          RegExp(r'\bin\s+(\d+)\s+days?\b', caseSensitive: false).firstMatch(cleaned);
-      if (inDaysMatch != null) {
-        final days = int.parse(inDaysMatch.group(1)!);
-        targetDate = targetDate.add(Duration(days: days));
-        dueDateFound = true;
+      // Weekday recognition
+      final weekdayMap = {
+        'monday': DateTime.monday,
+        'tuesday': DateTime.tuesday,
+        'wednesday': DateTime.wednesday,
+        'thursday': DateTime.thursday,
+        'friday': DateTime.friday,
+        'saturday': DateTime.saturday,
+        'sunday': DateTime.sunday,
+      };
+
+      bool weekdayFound = false;
+      for (final entry in weekdayMap.entries) {
+        if (RegExp('\\b(?:next\\s+|on\\s+)?${entry.key}\\b', caseSensitive: false).hasMatch(lower)) {
+          int diff = entry.value - effectiveAnchor.weekday;
+          if (diff <= 0) diff += 7;
+          targetDate = targetDate.add(Duration(days: diff));
+          dueDateFound = true;
+          weekdayFound = true;
+          break;
+        }
+      }
+
+      if (!weekdayFound) {
+        final inDaysMatch =
+            RegExp(r'\bin\s+(\d+)\s+days?\b', caseSensitive: false).firstMatch(cleaned);
+        if (inDaysMatch != null) {
+          final days = int.parse(inDaysMatch.group(1)!);
+          targetDate = targetDate.add(Duration(days: days));
+          dueDateFound = true;
+        }
       }
     }
 
@@ -157,7 +211,7 @@ class TaskExtractionParser {
     // 4. Clean trailing metadata directives from action content
     var content = cleaned;
     content = content.replaceAll(
-      RegExp(r',?\s*(keep\s+this\s+|make\s+it\s+|with\s+)?(urgent|critical|high|medium|low)\s+priority', caseSensitive: false),
+      RegExp(r',?\s*(keep\s+this\s+|make\s+it\s+|with\s+)?(urgent|critical|high|medium|low)(\s+priority)?', caseSensitive: false),
       '',
     );
     content = content.replaceAll(
@@ -170,6 +224,14 @@ class TaskExtractionParser {
     );
     content = content.replaceAll(
       RegExp(r',?\s*due\s+(this\s+evening|this\s+morning|this\s+afternoon|tonight|today|tomorrow)', caseSensitive: false),
+      '',
+    );
+    content = content.replaceAll(
+      RegExp(r',?\s*(and\s+)?(?:at\s+)?\d{1,2}(?::\d{2})?\s*(?:am|pm)\b', caseSensitive: false),
+      '',
+    );
+    content = content.replaceAll(
+      RegExp(r',?\s*(and\s+)?(?:at\s+)?(?:[01]?\d|2[0-3]):[0-5]\d\b', caseSensitive: false),
       '',
     );
     content = content.replaceAll(RegExp(r'[,.\s]+$'), '').trim();
@@ -220,7 +282,9 @@ class TaskExtractionParser {
     if (!dueDateFound) {
       missingFields.add('due_date');
     }
-    if (!priorityFound) {
+    // Graceful fallback default: If deadline is provided, default priority to medium
+    // instead of blocking task creation with another disambiguation cycle.
+    if (!priorityFound && !dueDateFound) {
       missingFields.add('priority');
     }
 

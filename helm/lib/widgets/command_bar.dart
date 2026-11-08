@@ -1,15 +1,17 @@
 import 'dart:async';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import '../ai_voice_overlay.dart';
 import '../features/voice/data/sherpa_tts_service.dart';
 import '../features/voice/domain/services/tts_service.dart';
+import '../models/hive_models.dart';
 import '../services/ai_service.dart';
 import '../services/audio_recording_service.dart';
-import '../services/supabase_service.dart';
+import '../services/debouncer.dart';
 import '../providers/task_provider.dart';
 import '../models/unified_task.dart';
 import 'app_snackbar.dart';
@@ -28,6 +30,7 @@ class _CommandBarWidgetState extends State<CommandBarWidget>
   final _stt = stt.SpeechToText();
   final _audioService = AudioRecordingService();
   final ITextToSpeechService _ttsService = SherpaTtsService();
+  final _inputDebouncer = Debouncer(milliseconds: 300);
 
   bool _isListening = false;
   bool _isLoading = false;
@@ -62,6 +65,7 @@ class _CommandBarWidgetState extends State<CommandBarWidget>
 
   @override
   void dispose() {
+    _inputDebouncer.dispose();
     _glowController.dispose();
     _textController.dispose();
     _audioService.dispose();
@@ -179,8 +183,19 @@ class _CommandBarWidgetState extends State<CommandBarWidget>
       _capturingAudio = false;
       final audioBytes = await _audioService.stopRecording();
       if (audioBytes != null && audioBytes.length > 500) {
+        _conversationHistory.add({'role': 'user', 'content': '[Spoken Voice Command]'});
         // Direct Multimodal audio pipeline
         await _handleVoiceCommand(audioBytes);
+        return;
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('No speech detected. Please speak closer to the microphone.'),
+              duration: Duration(seconds: 3),
+            ),
+          );
+        }
         return;
       }
     } else {
@@ -195,16 +210,20 @@ class _CommandBarWidgetState extends State<CommandBarWidget>
     setState(() => _isLoading = true);
     final aiService = context.read<AiService>();
     final taskProvider = context.read<TaskProvider>();
-    final supabaseService = SupabaseService();
 
     try {
+      // Read communities & members instantly from embedded Hive cache to eliminate latency
       List<Map<String, dynamic>> communities = [];
       List<Map<String, dynamic>> members = [];
-      try {
-        communities = await supabaseService.fetchUserCommunities();
-        members = await supabaseService.fetchAllAccessibleMembers();
-      } catch (e) {
-        debugPrint('CommandBar: Remote community fetch skipped: $e');
+      if (Hive.isBoxOpen('communities')) {
+        communities = Hive.box<Community>('communities').values
+            .map((c) => {'id': c.id, 'name': c.name})
+            .toList();
+      }
+      if (Hive.isBoxOpen('community_members')) {
+        members = Hive.box<CommunityMember>('community_members').values
+            .map((m) => {'id': m.userId, 'full_name': m.fullName, 'community_id': m.communityId})
+            .toList();
       }
 
       final result = await aiService.parseVoiceCommand(
@@ -241,6 +260,8 @@ class _CommandBarWidgetState extends State<CommandBarWidget>
     final input = _textController.text.trim();
     if (input.isEmpty) return;
 
+    _conversationHistory.add({'role': 'user', 'content': input});
+
     if (_isListening) {
       _stt.stop();
       _audioService.cancelRecording();
@@ -250,11 +271,20 @@ class _CommandBarWidgetState extends State<CommandBarWidget>
     setState(() => _isLoading = true);
     final aiService = context.read<AiService>();
     final taskProvider = context.read<TaskProvider>();
-    final supabaseService = SupabaseService();
 
     try {
-      final communities = await supabaseService.fetchUserCommunities();
-      final members = await supabaseService.fetchAllAccessibleMembers();
+      List<Map<String, dynamic>> communities = [];
+      List<Map<String, dynamic>> members = [];
+      if (Hive.isBoxOpen('communities')) {
+        communities = Hive.box<Community>('communities').values
+            .map((c) => {'id': c.id, 'name': c.name})
+            .toList();
+      }
+      if (Hive.isBoxOpen('community_members')) {
+        members = Hive.box<CommunityMember>('community_members').values
+            .map((m) => {'id': m.userId, 'full_name': m.fullName, 'community_id': m.communityId})
+            .toList();
+      }
 
       final result = await aiService.parseHybridCommand(
         userInput: input,
@@ -291,9 +321,25 @@ class _CommandBarWidgetState extends State<CommandBarWidget>
 
     final bool clarificationNeeded = result['clarification_needed'] ?? false;
     if (clarificationNeeded) {
-      final msg =
-          result['clarification_message'] ?? 'Could you clarify what you want to do?';
-      _currentDraft = result;
+      final String msg = (result['clarification_message'] ??
+              'Could you clarify what you want to do?')
+          .toString();
+      _currentDraft = {
+        ...?_currentDraft,
+        ...result,
+        'title': (result['title'] != null &&
+                result['title'].toString().isNotEmpty &&
+                result['title'] != 'Voice Task' &&
+                result['title'] != 'New Task')
+            ? result['title']
+            : _currentDraft?['title'] ?? result['title'] ?? 'New Task',
+        'description': result['description'] ?? _currentDraft?['description'],
+        'due_date': result['due_date'] ?? _currentDraft?['due_date'],
+        'priority': result['priority'] ?? _currentDraft?['priority'] ?? 'MEDIUM',
+        'subtasks': (result['subtasks'] is List && (result['subtasks'] as List).isNotEmpty)
+            ? result['subtasks']
+            : _currentDraft?['subtasks'] ?? [],
+      };
       _conversationHistory.add({'role': 'assistant', 'content': msg});
       _clarificationPrompt = msg;
 
@@ -304,18 +350,19 @@ class _CommandBarWidgetState extends State<CommandBarWidget>
         });
 
         // 1. Spoken clarification question aloud ("audio talk back")
+        final timeoutMs = 7000 + (msg.length * 80);
         try {
           await _ttsService
               .speak(msg)
-              .timeout(const Duration(seconds: 4), onTimeout: () {
-            debugPrint('CommandBar TTS playback timed out. Recovering...');
+              .timeout(Duration(milliseconds: timeoutMs), onTimeout: () {
+            debugPrint('CommandBar TTS playback timed out (${timeoutMs}ms). Recovering...');
           });
         } catch (e) {
           debugPrint('CommandBar TTS playback error: $e');
         }
 
-        // Delay to allow audio output buffer to clear before mic capture
-        await Future.delayed(const Duration(milliseconds: 300));
+        // Mandatory hardware settling delay before mic capture to prevent audio focus collision
+        await Future.delayed(const Duration(milliseconds: 500));
 
         if (mounted) {
           setState(() {
@@ -506,8 +553,8 @@ class _CommandBarWidgetState extends State<CommandBarWidget>
       child: Row(
         children: [
           Container(
-            width: 10,
-            height: 10,
+            width: 8,
+            height: 8,
             decoration: BoxDecoration(
               color: Colors.redAccent,
               shape: BoxShape.circle,
@@ -520,22 +567,22 @@ class _CommandBarWidgetState extends State<CommandBarWidget>
               ],
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 6),
           Text(
             _currentDraft != null ? 'Listening...' : 'Listening',
             style: const TextStyle(
               fontWeight: FontWeight.w600,
-              fontSize: 13,
+              fontSize: 12,
               color: Color(0xFF88C0A4),
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 6),
           AudioWaveformVisualizer(
             amplitudeStream: _audioService.amplitudeStream,
-            barCount: 7,
-            height: 22,
-            barWidth: 3,
-            barSpacing: 3,
+            barCount: 5,
+            height: 18,
+            barWidth: 2,
+            barSpacing: 2,
             activeColor: const Color(0xFF88C0A4),
           ),
           const Spacer(),
@@ -544,22 +591,23 @@ class _CommandBarWidgetState extends State<CommandBarWidget>
             initialData: _audioService.elapsed,
             builder: (context, snapshot) {
               final sec = (snapshot.data?.inSeconds ?? 0).clamp(0, 30);
-              final display = '0:${sec.toString().padLeft(2, '0')} / 0:30';
+              final display = '0:${sec.toString().padLeft(2, '0')}';
               return Text(
                 display,
                 style: const TextStyle(
-                  fontSize: 12,
+                  fontSize: 11,
                   fontFamily: 'monospace',
                   color: Colors.white70,
                 ),
               );
             },
           ),
-          const SizedBox(width: 6),
+          const SizedBox(width: 4),
           TextButton(
             onPressed: _stopAndProcessVoice,
             style: TextButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              visualDensity: VisualDensity.compact,
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
               backgroundColor: const Color(0xFF88C0A4).withValues(alpha: 0.2),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
@@ -570,11 +618,15 @@ class _CommandBarWidgetState extends State<CommandBarWidget>
               style: TextStyle(
                 color: Color(0xFF88C0A4),
                 fontWeight: FontWeight.bold,
-                fontSize: 12,
+                fontSize: 11,
               ),
             ),
           ),
+          const SizedBox(width: 2),
           IconButton(
+            visualDensity: VisualDensity.compact,
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
             icon: const Icon(Icons.close, size: 16, color: Colors.white54),
             tooltip: 'Cancel',
             onPressed: _cancelConversation,
@@ -613,6 +665,11 @@ class _CommandBarWidgetState extends State<CommandBarWidget>
               border: InputBorder.none,
               isDense: true,
             ),
+            onChanged: (_) {
+              _inputDebouncer.run(() {
+                if (mounted) setState(() {});
+              });
+            },
             onSubmitted: (_) => _handleCommand(),
           ),
         ),
