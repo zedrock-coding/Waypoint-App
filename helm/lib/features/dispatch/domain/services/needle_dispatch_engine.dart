@@ -81,7 +81,4 @@ class NeedleDispatchEngine {
 
     return buffer.toString().trim();
   }
-
-  static String generateBriefingScript(DispatchSummary summary) =>
-      compileBriefingScript(summary);
 }
