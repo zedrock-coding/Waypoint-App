@@ -191,9 +191,12 @@ class _TaskDetailContentState extends State<TaskDetailContent> {
                         children: [
                           Icon(Icons.lock_outline, size: 14, color: Colors.orange),
                           SizedBox(width: 8),
-                          Text(
-                            'Read-Only: Task created by Admin/Owner',
-                            style: TextStyle(fontSize: 11, color: Colors.orange, fontWeight: FontWeight.bold),
+                          Expanded(
+                            child: Text(
+                              'Read-Only: Task created by Admin/Owner',
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(fontSize: 11, color: Colors.orange, fontWeight: FontWeight.bold),
+                            ),
                           ),
                         ],
                       ),

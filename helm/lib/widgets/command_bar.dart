@@ -532,14 +532,18 @@ class _CommandBarWidgetState extends State<CommandBarWidget>
             ),
           ),
           const SizedBox(width: 12),
-          Text(
-            _currentDraft != null
-                ? 'Processing answer...'
-                : 'AI is decomposing task & subtasks...',
-            style: TextStyle(
-              color: colorScheme.primary,
-              fontWeight: FontWeight.w600,
-              fontSize: 14,
+          Flexible(
+            child: Text(
+              _currentDraft != null
+                  ? 'Processing answer...'
+                  : 'AI is decomposing task & subtasks...',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: colorScheme.primary,
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+              ),
             ),
           ),
         ],
@@ -550,88 +554,92 @@ class _CommandBarWidgetState extends State<CommandBarWidget>
   Widget _buildListeningPill(ColorScheme colorScheme) {
     return SizedBox(
       height: 40,
-      child: Row(
-        children: [
-          Container(
-            width: 8,
-            height: 8,
-            decoration: BoxDecoration(
-              color: Colors.redAccent,
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.redAccent.withValues(alpha: 0.6),
-                  blurRadius: 6,
-                  spreadRadius: 2,
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 6),
-          Text(
-            _currentDraft != null ? 'Listening...' : 'Listening',
-            style: const TextStyle(
-              fontWeight: FontWeight.w600,
-              fontSize: 12,
-              color: Color(0xFF88C0A4),
-            ),
-          ),
-          const SizedBox(width: 6),
-          AudioWaveformVisualizer(
-            amplitudeStream: _audioService.amplitudeStream,
-            barCount: 5,
-            height: 18,
-            barWidth: 2,
-            barSpacing: 2,
-            activeColor: const Color(0xFF88C0A4),
-          ),
-          const Spacer(),
-          StreamBuilder<Duration>(
-            stream: _audioService.durationStream,
-            initialData: _audioService.elapsed,
-            builder: (context, snapshot) {
-              final sec = (snapshot.data?.inSeconds ?? 0).clamp(0, 30);
-              final display = '0:${sec.toString().padLeft(2, '0')}';
-              return Text(
-                display,
-                style: const TextStyle(
-                  fontSize: 11,
-                  fontFamily: 'monospace',
-                  color: Colors.white70,
-                ),
-              );
-            },
-          ),
-          const SizedBox(width: 4),
-          TextButton(
-            onPressed: _stopAndProcessVoice,
-            style: TextButton.styleFrom(
-              visualDensity: VisualDensity.compact,
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-              backgroundColor: const Color(0xFF88C0A4).withValues(alpha: 0.2),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        alignment: Alignment.centerLeft,
+        child: Row(
+          children: [
+            Container(
+              width: 8,
+              height: 8,
+              decoration: BoxDecoration(
+                color: Colors.redAccent,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.redAccent.withValues(alpha: 0.6),
+                    blurRadius: 6,
+                    spreadRadius: 2,
+                  ),
+                ],
               ),
             ),
-            child: const Text(
-              'Done',
-              style: TextStyle(
+            const SizedBox(width: 6),
+            Text(
+              _currentDraft != null ? 'Listening...' : 'Listening',
+              style: const TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: 12,
                 color: Color(0xFF88C0A4),
-                fontWeight: FontWeight.bold,
-                fontSize: 11,
               ),
             ),
-          ),
-          const SizedBox(width: 2),
-          IconButton(
-            visualDensity: VisualDensity.compact,
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
-            icon: const Icon(Icons.close, size: 16, color: Colors.white54),
-            tooltip: 'Cancel',
-            onPressed: _cancelConversation,
-          ),
-        ],
+            const SizedBox(width: 6),
+            AudioWaveformVisualizer(
+              amplitudeStream: _audioService.amplitudeStream,
+              barCount: 5,
+              height: 18,
+              barWidth: 2,
+              barSpacing: 2,
+              activeColor: const Color(0xFF88C0A4),
+            ),
+            const SizedBox(width: 12),
+            StreamBuilder<Duration>(
+              stream: _audioService.durationStream,
+              initialData: _audioService.elapsed,
+              builder: (context, snapshot) {
+                final sec = (snapshot.data?.inSeconds ?? 0).clamp(0, 30);
+                final display = '0:${sec.toString().padLeft(2, '0')}';
+                return Text(
+                  display,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontFamily: 'monospace',
+                    color: Colors.white70,
+                  ),
+                );
+              },
+            ),
+            const SizedBox(width: 4),
+            TextButton(
+              onPressed: _stopAndProcessVoice,
+              style: TextButton.styleFrom(
+                visualDensity: VisualDensity.compact,
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                backgroundColor: const Color(0xFF88C0A4).withValues(alpha: 0.2),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
+              child: const Text(
+                'Done',
+                style: TextStyle(
+                  color: Color(0xFF88C0A4),
+                  fontWeight: FontWeight.bold,
+                  fontSize: 11,
+                ),
+              ),
+            ),
+            const SizedBox(width: 2),
+            IconButton(
+              visualDensity: VisualDensity.compact,
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+              icon: const Icon(Icons.close, size: 16, color: Colors.white54),
+              tooltip: 'Cancel',
+              onPressed: _cancelConversation,
+            ),
+          ],
+        ),
       ),
     );
   }

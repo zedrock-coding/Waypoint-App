@@ -15,6 +15,7 @@ import 'features/voice/domain/controllers/audio_capture_controller.dart';
 import 'features/voice/domain/models/recording_state.dart';
 import 'features/voice/data/sherpa_tts_service.dart';
 import 'features/voice/domain/services/tts_service.dart';
+import 'core/ui/responsive_clamp.dart';
 
 enum AIState { listening, processing, clarifying, preview, success, error }
 
@@ -379,67 +380,82 @@ class _AIVoiceOverlayState extends State<AIVoiceOverlay>
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final viewInsets = MediaQuery.viewInsetsOf(context);
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+      padding: EdgeInsets.fromLTRB(
+        context.clampDimension(min: 16, preferred: 20, max: 24),
+        16,
+        context.clampDimension(min: 16, preferred: 20, max: 24),
+        16 + viewInsets.bottom,
+      ),
       width: double.infinity,
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.sizeOf(context).height * 0.9,
+      ),
       decoration: const BoxDecoration(
         color: Color(0xFF1E2124),
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      child: AnimatedSize(
-        duration: const Duration(milliseconds: 250),
-        curve: Curves.easeInOut,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Top grab handle
-            Container(
-              width: 36,
-              height: 4,
-              margin: const EdgeInsets.only(bottom: 20),
-              decoration: BoxDecoration(
-                color: Colors.white24,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            if (_currentState == AIState.preview)
-              _buildPreviewState(colorScheme)
-            else ...[
-              _buildCenterGraphic(colorScheme),
-              const SizedBox(height: 20),
-              _buildStatusText(colorScheme),
-              const SizedBox(height: 12),
-              _buildSubtext(colorScheme),
-              if (_currentState == AIState.error) ...[
-                const SizedBox(height: 16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    OutlinedButton(
-                      onPressed: () => Navigator.pop(context),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.white70,
-                      ),
-                      child: const Text('Cancel'),
-                    ),
-                    const SizedBox(width: 12),
-                    ElevatedButton(
-                      onPressed: () {
-                        setState(() => _currentState = AIState.listening);
-                        _startListening();
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF88C0A4),
-                        foregroundColor: const Color(0xFF1E2124),
-                      ),
-                      child: const Text('Try Again'),
+      child: SafeArea(
+        top: false,
+        child: SingleChildScrollView(
+          physics: const ClampingScrollPhysics(),
+          child: AnimatedSize(
+            duration: const Duration(milliseconds: 250),
+            curve: Curves.easeInOut,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Top grab handle
+                Container(
+                  width: 36,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 20),
+                  decoration: BoxDecoration(
+                    color: Colors.white24,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                if (_currentState == AIState.preview)
+                  _buildPreviewState(colorScheme)
+                else ...[
+                  _buildCenterGraphic(colorScheme),
+                  const SizedBox(height: 20),
+                  _buildStatusText(colorScheme),
+                  const SizedBox(height: 12),
+                  _buildSubtext(colorScheme),
+                  if (_currentState == AIState.error) ...[
+                    const SizedBox(height: 16),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        OutlinedButton(
+                          onPressed: () => Navigator.pop(context),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.white70,
+                          ),
+                          child: const Text('Cancel'),
+                        ),
+                        const SizedBox(width: 12),
+                        ElevatedButton(
+                          onPressed: () {
+                            setState(() => _currentState = AIState.listening);
+                            _startListening();
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF88C0A4),
+                            foregroundColor: const Color(0xFF1E2124),
+                          ),
+                          child: const Text('Try Again'),
+                        ),
+                      ],
                     ),
                   ],
-                ),
+                ],
               ],
-            ],
-          ],
+            ),
+          ),
         ),
       ),
     );

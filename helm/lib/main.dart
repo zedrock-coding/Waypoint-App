@@ -10,6 +10,7 @@ import 'models/unified_task.dart';
 
 import 'config/app_config.dart';
 import 'core/services/app_initialization_service.dart';
+import 'core/ui/responsive_clamp.dart';
 import 'services/invite_service.dart';
 import 'services/navigation_provider.dart';
 import 'services/hive_database.dart';
@@ -46,6 +47,7 @@ import 'theme/app_theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  UIClamp.enableOverflowProtection();
 
   if (!AppConfig.isSupabaseConfigured) {
     debugPrint('INIT: Supabase configuration missing.');
@@ -228,9 +230,12 @@ class _MyAppState extends State<MyApp> {
       builder: (context, child) {
         return MediaQuery(
           data: MediaQuery.of(context).copyWith(
-            textScaler: TextScaler.linear(themeProvider.textScaleFactor),
+            textScaler: UIClamp.clampedTextScaler(
+              context,
+              userScale: themeProvider.textScaleFactor,
+            ),
           ),
-          child: child!,
+          child: child ?? const SizedBox.shrink(),
         );
       },
       initialRoute: Supabase.instance.client.auth.currentSession == null ? '/auth' : '/',
@@ -392,9 +397,14 @@ class _MyHomePageState extends State<MyHomePage> {
         },
         child: const Icon(Icons.add),
       ) : null,
-      bottomWidget: const Padding(
-        padding: EdgeInsets.fromLTRB(24, 0, 24, 8),
-        child: CommandBarWidget(),
+      bottomWidget: Padding(
+        padding: EdgeInsets.fromLTRB(
+          context.clampDimension(min: 8, preferred: 16, max: 24),
+          0,
+          context.clampDimension(min: 8, preferred: 16, max: 24),
+          8,
+        ),
+        child: const CommandBarWidget(),
       ),
       child: Row(
         children: [

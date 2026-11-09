@@ -12,6 +12,7 @@ import 'widgets/user_avatar.dart';
 import 'services/supabase_service.dart';
 import 'services/navigation_provider.dart';
 import 'features/sync/presentation/widgets/sync_badge.dart';
+import 'core/ui/responsive_clamp.dart';
 
 class AppShell extends StatefulWidget {
   final Widget child;
@@ -622,9 +623,17 @@ class _AppShellState extends State<AppShell> {
                             child: Column(
                               children: [
                                 Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 24,
-                                    vertical: 16,
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: context.clampDimension(
+                                      min: 12,
+                                      preferred: 18,
+                                      max: 24,
+                                    ),
+                                    vertical: context.clampHeight(
+                                      min: 8,
+                                      preferred: 14,
+                                      max: 16,
+                                    ),
                                   ),
                                   child: Row(
                                     children: [
@@ -649,16 +658,24 @@ class _AppShellState extends State<AppShell> {
                                               ?.copyWith(
                                                 fontWeight: FontWeight.bold,
                                                 color: colorScheme.onSurface,
+                                                fontSize: context.clampDimension(
+                                                  min: 18,
+                                                  preferred: 22,
+                                                  max: 24,
+                                                ),
                                               ),
                                         ),
                                       ),
                                       const SizedBox(width: 4),
-                                      // Action group
+                                      // Action group wrapped in FittedBox to eliminate compact screen overflows
                                       Flexible(
                                         flex: 0,
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
+                                        child: FittedBox(
+                                          fit: BoxFit.scaleDown,
+                                          alignment: Alignment.centerRight,
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
                                             if (widget.actions != null)
                                               ...widget.actions!,
                                             const SyncBadge(),
@@ -785,6 +802,7 @@ class _AppShellState extends State<AppShell> {
                                           ],
                                         ),
                                       ),
+                                    ),
                                     ],
                                   ),
                                 ),
