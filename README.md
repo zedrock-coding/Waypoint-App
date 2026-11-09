@@ -16,7 +16,7 @@ Get the latest build for your platform directly from the [Waypoint Releases](htt
 | Platform | Type | Direct Download Link |
 | :--- | :--- | :--- |
 | **Android** | APK (`v0.5.0`) | [📲 Download Android APK](https://github.com/zedrock-coding/Waypoint-App/releases/latest/download/waypoint-v0.5.0.apk) |
-| **Windows** | Executable (`v0.5.0`) | [💻 Download Windows App](https://github.com/zedrock-coding/Waypoint-App/releases/latest/download/waypoint-v0.5.0.exe) |
+| **Windows** | Executable (`v0.5.0`) | [💻 Download Windows App](https://github.com/zedrock-coding/Waypoint-App/releases/latest/download/Waypoint-v0.5.0-Setup.exe) |
 | **Web** | Live Production PWA | [🌐 Launch Web App](https://helm-omega-blue.vercel.app) |
 
 *Alternative release mirrors: [Helm GitHub Releases](https://github.com/zedrock-coding/Helm/releases/latest)*
