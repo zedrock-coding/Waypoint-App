@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart';
+import 'package:waypoint/features/dispatch/domain/services/needle_morning_dispatch_service.dart';
 
 class NotificationFeedUI extends StatefulWidget {
   const NotificationFeedUI({super.key});
@@ -28,18 +29,51 @@ class _NotificationFeedUIState extends State<NotificationFeedUI> {
 
   Future<void> _markAllAsRead() async {
     final userId = _supabase.auth.currentUser?.id;
-    if (userId == null) return;
-
-    try {
-      await _supabase
-          .from('notifications')
-          .update({'is_read': true})
-          .eq('user_id', userId)
-          .eq('is_read', false);
-      if (mounted) setState(() {});
-    } catch (e) {
-      debugPrint('Error marking notifications as read: $e');
+    if (userId != null) {
+      try {
+        await _supabase
+            .from('notifications')
+            .update({'is_read': true})
+            .eq('user_id', userId)
+            .eq('is_read', false);
+      } catch (e) {
+        debugPrint('Error marking remote notifications as read: $e');
+      }
     }
+
+    await NeedleMorningDispatchService.markAllLocalNotificationsRead();
+    if (mounted) setState(() {});
+  }
+
+  List<Map<String, dynamic>> _getCombinedNotifications(
+      List<Map<String, dynamic>> remote) {
+    final local = NeedleMorningDispatchService.getLocalNotifications();
+    final seenIds = <String>{};
+    final combined = <Map<String, dynamic>>[];
+
+    for (final item in remote) {
+      final id = item['id']?.toString() ?? '';
+      if (id.isNotEmpty) seenIds.add(id);
+      combined.add(item);
+    }
+
+    for (final item in local) {
+      final id = item['id']?.toString() ?? '';
+      if (!seenIds.contains(id)) {
+        seenIds.add(id);
+        combined.add(item);
+      }
+    }
+
+    combined.sort((a, b) {
+      final dateA = DateTime.tryParse(a['created_at']?.toString() ?? '') ??
+          DateTime.fromMillisecondsSinceEpoch(0);
+      final dateB = DateTime.tryParse(b['created_at']?.toString() ?? '') ??
+          DateTime.fromMillisecondsSinceEpoch(0);
+      return dateB.compareTo(dateA);
+    });
+
+    return combined;
   }
 
   @override
@@ -95,14 +129,22 @@ class _NotificationFeedUIState extends State<NotificationFeedUI> {
             child: StreamBuilder<List<Map<String, dynamic>>>(
               stream: _feedStream,
               builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: Padding(
-                    padding: EdgeInsets.all(40.0),
-                    child: CircularProgressIndicator(),
-                  ));
+                if (snapshot.connectionState == ConnectionState.waiting &&
+                    !snapshot.hasData) {
+                  final localFallback = NeedleMorningDispatchService.getLocalNotifications();
+                  if (localFallback.isEmpty) {
+                    return const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(40.0),
+                        child: CircularProgressIndicator(),
+                      ),
+                    );
+                  }
                 }
-                
-                final notifications = snapshot.data ?? [];
+
+                final rawRemote = snapshot.data ?? [];
+                final notifications = _getCombinedNotifications(rawRemote);
+
                 if (notifications.isEmpty) {
                   return Center(
                     child: Padding(
@@ -110,9 +152,18 @@ class _NotificationFeedUIState extends State<NotificationFeedUI> {
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.notifications_none_rounded, size: 48, color: colorScheme.onSurface.withValues(alpha: 0.2)),
+                          Icon(
+                            Icons.notifications_none_rounded,
+                            size: 48,
+                            color: colorScheme.onSurface.withValues(alpha: 0.2),
+                          ),
                           const SizedBox(height: 16),
-                          Text('All caught up!', style: TextStyle(color: colorScheme.onSurface.withValues(alpha: 0.5))),
+                          Text(
+                            'All caught up!',
+                            style: TextStyle(
+                              color: colorScheme.onSurface.withValues(alpha: 0.5),
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -124,32 +175,42 @@ class _NotificationFeedUIState extends State<NotificationFeedUI> {
                   itemCount: notifications.length,
                   itemBuilder: (context, index) {
                     final item = notifications[index];
-                    // Realtime payloads are untyped JSON: `as bool` on a null
-                    // and `DateTime.parse` on a missing value both threw inside
-                    // the builder and blanked the whole feed.
                     final isRead = item['is_read'] == true;
                     final date = DateTime.tryParse(item['created_at']?.toString() ?? '') ?? DateTime.now();
                     final title = item['title']?.toString() ?? 'Notification';
                     final body = item['body']?.toString() ?? '';
+                    final type = item['type']?.toString() ?? '';
+                    final id = item['id']?.toString() ?? '';
 
                     return Material(
-                      color: isRead ? Colors.transparent : colorScheme.primary.withValues(alpha: 0.03),
+                      color: isRead
+                          ? Colors.transparent
+                          : colorScheme.primary.withValues(alpha: 0.03),
                       child: InkWell(
                         onTap: () async {
                           if (!isRead) {
-                            await _supabase
-                                .from('notifications')
-                                .update({'is_read': true})
-                                .eq('id', item['id']);
+                            if (id.startsWith('local_')) {
+                              await NeedleMorningDispatchService.markLocalNotificationRead(id);
+                            } else {
+                              try {
+                                await _supabase
+                                    .from('notifications')
+                                    .update({'is_read': true})
+                                    .eq('id', id);
+                              } catch (_) {}
+                            }
+                            if (mounted) setState(() {});
                           }
-                          // Handle navigation based on related_id/type
+                          if (type == 'daily_briefing' && body.isNotEmpty) {
+                            NeedleMorningDispatchService.playBriefing(script: body);
+                          }
                         },
                         child: Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                           child: Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              _buildIcon(context, item['type']?.toString() ?? ''),
+                              _buildIcon(context, type),
                               const SizedBox(width: 16),
                               Expanded(
                                 child: Column(
@@ -162,13 +223,18 @@ class _NotificationFeedUIState extends State<NotificationFeedUI> {
                                             title,
                                             style: TextStyle(
                                               fontSize: 14,
-                                              fontWeight: isRead ? FontWeight.normal : FontWeight.bold,
+                                              fontWeight: isRead
+                                                  ? FontWeight.normal
+                                                  : FontWeight.bold,
                                             ),
                                           ),
                                         ),
                                         Text(
                                           DateFormat.jm().format(date),
-                                          style: TextStyle(fontSize: 11, color: colorScheme.onSurface.withValues(alpha: 0.4)),
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            color: colorScheme.onSurface.withValues(alpha: 0.4),
+                                          ),
                                         ),
                                       ],
                                     ),
@@ -180,6 +246,64 @@ class _NotificationFeedUIState extends State<NotificationFeedUI> {
                                         color: colorScheme.onSurface.withValues(alpha: 0.7),
                                       ),
                                     ),
+                                    if (type == 'daily_briefing') ...[
+                                      const SizedBox(height: 8),
+                                      ValueListenableBuilder<bool>(
+                                        valueListenable: NeedleMorningDispatchService.isPlayingNotifier,
+                                        builder: (context, isPlaying, _) {
+                                          final isCurrentPlaying = isPlaying &&
+                                              NeedleMorningDispatchService.currentlyPlayingText == body;
+                                          return Align(
+                                            alignment: Alignment.centerLeft,
+                                            child: InkWell(
+                                              borderRadius: BorderRadius.circular(6),
+                                              onTap: () {
+                                                if (isCurrentPlaying) {
+                                                  NeedleMorningDispatchService.stopBriefing();
+                                                } else {
+                                                  NeedleMorningDispatchService.playBriefing(script: body);
+                                                }
+                                              },
+                                              child: Container(
+                                                padding: const EdgeInsets.symmetric(
+                                                    horizontal: 10, vertical: 5),
+                                                decoration: BoxDecoration(
+                                                  color: const Color(0xFF88C0A4).withValues(alpha: 0.12),
+                                                  borderRadius: BorderRadius.circular(6),
+                                                  border: Border.all(
+                                                    color: const Color(0xFF88C0A4).withValues(alpha: 0.35),
+                                                    width: 1,
+                                                  ),
+                                                ),
+                                                child: Row(
+                                                  mainAxisSize: MainAxisSize.min,
+                                                  children: [
+                                                    Icon(
+                                                      isCurrentPlaying
+                                                          ? Icons.stop_circle_rounded
+                                                          : Icons.play_circle_fill_rounded,
+                                                      size: 16,
+                                                      color: const Color(0xFF88C0A4),
+                                                    ),
+                                                    const SizedBox(width: 6),
+                                                    Text(
+                                                      isCurrentPlaying
+                                                          ? 'Stop Briefing'
+                                                          : 'Play Briefing',
+                                                      style: const TextStyle(
+                                                        fontSize: 12,
+                                                        fontWeight: FontWeight.w600,
+                                                        color: Color(0xFF88C0A4),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                    ],
                                   ],
                                 ),
                               ),
@@ -189,7 +313,10 @@ class _NotificationFeedUIState extends State<NotificationFeedUI> {
                                   child: Container(
                                     width: 6,
                                     height: 6,
-                                    decoration: BoxDecoration(color: colorScheme.primary, shape: BoxShape.circle),
+                                    decoration: BoxDecoration(
+                                      color: colorScheme.primary,
+                                      shape: BoxShape.circle,
+                                    ),
                                   ),
                                 ),
                             ],
@@ -213,6 +340,10 @@ class _NotificationFeedUIState extends State<NotificationFeedUI> {
     Color iconColor;
 
     switch (type) {
+      case 'daily_briefing':
+        iconData = Icons.record_voice_over_rounded;
+        iconColor = const Color(0xFF88C0A4);
+        break;
       case 'task_assignment':
         iconData = Icons.assignment_ind_rounded;
         iconColor = Theme.of(context).colorScheme.primary;

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:waypoint/features/dispatch/domain/services/needle_morning_dispatch_service.dart';
 import 'notification_feed.dart';
 
 class NotificationBellWidget extends StatefulWidget {
@@ -40,7 +41,11 @@ class _NotificationBellWidgetState extends State<NotificationBellWidget> {
     return StreamBuilder<List<Map<String, dynamic>>>(
       stream: _unreadStream,
       builder: (context, snapshot) {
-        final unreadCount = snapshot.data?.length ?? 0;
+        final remoteCount = snapshot.data?.length ?? 0;
+        final localCount = NeedleMorningDispatchService.getLocalNotifications()
+            .where((n) => n['is_read'] != true)
+            .length;
+        final unreadCount = remoteCount + localCount;
 
         return IconButton(
           icon: Stack(

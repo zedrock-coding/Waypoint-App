@@ -144,5 +144,82 @@ void main() {
       await NeedleMorningDispatchService.playBriefing(ttsService: mockTts);
       expect(mockTts.lastSpokenText, contains('Review production metrics'));
     });
+
+    test('In-app local notification is saved and accessible on dispatch', () async {
+      final mockTasks = [
+        Task(
+          id: 'dispatch-notif-1',
+          title: 'Deploy microservice update',
+          dueDate: now.add(const Duration(hours: 2)),
+          priority: TaskPriority.urgent,
+        ),
+      ];
+
+      await NeedleMorningDispatchService.executeDailyDispatch(
+        tasks: mockTasks,
+        now: now,
+      );
+
+      final notifications = NeedleMorningDispatchService.getLocalNotifications();
+      expect(notifications.isNotEmpty, isTrue);
+
+      final briefingNotif = notifications.firstWhere(
+        (n) => n['type'] == 'daily_briefing',
+      );
+      expect(briefingNotif['title'], 'Daily Briefing');
+      expect(briefingNotif['body'], contains('Deploy microservice update'));
+      expect(briefingNotif['is_read'], isFalse);
+
+      // Verify marking as read
+      final notifId = briefingNotif['id'] as String;
+      await NeedleMorningDispatchService.markLocalNotificationRead(notifId);
+      final updated = NeedleMorningDispatchService.getLocalNotifications()
+          .firstWhere((n) => n['id'] == notifId);
+      expect(updated['is_read'], isTrue);
+
+      // Verify marking all as read
+      await NeedleMorningDispatchService.markAllLocalNotificationsRead();
+      final allRead = NeedleMorningDispatchService.getLocalNotifications()
+          .every((n) => n['is_read'] == true);
+      expect(allRead, isTrue);
+    });
+
+    test('Briefing playback falls back to default text when no script in memory', () async {
+      final mockTts = MockTtsService();
+      // Clear memory script
+      NeedleMorningDispatchService.lastGeneratedScript = null;
+
+      await NeedleMorningDispatchService.playBriefing(ttsService: mockTts);
+      expect(mockTts.lastSpokenText, isNotNull);
+      expect(mockTts.lastSpokenText!.isNotEmpty, isTrue);
+    });
+
+    test('Stop briefing updates isPlayingNotifier and halts speech', () async {
+      final mockTts = MockTtsService(autoComplete: false);
+      expect(NeedleMorningDispatchService.isPlayingNotifier.value, isFalse);
+
+      // Start briefing in background
+      final playFuture = NeedleMorningDispatchService.playBriefing(
+        script: 'Test playback interruption script',
+        ttsService: mockTts,
+      );
+
+      // Allow playBriefing to begin speaking
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+
+      // Verify state during speech
+      expect(NeedleMorningDispatchService.isPlayingNotifier.value, isTrue);
+      expect(
+        NeedleMorningDispatchService.currentlyPlayingText,
+        'Test playback interruption script',
+      );
+
+      // Stop briefing
+      await NeedleMorningDispatchService.stopBriefing(ttsService: mockTts);
+      await playFuture;
+
+      expect(NeedleMorningDispatchService.isPlayingNotifier.value, isFalse);
+      expect(NeedleMorningDispatchService.currentlyPlayingText, isNull);
+    });
   });
 }

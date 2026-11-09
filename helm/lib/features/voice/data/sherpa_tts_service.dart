@@ -58,6 +58,9 @@ class SherpaTtsService implements ITextToSpeechService {
         await _flutterTts?.setSpeechRate(rate);
         await _flutterTts?.setVolume(1.0);
         await _flutterTts?.setPitch(1.0);
+        try {
+          await _flutterTts?.setQueueMode(0);
+        } catch (_) {}
 
         _flutterTts?.setStartHandler(() {
           _isPlaying = true;
@@ -79,7 +82,7 @@ class SherpaTtsService implements ITextToSpeechService {
           _finishSpeaking();
         });
 
-        await _flutterTts?.awaitSpeakCompletion(true);
+        await _flutterTts?.awaitSpeakCompletion(false);
       }
     } catch (e) {
       debugPrint('SherpaTtsService: initialization fallback ($e)');
@@ -138,7 +141,7 @@ class SherpaTtsService implements ITextToSpeechService {
         // Direct Windows native SAPI speech for reliable, audible desktop playback
         final spoken = await PlatformTtsHelper.speakWindows(cleanText);
         if (!spoken && _flutterTts != null) {
-          await _flutterTts!.speak(cleanText);
+          await _flutterTts!.speak(cleanText, focus: true);
         }
       } else if (_flutterTts != null) {
         _speakCompleter = Completer<void>();
@@ -154,7 +157,7 @@ class SherpaTtsService implements ITextToSpeechService {
           }
         });
 
-        await _flutterTts!.speak(cleanText);
+        await _flutterTts!.speak(cleanText, focus: true);
         await _speakCompleter!.future;
       }
     } catch (e) {

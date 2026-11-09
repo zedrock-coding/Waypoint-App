@@ -71,12 +71,19 @@ class NotificationService {
         await _notificationsPlugin.initialize(
           initSettings,
           onDidReceiveNotificationResponse: (NotificationResponse details) {
-            if (details.actionId == 'play_briefing' ||
-                details.payload == 'play_briefing') {
-              NeedleMorningDispatchService.playBriefing();
-            }
+            _handleNotificationResponse(details);
           },
         );
+
+        final launchDetails = await _notificationsPlugin.getNotificationAppLaunchDetails();
+        if (launchDetails != null && launchDetails.didNotificationLaunchApp) {
+          final resp = launchDetails.notificationResponse;
+          if (resp != null) {
+            Future.delayed(const Duration(milliseconds: 600), () {
+              _handleNotificationResponse(resp);
+            });
+          }
+        }
         final androidPlugin = _notificationsPlugin.resolvePlatformSpecificImplementation<
             AndroidFlutterLocalNotificationsPlugin>();
         if (androidPlugin != null) {
@@ -111,6 +118,23 @@ class NotificationService {
           stopListening();
         }
       });
+    }
+  }
+
+  void _handleNotificationResponse(NotificationResponse details) {
+    final actionId = details.actionId;
+    final payload = details.payload ?? '';
+
+    if (actionId == NeedleMorningDispatchService.playBriefingActionId ||
+        payload.startsWith(NeedleMorningDispatchService.playBriefingActionId)) {
+      String? script;
+      if (payload.contains('::')) {
+        final parts = payload.split('::');
+        if (parts.length > 1) {
+          script = parts.sublist(1).join('::');
+        }
+      }
+      NeedleMorningDispatchService.playBriefing(script: script);
     }
   }
 
