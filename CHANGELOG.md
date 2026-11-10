@@ -4,6 +4,31 @@ All notable changes to the **Helm** / **Waypoint** project will be documented in
 
 ---
 
+## [0.5.1] - 2026-11-10
+
+### 🚀 Added
+- **Needle AI Task Reconciliation & Cross-Verification Engine**:
+  - Deterministic verification layer (`NeedleReconciliationEngine`) cross-examining raw STT speech transcripts against preliminary Gemini model extractions.
+  - Imperative meta-framing sanitization: automatically strips prefixes (`"create a task saying"`, `"remind me to"`, `"please schedule"`) ensuring clean, canonical task titles.
+  - Temporal anchor normalization: parses client context timestamp and timezone, mapping relative timings (`"tonight"` -> 21:00, `"today evening"` -> 18:00, `"tomorrow morning"` -> 09:00, `"in X hours"`) into normalized ISO-8601 timestamps.
+  - Granular milestone decomposition: parses sequential speech markers (`first`, `then`, `also`, `finally`) into discrete subtasks with individual tracking.
+  - Priority & entity resolution: maps explicit priority keywords (`urgent`, `high`, `medium`, `low`) and matches spoken names against accessible team members.
+  - Dual-write direct persistence: saves verified tasks and subtask checklists directly to local Hive NoSQL and Supabase cloud tables.
+  - Conversational clarification loop: triggers voice disambiguation via Sherpa-ONNX TTS when essential details are ambiguous, automatically resuming microphone capture.
+- **Morning Dispatch Audio & Notification Center Feed**:
+  - Voice audio playback for the Daily Morning Briefing (`playBriefing`).
+  - Persistent in-app notification center integration, enabling users to re-play daily briefing audio later at any time.
+- **Universal Responsive Layout Engine (`ResponsiveClamp`)**:
+  - Responsive layout clamping and adaptive ratio scaling preventing RenderFlex overflow errors across varying mobile, tablet, and foldable form factors.
+
+### 📉 Reduced & Cleaned
+- **REDUCE Subtractive Maintenance**:
+  - Pruned obsolete test audio asset (`Task_Creation_test_audio.mp3`, -564 KB binary reduction).
+  - Removed unused dependencies (`file_picker: 8.1.7`, `cupertino_icons: ^1.0.8`) reducing bundle overhead.
+  - Eliminated unreferenced dead-code aliases (`generateBriefingScript`) and legacy session artifacts.
+
+---
+
 ## [0.5.0] - 2026-11-06
 
 ### 🚀 Added
