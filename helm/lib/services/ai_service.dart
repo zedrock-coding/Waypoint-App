@@ -385,9 +385,10 @@ CURRENT CONTEXT:
 $historySnippet
 
 INSTRUCTIONS:
-1. If an Existing Task Draft is provided, integrate and merge the user's voice reply into that draft.
-2. If essential details are still missing (such as due date, clarity of what needs doing), set "clarification_needed": true and generate "clarification_message" with a short, conversational question.
-3. If enough information is provided to make an actionable task, set "clarification_needed": false and return the complete task JSON.
+1. Provide a verbatim "transcript" of the user's spoken words.
+2. If an Existing Task Draft is provided, integrate and merge the user's voice reply into that draft.
+3. If essential details are still missing (such as due date, clarity of what needs doing), set "clarification_needed": true and generate "clarification_message" with a short, conversational question.
+4. If enough information is provided to make an actionable task, set "clarification_needed": false and return the complete task JSON.
 ''';
 
     try {
@@ -400,7 +401,7 @@ INSTRUCTIONS:
 
       // Normalise the cloud answer through the local parser
       return await _needleEngine.extractTask(
-        input: cloudTemplate['title'] ?? (currentDraft?['title'] ?? 'Voice Task'),
+        input: cloudTemplate['transcript'] ?? cloudTemplate['title'] ?? (currentDraft?['title'] ?? 'Voice Task'),
         templateContext: cloudTemplate,
         availableCommunities: availableCommunities,
         availableMembers: availableMembers,

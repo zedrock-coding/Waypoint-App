@@ -5,6 +5,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../ai_voice_overlay.dart';
 import '../features/voice/data/sherpa_tts_service.dart';
 import '../features/voice/domain/services/tts_service.dart';
@@ -12,6 +13,7 @@ import '../models/hive_models.dart';
 import '../services/ai_service.dart';
 import '../services/audio_recording_service.dart';
 import '../services/debouncer.dart';
+import '../services/needle_reconciliation_engine.dart';
 import '../providers/task_provider.dart';
 import '../models/unified_task.dart';
 import 'app_snackbar.dart';
@@ -234,7 +236,17 @@ class _CommandBarWidgetState extends State<CommandBarWidget>
         conversationHistory: _conversationHistory,
       );
 
-      await _applyTaskResult(result, taskProvider);
+      final userTranscript = _textController.text.trim().isNotEmpty
+          ? _textController.text.trim()
+          : (result?['transcript'] ?? result?['title'] ?? '');
+
+      await _applyTaskResult(
+        result,
+        taskProvider,
+        rawTranscript: userTranscript,
+        availableMembers: members,
+        availableCommunities: communities,
+      );
     } catch (e) {
       debugPrint('Voice command processing error: $e');
       if (_textController.text.trim().isNotEmpty) {
@@ -292,7 +304,13 @@ class _CommandBarWidgetState extends State<CommandBarWidget>
         availableMembers: members,
       );
 
-      await _applyTaskResult(result, taskProvider);
+      await _applyTaskResult(
+        result,
+        taskProvider,
+        rawTranscript: input,
+        availableMembers: members,
+        availableCommunities: communities,
+      );
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -313,32 +331,44 @@ class _CommandBarWidgetState extends State<CommandBarWidget>
 
   Future<void> _applyTaskResult(
     Map<String, dynamic>? result,
-    TaskProvider taskProvider,
-  ) async {
+    TaskProvider taskProvider, {
+    String? rawTranscript,
+    List<Map<String, dynamic>> availableMembers = const [],
+    List<Map<String, dynamic>> availableCommunities = const [],
+  }) async {
     if (result == null) {
       throw Exception('Could not understand task command.');
     }
 
-    final bool clarificationNeeded = result['clarification_needed'] ?? false;
+    final transcript = (rawTranscript ?? result['transcript'] ?? result['title'] ?? '').toString();
+    String currentUserId = 'local_user';
+    try {
+      currentUserId = Supabase.instance.client.auth.currentUser?.id ?? 'local_user';
+    } catch (_) {}
+
+    final contextHeader = <String, dynamic>{
+      'client_timestamp': DateTime.now().toIso8601String(),
+      'client_timezone': DateTime.now().timeZoneName,
+      'current_user': currentUserId,
+      'accessible_members': availableMembers,
+      'accessible_communities': availableCommunities,
+    };
+
+    final reconciliation = NeedleReconciliationEngine.reconcile(
+      rawTranscript: transcript,
+      geminiTaskJson: result,
+      contextHeader: contextHeader,
+    );
+
+    final bool clarificationNeeded = reconciliation.status == 'clarification_needed';
     if (clarificationNeeded) {
-      final String msg = (result['clarification_message'] ??
+      final String msg = (reconciliation.disambiguationPrompt ??
+              result['clarification_message'] ??
               'Could you clarify what you want to do?')
           .toString();
       _currentDraft = {
         ...?_currentDraft,
-        ...result,
-        'title': (result['title'] != null &&
-                result['title'].toString().isNotEmpty &&
-                result['title'] != 'Voice Task' &&
-                result['title'] != 'New Task')
-            ? result['title']
-            : _currentDraft?['title'] ?? result['title'] ?? 'New Task',
-        'description': result['description'] ?? _currentDraft?['description'],
-        'due_date': result['due_date'] ?? _currentDraft?['due_date'],
-        'priority': result['priority'] ?? _currentDraft?['priority'] ?? 'MEDIUM',
-        'subtasks': (result['subtasks'] is List && (result['subtasks'] as List).isNotEmpty)
-            ? result['subtasks']
-            : _currentDraft?['subtasks'] ?? [],
+        ...reconciliation.task,
       };
       _conversationHistory.add({'role': 'assistant', 'content': msg});
       _clarificationPrompt = msg;
@@ -380,37 +410,48 @@ class _CommandBarWidgetState extends State<CommandBarWidget>
     _conversationHistory.clear();
     _clarificationPrompt = null;
 
-    final title = result['title'] ?? 'New AI Task';
-    final description = result['description'];
+    final verifiedTask = reconciliation.task;
+    final title = (verifiedTask['title'] ?? result['title'] ?? 'New AI Task').toString();
+    final description = verifiedTask['description'] ?? result['description'];
 
-    final dueDate = AiService.parseAiDueDate(
+    DateTime? dueDate;
+    if (verifiedTask['due_date'] != null) {
+      dueDate = DateTime.tryParse(verifiedTask['due_date'].toString());
+    }
+    dueDate ??= AiService.parseAiDueDate(
       result['due_date'],
       result['due_time'] ?? result['time'],
     );
 
-    final communityId = result['community_id'];
-    final assigneeId = result['assignee_id'];
-    final Priority priority =
-        UnifiedTask.parsePriority(result['priority']?.toString());
+    final communityId = verifiedTask['community_id'] ?? result['community_id'];
+    final assigneeId = verifiedTask['assignee'] ?? result['assignee_id'];
+    final Priority priority = UnifiedTask.parsePriority(
+      (verifiedTask['priority'] ?? result['priority'])?.toString(),
+    );
 
-    final rawSubtasks = result['subtasks'] as List? ?? [];
-    final List<Map<String, dynamic>> subtaskMaps = rawSubtasks
-        .asMap()
-        .entries
-        .map((e) => {
-              'id': const Uuid().v4(),
-              'title': e.value.toString().trim(),
-              'is_completed': false,
-              'order': e.key,
-            })
-        .where((st) => (st['title'] as String).isNotEmpty)
-        .toList();
+    final rawSubtasks = (verifiedTask['subtasks'] ?? result['subtasks']) as List? ?? [];
+    final List<Map<String, dynamic>> subtaskMaps = [];
+    for (int i = 0; i < rawSubtasks.length; i++) {
+      final item = rawSubtasks[i];
+      final subtaskTitle = item is Map ? (item['title'] ?? '').toString() : item.toString();
+      if (subtaskTitle.trim().isNotEmpty) {
+        subtaskMaps.add({
+          'id': const Uuid().v4(),
+          'title': subtaskTitle.trim(),
+          'is_completed': item is Map ? (item['completed'] == true) : false,
+          'order': i,
+          if (item is Map && item['due_date'] != null) 'due_date': item['due_date'],
+        });
+      }
+    }
 
     final createdId = await taskProvider.addTask(
       title: title,
       description: description,
       communityId: communityId,
-      assignees: assigneeId != null ? [assigneeId] : [],
+      assignees: assigneeId != null && assigneeId.toString().isNotEmpty && assigneeId != 'me'
+          ? [assigneeId.toString()]
+          : [],
       subtasks: subtaskMaps,
       priority: priority,
       status: Status.toDo,

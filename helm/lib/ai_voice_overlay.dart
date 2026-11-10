@@ -10,6 +10,8 @@ import 'models/unified_task.dart';
 import 'providers/task_provider.dart';
 import 'services/ai_service.dart';
 import 'services/audio_recording_service.dart';
+import 'services/needle_reconciliation_engine.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'widgets/audio_waveform_visualizer.dart';
 import 'features/voice/domain/controllers/audio_capture_controller.dart';
 import 'features/voice/domain/models/recording_state.dart';
@@ -20,13 +22,22 @@ import 'core/ui/responsive_clamp.dart';
 enum AIState { listening, processing, clarifying, preview, success, error }
 
 class AIVoiceOverlay extends StatefulWidget {
-  const AIVoiceOverlay({super.key});
+  final Uint8List? initialTestAudioBytes;
+  final String? initialSimulatedTranscript;
+  final bool autoProcessTest;
+
+  const AIVoiceOverlay({
+    super.key,
+    this.initialTestAudioBytes,
+    this.initialSimulatedTranscript,
+    this.autoProcessTest = false,
+  });
 
   @override
-  State<AIVoiceOverlay> createState() => _AIVoiceOverlayState();
+  State<AIVoiceOverlay> createState() => AIVoiceOverlayState();
 }
 
-class _AIVoiceOverlayState extends State<AIVoiceOverlay>
+class AIVoiceOverlayState extends State<AIVoiceOverlay>
     with SingleTickerProviderStateMixin {
   late AnimationController _pulseController;
   late Animation<double> _scaleAnimation;
@@ -58,26 +69,6 @@ class _AIVoiceOverlayState extends State<AIVoiceOverlay>
   Timer? _autoConfirmTimer;
   int? _autoConfirmSeconds;
 
-  void _startAutoConfirm() {
-    _cancelAutoConfirm();
-    _autoConfirmSeconds = 5;
-    _autoConfirmTimer = Timer.periodic(const Duration(seconds: 1), (t) {
-      if (!mounted || _currentState != AIState.preview) {
-        t.cancel();
-        return;
-      }
-      setState(() {
-        if (_autoConfirmSeconds != null && _autoConfirmSeconds! > 1) {
-          _autoConfirmSeconds = _autoConfirmSeconds! - 1;
-        } else {
-          t.cancel();
-          _autoConfirmSeconds = null;
-          _commitPreviewTask();
-        }
-      });
-    });
-  }
-
   void _cancelAutoConfirm() {
     _autoConfirmTimer?.cancel();
     _autoConfirmTimer = null;
@@ -107,7 +98,16 @@ class _AIVoiceOverlayState extends State<AIVoiceOverlay>
       }
     };
 
-    _startListening();
+    if (widget.autoProcessTest) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        finishRecordingAndProcess(
+          testAudioBytes: widget.initialTestAudioBytes,
+          simulatedTranscript: widget.initialSimulatedTranscript,
+        );
+      });
+    } else {
+      _startListening();
+    }
   }
 
   Future<void> _startListening() async {
@@ -133,7 +133,10 @@ class _AIVoiceOverlayState extends State<AIVoiceOverlay>
     }
   }
 
-  Future<void> _finishRecordingAndProcess() async {
+  Future<void> _finishRecordingAndProcess({
+    Uint8List? testAudioBytes,
+    String? simulatedTranscript,
+  }) async {
     if (_currentState != AIState.listening &&
         _currentState != AIState.clarifying) {
       return;
@@ -155,8 +158,9 @@ class _AIVoiceOverlayState extends State<AIVoiceOverlay>
       }
     });
 
-    final Uint8List? audioBytes = await _audioService.stopRecording();
-    if (audioBytes == null || audioBytes.length < 500) {
+    final Uint8List? audioBytes = testAudioBytes ??
+        (simulatedTranscript != null ? null : await _audioService.stopRecording());
+    if ((audioBytes == null || audioBytes.length < 500) && simulatedTranscript == null) {
       _processingStepTimer?.cancel();
       if (mounted) {
         setState(() {
@@ -168,7 +172,7 @@ class _AIVoiceOverlayState extends State<AIVoiceOverlay>
     }
 
     if (!mounted) return;
-    _conversationHistory.add({'role': 'user', 'content': '[Voice Audio Input]'});
+    _conversationHistory.add({'role': 'user', 'content': simulatedTranscript ?? '[Voice Audio Input]'});
     final aiService = context.read<AiService>();
 
     try {
@@ -185,51 +189,87 @@ class _AIVoiceOverlayState extends State<AIVoiceOverlay>
             .toList();
       }
 
-      final result = await aiService.parseVoiceCommand(
-        audioBytes: audioBytes,
-        availableCommunities: communities,
-        availableMembers: members,
-        currentDraft: _currentDraft,
-        conversationHistory: _conversationHistory,
-      );
+      // 1. Initial Gemini call produces preliminaryJson
+      Map<String, dynamic>? preliminaryJson;
+      if (audioBytes != null && audioBytes.length >= 500) {
+        preliminaryJson = await aiService.parseVoiceCommand(
+          audioBytes: audioBytes,
+          availableCommunities: communities,
+          availableMembers: members,
+          currentDraft: _currentDraft,
+          conversationHistory: _conversationHistory,
+        );
+      } else if (simulatedTranscript != null) {
+        preliminaryJson = await aiService.parseHybridCommand(
+          userInput: simulatedTranscript,
+          availableCommunities: communities,
+          availableMembers: members,
+        );
+      }
 
       _processingStepTimer?.cancel();
 
-      if (result != null) {
-        final bool needsClarification = result['clarification_needed'] == true;
+      if (preliminaryJson == null) {
+        throw Exception('Failed to interpret voice command');
+      }
 
-        if (needsClarification) {
-          final String question = (result['clarification_message'] ??
-              'Could you clarify when this task is due or needed?').toString();
-          _conversationHistory.add({'role': 'assistant', 'content': question});
+      // STT transcript resolution
+      final String userTranscriptText = (simulatedTranscript ??
+              preliminaryJson['transcript'] ??
+              preliminaryJson['raw_transcript'] ??
+              preliminaryJson['title'] ??
+              '')
+          .toString();
 
-          if (mounted) {
-            setState(() {
-              _currentDraft = {
-                ...?_currentDraft,
-                ...result,
-                'title': (result['title'] != null &&
-                        result['title'].toString().isNotEmpty &&
-                        result['title'] != 'Voice Task' &&
-                        result['title'] != 'New Task')
-                    ? result['title']
-                    : _currentDraft?['title'] ?? result['title'] ?? 'New Task',
-                'description': result['description'] ?? _currentDraft?['description'],
-                'due_date': result['due_date'] ?? _currentDraft?['due_date'],
-                'priority': result['priority'] ?? _currentDraft?['priority'] ?? 'MEDIUM',
-                'subtasks': (result['subtasks'] is List && (result['subtasks'] as List).isNotEmpty)
-                    ? result['subtasks']
-                    : _currentDraft?['subtasks'] ?? [],
-              };
-              _clarificationQuestion = question;
-              _currentState = AIState.clarifying;
-              _isAiSpeaking = true;
-            });
+      // 2. Call Needle AI reconciliation with the real runtime payload
+      String currentUserId = 'local_user';
+      try {
+        currentUserId = Supabase.instance.client.auth.currentUser?.id ?? 'local_user';
+      } catch (_) {}
 
-            final int timeoutMs = 7000 + (question.length * 80);
+      final now = DateTime.now();
+      final contextHeader = <String, dynamic>{
+        'client_timestamp': now.toIso8601String(),
+        'client_timezone': now.timeZoneName,
+        'current_user': currentUserId,
+        'accessible_members': members,
+        'accessible_communities': communities,
+      };
+
+      final reconciliation = NeedleReconciliationEngine.reconcile(
+        rawTranscript: userTranscriptText,
+        geminiTaskJson: preliminaryJson,
+        contextHeader: contextHeader,
+      );
+
+      // 3. Consume the verified output:
+      // If status == "clarification_needed": Pass disambiguation_prompt to Sherpa-ONNX TTS, play audio, wait for follow-up turn.
+      if (reconciliation.status == 'clarification_needed') {
+        final String disambiguationPrompt = (reconciliation.disambiguationPrompt ??
+                preliminaryJson['clarification_message'] ??
+                'Could you clarify when this task is due or needed?')
+            .toString();
+
+        _conversationHistory.add({'role': 'assistant', 'content': disambiguationPrompt});
+
+        if (mounted) {
+          setState(() {
+            _currentDraft = {
+              ...?_currentDraft,
+              ...reconciliation.task,
+            };
+            _clarificationQuestion = disambiguationPrompt;
+            _currentState = AIState.clarifying;
+            _isAiSpeaking = true;
+          });
+
+          if (simulatedTranscript != null) {
+            unawaited(_ttsService.speak(disambiguationPrompt));
+          } else {
+            final int timeoutMs = 7000 + (disambiguationPrompt.length * 80);
             try {
               await _ttsService
-                  .speak(question)
+                  .speak(disambiguationPrompt)
                   .timeout(Duration(milliseconds: timeoutMs), onTimeout: () {
                 debugPrint('AIVoiceOverlay TTS playback timed out (${timeoutMs}ms). Recovering...');
               });
@@ -239,72 +279,97 @@ class _AIVoiceOverlayState extends State<AIVoiceOverlay>
 
             // Mandatory hardware settling delay to allow speaker output buffer to clear before mic capture
             await Future.delayed(const Duration(milliseconds: 500));
-
-            if (mounted) {
-              setState(() => _isAiSpeaking = false);
-            }
-
-            if (mounted && _currentState == AIState.clarifying) {
-              await _startListening();
-            }
           }
-          return;
+
+          if (mounted) {
+            setState(() => _isAiSpeaking = false);
+          }
+
+          if (mounted && _currentState == AIState.clarifying && simulatedTranscript == null) {
+            await _startListening();
+          }
         }
+        return;
+      }
 
-        // Gather extracted task and decompose subtasks into interactive preview
-        final title =
-            result['title'] ?? (_currentDraft?['title'] ?? 'Voice Task');
-        final description =
-            result['description'] ?? _currentDraft?['description'];
+      // If status == "verified": Save the reconciled task and its subtasks to the local Hive store and Supabase.
+      final verifiedTask = reconciliation.task;
+      final title = (verifiedTask['title'] ?? (_currentDraft?['title'] ?? 'Voice Task')).toString();
+      final description = verifiedTask['description'] ?? _currentDraft?['description'];
+      DateTime? dueDate;
+      if (verifiedTask['due_date'] != null) {
+        dueDate = DateTime.tryParse(verifiedTask['due_date'].toString());
+      }
+      dueDate ??= AiService.parseAiDueDate(
+        preliminaryJson['due_date'] ?? _currentDraft?['due_date'],
+        preliminaryJson['due_time'] ??
+            preliminaryJson['time'] ??
+            _currentDraft?['due_time'] ??
+            _currentDraft?['time'],
+      );
 
-        final dueDate = AiService.parseAiDueDate(
-          result['due_date'] ?? _currentDraft?['due_date'],
-          result['due_time'] ??
-              result['time'] ??
-              _currentDraft?['due_time'] ??
-              _currentDraft?['time'],
-        );
+      final communityId = verifiedTask['community_id'] ?? preliminaryJson['community_id'] ?? _currentDraft?['community_id'];
+      final assigneeId = verifiedTask['assignee'] ?? preliminaryJson['assignee_id'] ?? _currentDraft?['assignee_id'];
+      final Priority priority = UnifiedTask.parsePriority(
+        (verifiedTask['priority'] ?? preliminaryJson['priority'] ?? _currentDraft?['priority'])?.toString(),
+      );
 
-        final communityId =
-            result['community_id'] ?? _currentDraft?['community_id'];
-        final assigneeId =
-            result['assignee_id'] ?? _currentDraft?['assignee_id'];
-        final Priority priority = UnifiedTask.parsePriority(
-          (result['priority'] ?? _currentDraft?['priority'])?.toString(),
-        );
-
-        final rawSubtasks =
-            (result['subtasks'] ?? _currentDraft?['subtasks']) as List? ?? [];
-        final List<String> extractedSubtasks = rawSubtasks
-            .map((e) => e.toString().trim())
-            .where((st) => st.isNotEmpty)
-            .toList();
-
-        if (mounted) {
-          setState(() {
-            _previewTitle = title;
-            _previewDescription = description;
-            _previewDueDate = dueDate;
-            _previewPriority = priority;
-            _previewCommunityId = communityId;
-            _previewAssigneeId = assigneeId;
-            _previewSubtasks.clear();
-            _previewSubtasks.addAll(extractedSubtasks);
-            _isEditingTitle = false;
-            _isAddingManualSubtask = false;
-            _currentState = AIState.preview;
+      final rawSubtasks = (verifiedTask['subtasks'] ?? preliminaryJson['subtasks'] ?? _currentDraft?['subtasks']) as List? ?? [];
+      final List<Map<String, dynamic>> subtaskMaps = [];
+      for (int i = 0; i < rawSubtasks.length; i++) {
+        final item = rawSubtasks[i];
+        final subtaskTitle = item is Map ? (item['title'] ?? '').toString() : item.toString();
+        if (subtaskTitle.trim().isNotEmpty) {
+          subtaskMaps.add({
+            'id': const Uuid().v4(),
+            'title': subtaskTitle.trim(),
+            'is_completed': item is Map ? (item['completed'] == true) : false,
+            'order': i,
+            if (item is Map && item['due_date'] != null) 'due_date': item['due_date'],
           });
-
-          final timeStr = dueDate != null
-              ? '${DateFormat.jm().format(dueDate)} on ${DateFormat.MMMd().format(dueDate)}'
-              : 'soon';
-          final confirmMsg = 'Created task: $title for $timeStr';
-          unawaited(_ttsService.speak(confirmMsg));
-
-          _startAutoConfirm();
         }
-      } else {
-        throw Exception('Failed to interpret voice command');
+      }
+
+      if (!mounted) return;
+      final taskProvider = context.read<TaskProvider>();
+      await taskProvider.addTask(
+        title: title,
+        description: description,
+        communityId: communityId,
+        assignees: assigneeId != null && assigneeId.toString().isNotEmpty && assigneeId != 'me'
+            ? [assigneeId.toString()]
+            : [],
+        subtasks: subtaskMaps,
+        priority: priority,
+        status: Status.toDo,
+        dueAt: dueDate,
+      );
+
+      if (mounted) {
+        setState(() {
+          _previewTitle = title;
+          _previewDescription = description;
+          _previewDueDate = dueDate;
+          _previewPriority = priority;
+          _previewCommunityId = communityId;
+          _previewAssigneeId = assigneeId?.toString();
+          _previewSubtasks.clear();
+          _previewSubtasks.addAll(subtaskMaps.map((s) => s['title'].toString()));
+          _isEditingTitle = false;
+          _isAddingManualSubtask = false;
+          _currentState = AIState.success;
+        });
+
+        final timeStr = dueDate != null
+            ? '${DateFormat.jm().format(dueDate)} on ${DateFormat.MMMd().format(dueDate)}'
+            : 'soon';
+        final confirmMsg = 'Task verified and saved: $title for $timeStr';
+        unawaited(_ttsService.speak(confirmMsg));
+
+        if (simulatedTranscript == null) {
+          await Future.delayed(const Duration(milliseconds: 700));
+          if (mounted) Navigator.pop(context);
+        }
       }
     } catch (e) {
       _processingStepTimer?.cancel();
@@ -316,6 +381,17 @@ class _AIVoiceOverlayState extends State<AIVoiceOverlay>
         });
       }
     }
+  }
+
+  @visibleForTesting
+  Future<void> finishRecordingAndProcess({
+    Uint8List? testAudioBytes,
+    String? simulatedTranscript,
+  }) async {
+    await _finishRecordingAndProcess(
+      testAudioBytes: testAudioBytes,
+      simulatedTranscript: simulatedTranscript,
+    );
   }
 
   Future<void> _commitPreviewTask() async {

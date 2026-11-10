@@ -304,6 +304,7 @@ class LocalHeuristicParser implements NeedleEngine {
 
     // Guaranteed schema conformance for the caller
     return {
+      'transcript': templateContext?['transcript'] ?? input,
       'title': title,
       'description': description,
       'due_date': dueDateStr,

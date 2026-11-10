@@ -56,6 +56,7 @@ If the user's command is missing important actionable details (e.g., they say "r
 
 SCHEMA:
 {
+  "transcript": "Verbatim transcription of the user's spoken words or input",
   "title": "String",
   "description": "String or null",
   "due_date": "ISO8601 String (YYYY-MM-DD or YYYY-MM-DDTHH:mm:ss) or null",
