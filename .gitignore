@@ -1,0 +1,24 @@
+# Waypoint Pre-Release Branch
+# This branch tracks compiled pre-release binaries for testing.
+# All source code, configs, and build pipelines are ignored.
+
+# Source & Tooling Directories
+helm/
+supabase/
+tools/
+docs/
+
+# IDE & Environment Files
+.idea/
+.vscode/
+.gemini/
+.dart_tool/
+.env*
+*.key
+*.pem
+
+# Intermediate Build Artifacts & Logs
+build/
+*.log
+*.tmp
+*.bak
