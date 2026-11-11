@@ -1,5 +1,54 @@
 # Changelog
 
+## [v0.5.1] - 2026-11-10
+
+### Changes
+# Waypoint v0.5.1 — Production Release 🧭
+
+[![Version](https://img.shields.io/badge/version-0.5.1--build.22-88C0A4?style=for-the-badge&labelColor=1E2124)](https://github.com/zedrock-coding/Waypoint-App/releases/tag/v0.5.1)
+[![Engine](https://img.shields.io/badge/Flutter-3.x_Material_3-1E2124?style=for-the-badge&logo=flutter&logoColor=88C0A4)](https://flutter.dev)
+[![Backend](https://img.shields.io/badge/Supabase-Auth_%26_Postgres_RLS-1E2124?style=for-the-badge&logo=supabase&logoColor=88C0A4)](https://supabase.com)
+[![Offline](https://img.shields.io/badge/Storage-Hive_NoSQL_Local--First-1E2124?style=for-the-badge&logo=hive&logoColor=88C0A4)](https://pub.dev/packages/hive)
+[![AI Orchestrator](https://img.shields.io/badge/Orchestrator-gemini--3.5--flash--lite-1E2124?style=for-the-badge&logo=google&logoColor=88C0A4)](https://ai.google.dev)
+
+> **Waypoint v0.5.1** introduces the deterministic Needle AI task reconciliation engine, adds daily morning dispatch audio briefing playback and notification feed persistence, eliminates RenderFlex overflow errors across all screen ratios via `ResponsiveClamp`, and reduces application binary clutter.
+
+---
+
+## 📦 Release Artifacts & Targets
+
+| Platform | Distribution Target | Details / File | SHA-256 Digest |
+|---|---|---|---|
+| **Windows Desktop** | `Waypoint-v0.5.1-Setup.exe` (28.0 MB) | `releases/Waypoint-v0.5.1-Setup.exe` | `C55FA26190B02EBB72FAC287EEB6124643C33E9CF278984873603460069DB6A1` |
+| **Android** | `waypoint-v0.5.1.apk` (61.7 MB) | `releases/waypoint-v0.5.1.apk` | `C21FD3BDF892B44DD6B427598689FD46846CEB739DAAD5FE8E39E276EF8A8B7C` |
+| **Web** | Progressive Web App (PWA) | Production standalone bundle (`build/web`) | `Verified (--pwa-strategy=none)` |
+
+---
+
+## 🌟 Key Engineering Fixes & Enhancements
+
+### 1. 🎯 Needle AI Task Reconciliation Engine
+* **Deterministic Cross-Verification**: Cross-examines raw user speech transcripts against preliminary Gemini model extractions to ground attributes and prevent hallucinations.
+* **Imperative Meta-Framing Stripping**: Strips meta-command phrasing (*"create a task saying"*, *"remind me to"*, *"please schedule"*) to ensure canonical, focused titles.
+* **Relative Temporal Anchoring**: Resolves relative time markers (*"tonight"*, *"tomorrow morning"*, *"today evening"*, *"in 2 hours"*) into precise ISO-8601 timestamps anchored to the client temporal environment.
+* **Milestone Decomposition**: Decomposes multi-step sequential dictation (*"first... then... also... finally"*) into discrete subtask checklist items.
+* **Dual-Write Persistence**: Directly commits verified tasks and subtask milestones to local Hive NoSQL and Supabase cloud tables.
+* **Interactive Speech Disambiguation**: Spoken conversational clarification via Sherpa-ONNX TTS when essential details are ambiguous, automatically resuming microphone capture.
+
+### 2. 🎙️ Morning Dispatch Audio Briefing & In-App Notification Center
+* **Audible Briefing Playback**: Voice audio narration when tapping "Play Briefing" in Daily Briefing.
+* **Persistent Notification Center Feed**: Morning dispatch briefings saved directly to the notification feed allowing users to re-play voice briefings anytime.
+
+### 3. 📐 Universal Responsive Layout Engine (`ResponsiveClamp`)
+* **Zero RenderFlex Overflows**: Adaptive layout scaling and responsive sizing preventing UI overflow across diverse mobile and tablet screen dimensions.
+
+### 4. 📉 Subtractive Maintenance & Streamlining (REDUCE)
+* **Reduced Binary Clutter**: Pruned unreferenced scratch audio files (-564 KB).
+* **Leaner Dependencies**: Removed unused packages (`file_picker`, `cupertino_icons`).
+* **Dead Code Cleanup**: Eliminated obsolete function aliases and orphaned test artifacts.
+
+---
+
 ## [v0.5.0] - 2026-11-07
 
 ### Changes
