@@ -1,3 +1,20 @@
+# Source code and repo workspaces (maintained on 'highest' branch)
+helm/
+supabase/
+tools/
+docs/
+
+# Environment and secrets
+.env
+.env.*
+
+# IDE and tooling artifacts
+.idea/
+.vscode/
+.artifacts/
+.vercel/
+*.log
+
 # Visual Testing Agent
 test_agent.py
 helm_tests.json
@@ -5,3 +22,7 @@ helm_tests.json
 # Python caches
 __pycache__/
 *.pyc
+
+# OS files
+.DS_Store
+Thumbs.db
