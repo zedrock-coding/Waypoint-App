@@ -9,6 +9,7 @@ import '../models/sync_model.dart';
 import '../services/sync_service.dart';
 import '../services/widget_sync_service.dart';
 import '../services/task_merge.dart';
+import '../services/recurrence_calculator.dart';
 import '../notification_service.dart';
 import 'package:uuid/uuid.dart';
 
@@ -190,6 +191,17 @@ class TaskProvider with ChangeNotifier {
 
     final title = d['title']?.toString().trim() ?? '';
 
+    final bool isRecurring = d['is_recurring'] == true;
+    final recurrenceFrequency = d['recurrence_frequency']?.toString();
+    final recurrenceInterval = (d['recurrence_interval'] as num?)?.toInt() ?? 1;
+    final rawDays = d['recurrence_days_of_week'];
+    final recurrenceDaysOfWeek = rawDays is List
+        ? rawDays.map((e) => int.tryParse(e.toString()) ?? 0).where((e) => e >= 1 && e <= 7).toList()
+        : null;
+    final recurrenceEndDate = DateTime.tryParse(d['recurrence_end_date']?.toString() ?? '');
+    final parentRecurringTaskId = d['parent_recurring_task_id']?.toString();
+    final originalDueDate = DateTime.tryParse(d['original_due_date']?.toString() ?? '');
+
     return hive_model.Task(
       id: d['id'].toString(),
       title: title.isEmpty ? 'Untitled' : title,
@@ -206,6 +218,13 @@ class TaskProvider with ChangeNotifier {
       assignees: assignees,
       subtasks: subtasks,
       updatedAt: updatedAt,
+      isRecurring: isRecurring,
+      recurrenceFrequency: recurrenceFrequency,
+      recurrenceInterval: recurrenceInterval,
+      recurrenceDaysOfWeek: recurrenceDaysOfWeek,
+      recurrenceEndDate: recurrenceEndDate,
+      parentRecurringTaskId: parentRecurringTaskId,
+      originalDueDate: originalDueDate,
     );
   }
 
@@ -306,6 +325,10 @@ class TaskProvider with ChangeNotifier {
     Status status = Status.toDo,
     bool isLocalOnly = false,
     DateTime? dueAt,
+    bool isRecurring = false,
+    RecurrenceRule? recurrenceRule,
+    String? parentRecurringTaskId,
+    DateTime? originalDueDate,
   }) async {
     final userId = isLocalOnly ? null : _supabase.auth.currentUser?.id;
     final id = const Uuid().v4();
@@ -329,6 +352,13 @@ class TaskProvider with ChangeNotifier {
       priority: priority.name,
       status: _statusToString(status),
       order: newOrder,
+      isRecurring: isRecurring,
+      recurrenceFrequency: recurrenceRule?.frequency,
+      recurrenceInterval: recurrenceRule?.interval ?? 1,
+      recurrenceDaysOfWeek: recurrenceRule?.daysOfWeek,
+      recurrenceEndDate: recurrenceRule?.endDate,
+      parentRecurringTaskId: parentRecurringTaskId,
+      originalDueDate: originalDueDate,
     );
     await _taskBox.put(id, localTask);
 
@@ -358,6 +388,13 @@ class TaskProvider with ChangeNotifier {
         'order': newOrder,
         'due_at': dueAt?.toIso8601String(),
         'updated_at': DateTime.now().toIso8601String(),
+        'is_recurring': isRecurring,
+        'recurrence_frequency': recurrenceRule?.frequency,
+        'recurrence_interval': recurrenceRule?.interval ?? 1,
+        'recurrence_days_of_week': recurrenceRule?.daysOfWeek,
+        'recurrence_end_date': recurrenceRule?.endDate?.toIso8601String(),
+        'parent_recurring_task_id': parentRecurringTaskId,
+        'original_due_date': originalDueDate?.toIso8601String(),
       };
 
       await _mutate(
@@ -450,6 +487,8 @@ class TaskProvider with ChangeNotifier {
     List<Map<String, dynamic>> subtasks = const [],
     Priority? priority,
     Status? status,
+    bool? isRecurring,
+    RecurrenceRule? recurrenceRule,
   }) async {
     final hiveTask = _taskBox.get(id);
     if (hiveTask == null) return;
@@ -468,6 +507,20 @@ class TaskProvider with ChangeNotifier {
     if (status != null) {
       hiveTask.status = _statusToString(status);
       hiveTask.isCompleted = status == Status.done;
+    }
+    if (isRecurring != null) {
+      hiveTask.isRecurring = isRecurring;
+      if (recurrenceRule != null) {
+        hiveTask.recurrenceFrequency = recurrenceRule.frequency;
+        hiveTask.recurrenceInterval = recurrenceRule.interval;
+        hiveTask.recurrenceDaysOfWeek = recurrenceRule.daysOfWeek;
+        hiveTask.recurrenceEndDate = recurrenceRule.endDate;
+      } else if (!isRecurring) {
+        hiveTask.recurrenceFrequency = null;
+        hiveTask.recurrenceInterval = 1;
+        hiveTask.recurrenceDaysOfWeek = null;
+        hiveTask.recurrenceEndDate = null;
+      }
     }
 
     await hiveTask.save();
@@ -501,6 +554,13 @@ class TaskProvider with ChangeNotifier {
       if (status != null) {
         updates['status'] = _statusToString(status);
         updates['is_completed'] = status == Status.done;
+      }
+      if (isRecurring != null) {
+        updates['is_recurring'] = isRecurring;
+        updates['recurrence_frequency'] = recurrenceRule?.frequency;
+        updates['recurrence_interval'] = recurrenceRule?.interval ?? 1;
+        updates['recurrence_days_of_week'] = recurrenceRule?.daysOfWeek;
+        updates['recurrence_end_date'] = recurrenceRule?.endDate?.toIso8601String();
       }
 
       await _mutate(
@@ -720,6 +780,46 @@ class TaskProvider with ChangeNotifier {
     if (newStatus == Status.done) {
       unawaited(NotificationService().cancelTaskNotifications(task.id));
       _recordTaskCompletionStreak();
+
+      // Recurrence Rollover: Spawn on Completion
+      if (task.isRecurring && task.recurrenceRule != null) {
+        final currentDue = task.dueDate ?? task.dateTime;
+        final nextDue = RecurrenceCalculator.calculateNextDueDate(
+          currentDue,
+          task.recurrenceRule!,
+          anchor: DateTime.now(),
+          advancePastAnchor: true,
+        );
+
+        if (RecurrenceCalculator.shouldSpawnNextInstance(nextDue, task.recurrenceRule!)) {
+          final resetSubtasks = task.subtasks.map((st) {
+            return {
+              ...st,
+              'id': const Uuid().v4(),
+              'is_completed': false,
+            };
+          }).toList();
+
+          unawaited(
+            addTask(
+              title: task.title,
+              description: task.description,
+              communityId: task.communityId,
+              categoryIds: task.categoryIds,
+              assignees: task.assignees,
+              subtasks: resetSubtasks,
+              priority: task.priority,
+              status: Status.toDo,
+              isLocalOnly: task.isLocal,
+              dueAt: nextDue,
+              isRecurring: true,
+              recurrenceRule: task.recurrenceRule,
+              parentRecurringTaskId: task.parentRecurringTaskId ?? task.id,
+              originalDueDate: task.originalDueDate ?? currentDue,
+            ),
+          );
+        }
+      }
     } else if (task.dueDate != null) {
       unawaited(
         NotificationService().scheduleTaskDueDateNotification(

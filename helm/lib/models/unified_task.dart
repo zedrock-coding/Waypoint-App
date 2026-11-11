@@ -1,4 +1,7 @@
 import 'hive_models.dart' as hive_model;
+import 'recurrence_rule.dart';
+
+export 'recurrence_rule.dart';
 
 enum Priority { low, medium, high }
 enum Status { toDo, inProgress, done }
@@ -20,6 +23,10 @@ class UnifiedTask {
   final int order; 
   final List<Map<String, dynamic>> subtasks;
   final DateTime updatedAt;
+  final bool isRecurring;
+  final RecurrenceRule? recurrenceRule;
+  final String? parentRecurringTaskId;
+  final DateTime? originalDueDate;
 
   UnifiedTask({
     required this.id,
@@ -38,9 +45,23 @@ class UnifiedTask {
     required this.order,
     required this.subtasks,
     required this.updatedAt,
+    this.isRecurring = false,
+    this.recurrenceRule,
+    this.parentRecurringTaskId,
+    this.originalDueDate,
   });
 
   factory UnifiedTask.fromHive(hive_model.Task task) {
+    RecurrenceRule? rule;
+    if (task.isRecurring == true && task.recurrenceFrequency != null) {
+      rule = RecurrenceRule(
+        frequency: task.recurrenceFrequency!,
+        interval: task.recurrenceInterval ?? 1,
+        daysOfWeek: task.recurrenceDaysOfWeek,
+        endDate: task.recurrenceEndDate,
+      );
+    }
+
     return UnifiedTask(
       id: task.id ?? '',
       title: task.title ?? 'Untitled',
@@ -58,10 +79,20 @@ class UnifiedTask {
       order: task.order ?? 0,
       subtasks: (task.subtasks ?? []).map((e) => Map<String, dynamic>.from(e)).toList(),
       updatedAt: task.updatedAt ?? task.createdAt ?? DateTime.now(),
+      isRecurring: task.isRecurring ?? false,
+      recurrenceRule: rule,
+      parentRecurringTaskId: task.parentRecurringTaskId,
+      originalDueDate: task.originalDueDate,
     );
   }
 
   factory UnifiedTask.fromSupabase(Map<String, dynamic> data) {
+    final bool isRec = data['is_recurring'] == true;
+    RecurrenceRule? rule;
+    if (isRec && data['recurrence_frequency'] != null) {
+      rule = RecurrenceRule.fromMap(data);
+    }
+
     return UnifiedTask(
       id: data['id'].toString(),
       title: data['title'] ?? '',
@@ -79,6 +110,10 @@ class UnifiedTask {
       order: data['order'] ?? 0,
       subtasks: (data['subtasks'] as List?)?.map((e) => Map<String, dynamic>.from(e)).toList() ?? [],
       updatedAt: data['updated_at'] != null ? DateTime.parse(data['updated_at']) : DateTime.parse(data['created_at']),
+      isRecurring: isRec,
+      recurrenceRule: rule,
+      parentRecurringTaskId: data['parent_recurring_task_id']?.toString(),
+      originalDueDate: data['original_due_date'] != null ? DateTime.tryParse(data['original_due_date'].toString()) : null,
     );
   }
 

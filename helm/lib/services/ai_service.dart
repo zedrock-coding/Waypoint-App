@@ -280,6 +280,11 @@ CURRENT CONTEXT:
 - Available Members: ${jsonEncode(availableMembers)}
 
 User Input: "$userInput"
+
+INSTRUCTIONS:
+- Parse user input into structured task JSON.
+- If multiple distinct tasks are described, emit each in the "tasks" array.
+- If recurrence is described (e.g. "every day", "weekly", "every Monday"), set "is_recurring": true and construct "recurrence_rule".
 ''';
 
     try {
@@ -386,9 +391,11 @@ $historySnippet
 
 INSTRUCTIONS:
 1. Provide a verbatim "transcript" of the user's spoken words.
-2. If an Existing Task Draft is provided, integrate and merge the user's voice reply into that draft.
-3. If essential details are still missing (such as due date, clarity of what needs doing), set "clarification_needed": true and generate "clarification_message" with a short, conversational question.
-4. If enough information is provided to make an actionable task, set "clarification_needed": false and return the complete task JSON.
+2. If the user mentions multiple independent tasks or deliverables, emit each inside the "tasks" array.
+3. If recurrence is mentioned ("every day", "weekly", "every Monday", etc.), set "is_recurring": true and construct "recurrence_rule".
+4. If an Existing Task Draft is provided, integrate and merge the user's voice reply into that draft.
+5. If essential details are still missing (such as due date, clarity of what needs doing), set "clarification_needed": true and generate "clarification_message" with a short, conversational question referencing specific task names.
+6. If enough information is provided to make actionable task(s), set "clarification_needed": false and return the complete task JSON.
 ''';
 
     try {

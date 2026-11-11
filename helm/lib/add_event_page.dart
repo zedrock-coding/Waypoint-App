@@ -8,6 +8,7 @@ import 'services/supabase_service.dart';
 import 'services/ai_service.dart';
 import 'models/hive_models.dart' as hive_model;
 import 'package:hive_flutter/hive_flutter.dart';
+import 'widgets/recurrence_picker_sheet.dart';
 
 class AddEventPage extends StatefulWidget {
   final UnifiedTask? taskToEdit;
@@ -33,6 +34,8 @@ class _AddEventPageState extends State<AddEventPage> {
   late TextEditingController _descriptionController;
   DateTime? _selectedDate;
   TimeOfDay? _selectedTime;
+  bool _isRecurring = false;
+  RecurrenceRule? _recurrenceRule;
 
   late Priority _selectedPriority;
   late Status _selectedStatus;
@@ -76,6 +79,8 @@ class _AddEventPageState extends State<AddEventPage> {
     );
 
     if (widget.taskToEdit != null) {
+      _isRecurring = widget.taskToEdit!.isRecurring;
+      _recurrenceRule = widget.taskToEdit!.recurrenceRule;
       _selectedAssigneeIds.addAll(widget.taskToEdit!.assignees);
       _selectedCategoryIds.addAll(widget.taskToEdit!.categoryIds);
       for (var sub in widget.taskToEdit!.subtasks) {
@@ -298,6 +303,8 @@ class _AddEventPageState extends State<AddEventPage> {
             priority: _selectedPriority,
             status: _selectedStatus,
             dueAt: finalDueAt,
+            isRecurring: _isRecurring,
+            recurrenceRule: _recurrenceRule,
           );
         } else {
           final String? communityId =
@@ -318,6 +325,8 @@ class _AddEventPageState extends State<AddEventPage> {
             status: _selectedStatus,
             isLocalOnly: isLocalOnly,
             dueAt: finalDueAt,
+            isRecurring: _isRecurring,
+            recurrenceRule: _recurrenceRule,
           );
         }
 
@@ -351,6 +360,8 @@ class _AddEventPageState extends State<AddEventPage> {
             label: 'Title',
             validator: (v) => v?.isEmpty ?? true ? 'Enter title' : null,
           ),
+          const SizedBox(height: 8),
+          _buildRecurrenceBar(),
           const SizedBox(height: 16),
           _buildTextField(
             controller: _descriptionController,
@@ -519,6 +530,68 @@ class _AddEventPageState extends State<AddEventPage> {
           }).toList(),
         ),
       ],
+    );
+  }
+
+  Widget _buildRecurrenceBar() {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final String label = _isRecurring && _recurrenceRule != null
+        ? _recurrenceRule!.readableDescription
+        : 'Does not repeat';
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(8),
+      onTap: () async {
+        final rule = await RecurrencePickerSheet.show(
+          context,
+          initialRule: _recurrenceRule,
+          anchorDate: _selectedDate,
+        );
+        setState(() {
+          _isRecurring = rule != null;
+          _recurrenceRule = rule;
+          _hasUnsavedChanges = true;
+        });
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: _isRecurring
+              ? colorScheme.primary.withValues(alpha: 0.1)
+              : colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: _isRecurring
+                ? colorScheme.primary.withValues(alpha: 0.5)
+                : colorScheme.outlineVariant.withValues(alpha: 0.5),
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.repeat_rounded,
+              size: 16,
+              color: _isRecurring ? colorScheme.primary : colorScheme.onSurfaceVariant,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: _isRecurring ? FontWeight.bold : FontWeight.normal,
+                color: _isRecurring ? colorScheme.primary : colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const Spacer(),
+            Icon(
+              Icons.arrow_drop_down_rounded,
+              color: colorScheme.onSurfaceVariant,
+            ),
+          ],
+        ),
+      ),
     );
   }
 

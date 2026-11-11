@@ -161,13 +161,20 @@ class TaskAdapter extends TypeAdapter<Task> {
           ?.map((dynamic e) => (e as Map).cast<dynamic, dynamic>())
           ?.toList(),
       updatedAt: fields[15] as DateTime?,
+      isRecurring: fields[16] as bool?,
+      recurrenceFrequency: fields[17] as String?,
+      recurrenceInterval: fields[18] as int?,
+      recurrenceDaysOfWeek: (fields[19] as List?)?.cast<int>(),
+      recurrenceEndDate: fields[20] as DateTime?,
+      parentRecurringTaskId: fields[21] as String?,
+      originalDueDate: fields[22] as DateTime?,
     );
   }
 
   @override
   void write(BinaryWriter writer, Task obj) {
     writer
-      ..writeByte(16)
+      ..writeByte(23)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -199,7 +206,21 @@ class TaskAdapter extends TypeAdapter<Task> {
       ..writeByte(14)
       ..write(obj.subtasks)
       ..writeByte(15)
-      ..write(obj.updatedAt);
+      ..write(obj.updatedAt)
+      ..writeByte(16)
+      ..write(obj.isRecurring)
+      ..writeByte(17)
+      ..write(obj.recurrenceFrequency)
+      ..writeByte(18)
+      ..write(obj.recurrenceInterval)
+      ..writeByte(19)
+      ..write(obj.recurrenceDaysOfWeek)
+      ..writeByte(20)
+      ..write(obj.recurrenceEndDate)
+      ..writeByte(21)
+      ..write(obj.parentRecurringTaskId)
+      ..writeByte(22)
+      ..write(obj.originalDueDate);
   }
 
   @override

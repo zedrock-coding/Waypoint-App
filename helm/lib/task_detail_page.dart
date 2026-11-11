@@ -256,6 +256,15 @@ class _TaskDetailContentState extends State<TaskDetailContent> {
                                 label: 'Date', 
                                 value: DateFormat.yMMMMd().add_jm().format(widget.task.dateTime),
                               ),
+                              if (widget.task.isRecurring && widget.task.recurrenceRule != null) ...[
+                                const SizedBox(height: 16),
+                                _buildInfoRow(
+                                  context,
+                                  icon: Icons.repeat_rounded,
+                                  label: 'Recurrence',
+                                  value: widget.task.recurrenceRule!.readableDescription,
+                                ),
+                              ],
                               
                               const SizedBox(height: 40),
                               Row(
@@ -367,6 +376,11 @@ class _TaskDetailContentState extends State<TaskDetailContent> {
       runSpacing: 8,
       children: [
         _buildPill(context, widget.task.priority.name.toUpperCase(), isPriority: true),
+        if (widget.task.isRecurring)
+          _buildPill(
+            context,
+            widget.task.recurrenceRule?.frequency.toUpperCase() ?? 'REPEATS',
+          ),
         for (var name in categoryNames) _buildPill(context, name.toUpperCase()),
         if (!widget.task.isLocal) _buildPill(context, 'CLOUD'),
       ],

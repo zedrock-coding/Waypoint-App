@@ -292,7 +292,70 @@ class AIVoiceOverlayState extends State<AIVoiceOverlay>
         return;
       }
 
-      // If status == "verified": Save the reconciled task and its subtasks to the local Hive store and Supabase.
+      // If status == "verified": Save the reconciled task(s) and subtasks to the local Hive store and Supabase.
+      if (!mounted) return;
+      final taskProvider = context.read<TaskProvider>();
+
+      if (reconciliation.tasks.length > 1) {
+        final List<String> createdTitles = [];
+        for (final t in reconciliation.tasks) {
+          final tTitle = (t['title'] ?? 'Voice Task').toString();
+          final tDesc = t['description'];
+          DateTime? tDue;
+          if (t['due_date'] != null) {
+            tDue = DateTime.tryParse(t['due_date'].toString());
+          }
+          final tPriority = UnifiedTask.parsePriority(t['priority']?.toString());
+          final tSubtasks = (t['subtasks'] as List? ?? []).map((st) {
+            return {
+              'id': const Uuid().v4(),
+              'title': st is Map ? (st['title'] ?? '').toString() : st.toString(),
+              'is_completed': false,
+            };
+          }).toList();
+
+          final bool tIsRecurring = t['is_recurring'] == true;
+          RecurrenceRule? tRule;
+          if (tIsRecurring && t['recurrence_rule'] is Map) {
+            tRule = RecurrenceRule.fromMap(t['recurrence_rule']);
+          }
+
+          await taskProvider.addTask(
+            title: tTitle,
+            description: tDesc,
+            communityId: t['community_id'],
+            assignees: t['assignee'] != null && t['assignee'].toString().isNotEmpty && t['assignee'] != 'me'
+                ? [t['assignee'].toString()]
+                : [],
+            subtasks: tSubtasks,
+            priority: tPriority,
+            status: Status.toDo,
+            dueAt: tDue,
+            isRecurring: tIsRecurring,
+            recurrenceRule: tRule,
+          );
+          createdTitles.add(tTitle);
+        }
+
+        if (mounted) {
+          setState(() {
+            _previewTitle = createdTitles.join(', ');
+            _isEditingTitle = false;
+            _isAddingManualSubtask = false;
+            _currentState = AIState.success;
+          });
+
+          final confirmMsg = 'Verified and created ${createdTitles.length} tasks: ${createdTitles.join(', ')}';
+          unawaited(_ttsService.speak(confirmMsg));
+
+          if (simulatedTranscript == null) {
+            await Future.delayed(const Duration(milliseconds: 700));
+            if (mounted) Navigator.pop(context);
+          }
+        }
+        return;
+      }
+
       final verifiedTask = reconciliation.task;
       final title = (verifiedTask['title'] ?? (_currentDraft?['title'] ?? 'Voice Task')).toString();
       final description = verifiedTask['description'] ?? _currentDraft?['description'];
@@ -314,6 +377,12 @@ class AIVoiceOverlayState extends State<AIVoiceOverlay>
         (verifiedTask['priority'] ?? preliminaryJson['priority'] ?? _currentDraft?['priority'])?.toString(),
       );
 
+      final bool isRecurring = verifiedTask['is_recurring'] == true;
+      RecurrenceRule? recurrenceRule;
+      if (isRecurring && verifiedTask['recurrence_rule'] is Map) {
+        recurrenceRule = RecurrenceRule.fromMap(verifiedTask['recurrence_rule']);
+      }
+
       final rawSubtasks = (verifiedTask['subtasks'] ?? preliminaryJson['subtasks'] ?? _currentDraft?['subtasks']) as List? ?? [];
       final List<Map<String, dynamic>> subtaskMaps = [];
       for (int i = 0; i < rawSubtasks.length; i++) {
@@ -330,8 +399,6 @@ class AIVoiceOverlayState extends State<AIVoiceOverlay>
         }
       }
 
-      if (!mounted) return;
-      final taskProvider = context.read<TaskProvider>();
       await taskProvider.addTask(
         title: title,
         description: description,
@@ -343,6 +410,8 @@ class AIVoiceOverlayState extends State<AIVoiceOverlay>
         priority: priority,
         status: Status.toDo,
         dueAt: dueDate,
+        isRecurring: isRecurring,
+        recurrenceRule: recurrenceRule,
       );
 
       if (mounted) {

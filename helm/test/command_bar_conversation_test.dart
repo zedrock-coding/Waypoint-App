@@ -75,6 +75,10 @@ class MockTaskProvider extends ChangeNotifier implements TaskProvider {
     Status status = Status.toDo,
     bool isLocalOnly = false,
     DateTime? dueAt,
+    bool isRecurring = false,
+    RecurrenceRule? recurrenceRule,
+    String? parentRecurringTaskId,
+    DateTime? originalDueDate,
   }) async {
     addedTasks.add(UnifiedTask(
       id: 'mock_task_${addedTasks.length}',

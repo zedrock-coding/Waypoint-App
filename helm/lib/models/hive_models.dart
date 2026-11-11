@@ -111,6 +111,27 @@ class Task extends HiveObject {
   @HiveField(15)
   DateTime? updatedAt;
 
+  @HiveField(16)
+  bool? isRecurring;
+
+  @HiveField(17)
+  String? recurrenceFrequency;
+
+  @HiveField(18)
+  int? recurrenceInterval;
+
+  @HiveField(19)
+  List<int>? recurrenceDaysOfWeek;
+
+  @HiveField(20)
+  DateTime? recurrenceEndDate;
+
+  @HiveField(21)
+  String? parentRecurringTaskId;
+
+  @HiveField(22)
+  DateTime? originalDueDate;
+
   Task({
     this.id,
     this.title,
@@ -128,6 +149,13 @@ class Task extends HiveObject {
     this.categoryIds = const [],
     this.subtasks = const [],
     this.updatedAt,
+    this.isRecurring = false,
+    this.recurrenceFrequency,
+    this.recurrenceInterval = 1,
+    this.recurrenceDaysOfWeek,
+    this.recurrenceEndDate,
+    this.parentRecurringTaskId,
+    this.originalDueDate,
   });
 }
 

@@ -279,11 +279,51 @@ class LocalHeuristicParser implements NeedleEngine {
       }
     }
 
-    // 6. Title & Description Cleanup
+    // 6. Recurrence Extraction
+    bool isRecurring = templateContext?['is_recurring'] == true;
+    Map<String, dynamic>? recurrenceRule;
+    if (templateContext?['recurrence_rule'] is Map) {
+      recurrenceRule = Map<String, dynamic>.from(templateContext!['recurrence_rule']);
+      isRecurring = true;
+    } else {
+      if (RegExp(r'\b(every\s+day|daily)\b').hasMatch(lower)) {
+        isRecurring = true;
+        recurrenceRule = {'frequency': 'daily', 'interval': 1};
+      } else if (RegExp(r'\b(every\s+2\s+weeks|every\s+two\s+weeks|bi-?weekly)\b').hasMatch(lower)) {
+        isRecurring = true;
+        recurrenceRule = {'frequency': 'biweekly', 'interval': 1};
+      } else if (RegExp(r'\b(every\s+month|monthly)\b').hasMatch(lower)) {
+        isRecurring = true;
+        recurrenceRule = {'frequency': 'monthly', 'interval': 1};
+      } else if (RegExp(r'\b(every\s+year|annually|yearly)\b').hasMatch(lower)) {
+        isRecurring = true;
+        recurrenceRule = {'frequency': 'yearly', 'interval': 1};
+      } else {
+        const weekdayNames = {
+          'monday': 1, 'tuesday': 2, 'wednesday': 3, 'thursday': 4,
+          'friday': 5, 'saturday': 6, 'sunday': 7,
+          'mon': 1, 'tue': 2, 'wed': 3, 'thu': 4, 'fri': 5, 'sat': 6, 'sun': 7,
+        };
+        for (final entry in weekdayNames.entries) {
+          if (RegExp('\\bevery\\s+${entry.key}\\b').hasMatch(lower)) {
+            isRecurring = true;
+            recurrenceRule = {'frequency': 'weekly', 'interval': 1, 'days_of_week': [entry.value]};
+            break;
+          }
+        }
+        if (!isRecurring && RegExp(r'\b(every\s+week|weekly)\b').hasMatch(lower)) {
+          isRecurring = true;
+          recurrenceRule = {'frequency': 'weekly', 'interval': 1};
+        }
+      }
+    }
+
+    // 7. Title & Description Cleanup
     if (title.isEmpty) {
       // Rephrase clean title
       var candidate = cleanInput
           .replaceAll(RegExp(r'\b(urgent|high priority|low priority|asap|today|tomorrow)\b', caseSensitive: false), '')
+          .replaceAll(RegExp(r'\b(every\s+day|daily|every\s+week|weekly|every\s+month|monthly|every\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday))\b', caseSensitive: false), '')
           .replaceAll(RegExp(r'\bin\s+\d+\s+(?:hours?|mins?|minutes?)\b', caseSensitive: false), '')
           .replaceAll(RegExp(r'\b(?:at\s+)?\d{1,2}(?::\d{2})?\s*(?:am|pm)\b', caseSensitive: false), '')
           .replaceAll(RegExp(r'\bat\s+\d{1,2}(?::\d{2})?\b', caseSensitive: false), '')
@@ -311,7 +351,10 @@ class LocalHeuristicParser implements NeedleEngine {
       'priority': priorityStr.toUpperCase(),
       'community_id': communityId,
       'assignee_id': assigneeId,
+      'is_recurring': isRecurring,
+      'recurrence_rule': recurrenceRule,
       'subtasks': subtasks,
+      if (templateContext?['tasks'] != null) 'tasks': templateContext!['tasks'],
       'clarification_needed': clarificationNeeded,
       'clarification_message': clarificationMessage,
     };

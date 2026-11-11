@@ -410,6 +410,69 @@ class _CommandBarWidgetState extends State<CommandBarWidget>
     _conversationHistory.clear();
     _clarificationPrompt = null;
 
+    // Multi-task handling
+    if (reconciliation.tasks.length > 1) {
+      final List<String> createdTitles = [];
+      final List<String> createdIds = [];
+      for (final t in reconciliation.tasks) {
+        final tTitle = (t['title'] ?? 'Task').toString();
+        final tDesc = t['description'];
+        DateTime? tDue;
+        if (t['due_date'] != null) {
+          tDue = DateTime.tryParse(t['due_date'].toString());
+        }
+        final tPriority = UnifiedTask.parsePriority(t['priority']?.toString());
+        final tSubtasks = (t['subtasks'] as List? ?? []).map((st) {
+          return {
+            'id': const Uuid().v4(),
+            'title': st is Map ? (st['title'] ?? '').toString() : st.toString(),
+            'is_completed': false,
+          };
+        }).toList();
+
+        final bool tIsRecurring = t['is_recurring'] == true;
+        RecurrenceRule? tRule;
+        if (tIsRecurring && t['recurrence_rule'] is Map) {
+          tRule = RecurrenceRule.fromMap(t['recurrence_rule']);
+        }
+
+        final cid = await taskProvider.addTask(
+          title: tTitle,
+          description: tDesc,
+          communityId: t['community_id'],
+          assignees: t['assignee'] != null && t['assignee'].toString().isNotEmpty && t['assignee'] != 'me'
+              ? [t['assignee'].toString()]
+              : [],
+          subtasks: tSubtasks,
+          priority: tPriority,
+          status: Status.toDo,
+          dueAt: tDue,
+          isRecurring: tIsRecurring,
+          recurrenceRule: tRule,
+        );
+        createdIds.add(cid);
+        createdTitles.add(tTitle);
+      }
+
+      final confirmMsg = 'Created ${createdTitles.length} tasks: ${createdTitles.join(', ')}';
+      unawaited(_ttsService.speak(confirmMsg));
+
+      if (mounted) {
+        _textController.clear();
+        AppSnackBar.showUndo(
+          context: context,
+          message: 'Created ${createdTitles.length} tasks!',
+          onUndo: () async {
+            for (final id in createdIds) {
+              await taskProvider.deleteTask(id);
+            }
+          },
+          duration: const Duration(seconds: 5),
+        );
+      }
+      return;
+    }
+
     final verifiedTask = reconciliation.task;
     final title = (verifiedTask['title'] ?? result['title'] ?? 'New AI Task').toString();
     final description = verifiedTask['description'] ?? result['description'];
@@ -428,6 +491,12 @@ class _CommandBarWidgetState extends State<CommandBarWidget>
     final Priority priority = UnifiedTask.parsePriority(
       (verifiedTask['priority'] ?? result['priority'])?.toString(),
     );
+
+    final bool isRecurring = verifiedTask['is_recurring'] == true;
+    RecurrenceRule? recurrenceRule;
+    if (isRecurring && verifiedTask['recurrence_rule'] is Map) {
+      recurrenceRule = RecurrenceRule.fromMap(verifiedTask['recurrence_rule']);
+    }
 
     final rawSubtasks = (verifiedTask['subtasks'] ?? result['subtasks']) as List? ?? [];
     final List<Map<String, dynamic>> subtaskMaps = [];
@@ -456,6 +525,8 @@ class _CommandBarWidgetState extends State<CommandBarWidget>
       priority: priority,
       status: Status.toDo,
       dueAt: dueDate,
+      isRecurring: isRecurring,
+      recurrenceRule: recurrenceRule,
     );
 
     // Audio confirmation feedback

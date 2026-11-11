@@ -253,6 +253,15 @@ class TaskItemCard extends StatelessWidget {
                   priorityColor, 
                   icon: _getPriorityIcon(task.priority)
                 ),
+                if (task.isRecurring) ...[
+                  const SizedBox(width: 4),
+                  _buildPillTag(
+                    colorScheme,
+                    task.recurrenceRule?.frequency.toUpperCase() ?? 'REPEATS',
+                    colorScheme.primary,
+                    icon: Icons.repeat_rounded,
+                  ),
+                ],
                 for (var name in names) ...[
                    const SizedBox(width: 4),
                    _buildPillTag(colorScheme, name.toUpperCase(), colorScheme.secondary),
@@ -277,9 +286,22 @@ class TaskItemCard extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
-        Text(
-          DateFormat.yMMMd().format(task.dateTime),
-          style: TextStyle(fontSize: 11, color: colorScheme.onSurfaceVariant),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (task.isRecurring) ...[
+              Icon(
+                Icons.repeat_rounded,
+                size: 13,
+                color: colorScheme.primary,
+              ),
+              const SizedBox(width: 3),
+            ],
+            Text(
+              DateFormat.yMMMd().format(task.dateTime),
+              style: TextStyle(fontSize: 11, color: colorScheme.onSurfaceVariant),
+            ),
+          ],
         ),
         if (isOverdue)
           Padding(

@@ -1,25 +1,31 @@
 class NeedleReconciliationResult {
   final String status; // 'verified' | 'clarification_needed'
   final List<String> reconciliationLog;
-  final Map<String, dynamic> task;
+  final Map<String, dynamic> task; // Primary task for backward compatibility
+  final List<Map<String, dynamic>> tasks; // Full list of extracted tasks
   final List<String> missingFields;
   final String? disambiguationPrompt;
+  final List<Map<String, dynamic>> disambiguationQuestionnaire;
 
-  const NeedleReconciliationResult({
+  NeedleReconciliationResult({
     required this.status,
     required this.reconciliationLog,
     required this.task,
+    List<Map<String, dynamic>>? tasks,
     required this.missingFields,
     this.disambiguationPrompt,
-  });
+    this.disambiguationQuestionnaire = const [],
+  }) : tasks = tasks ?? (task.isNotEmpty ? [task] : const []);
 
   Map<String, dynamic> toJson() => {
         'status': status,
         'reconciliation_log': reconciliationLog,
         'task': task,
+        'tasks': tasks,
         'missing_fields': missingFields,
         if (disambiguationPrompt != null)
           'disambiguation_prompt': disambiguationPrompt,
+        'disambiguation_questionnaire': disambiguationQuestionnaire,
       };
 }
 
@@ -73,6 +79,27 @@ class NeedleReconciliationEngine {
       );
     }
 
+    // Check for Multi-Task payload
+    final rawTasksList = geminiTaskJson['tasks'];
+    if (rawTasksList is List && rawTasksList.length > 1) {
+      return _reconcileMultipleTasks(
+        rawTranscript: cleanRaw,
+        tasksJsonList: rawTasksList.whereType<Map>().map((m) => Map<String, dynamic>.from(m)).toList(),
+        contextHeader: contextHeader,
+        anchor: anchor,
+        accessibleMembers: accessibleMembers,
+        accessibleCommunities: accessibleCommunities,
+        log: log,
+        geminiClarificationNeeded: geminiTaskJson['clarification_needed'] == true,
+        geminiClarificationMsg: geminiTaskJson['clarification_message']?.toString(),
+        geminiQuestionnaire: (geminiTaskJson['disambiguation_questionnaire'] as List?)
+                ?.whereType<Map>()
+                .map((m) => Map<String, dynamic>.from(m))
+                .toList() ??
+            const [],
+      );
+    }
+
     // 2. Title Stripping & Sanitization
     String candidateTitle = (geminiTaskJson['title'] ?? '').toString().trim();
     if (candidateTitle.isEmpty ||
@@ -122,7 +149,15 @@ class NeedleReconciliationEngine {
       log: log,
     );
 
-    // 7. Description Reconciliation
+    // 7. Recurrence Normalization
+    final (isRecurring, recurrenceRule) = _normalizeRecurrence(
+      rawTranscript: cleanRaw,
+      geminiRecurrence: geminiTaskJson['recurrence_rule'],
+      geminiIsRecurring: geminiTaskJson['is_recurring'],
+      log: log,
+    );
+
+    // 8. Description Reconciliation
     String? resolvedDescription = geminiTaskJson['description']?.toString().trim();
     if (resolvedDescription == null || resolvedDescription.isEmpty || resolvedDescription == 'null') {
       if (cleanRaw.length > sanitizedTitle.length && cleanRaw.isNotEmpty) {
@@ -140,9 +175,11 @@ class NeedleReconciliationEngine {
       assignee: resolvedAssignee,
       communityId: resolvedCommunity,
       subtasks: resolvedSubtasks,
+      isRecurring: isRecurring,
+      recurrenceRule: recurrenceRule,
     );
 
-    // 8. Ambiguity Evaluation
+    // 9. Ambiguity Evaluation
     final bool rawClarificationNeeded = geminiTaskJson['clarification_needed'] == true;
     final String? geminiClarificationMsg = geminiTaskJson['clarification_message']?.toString();
 
@@ -525,6 +562,178 @@ class NeedleReconciliationEngine {
     return clean;
   }
 
+  static (bool, Map<String, dynamic>?) _normalizeRecurrence({
+    required String rawTranscript,
+    required dynamic geminiRecurrence,
+    required dynamic geminiIsRecurring,
+    required List<String> log,
+  }) {
+    // If Gemini explicitly marked this task as not recurring, respect that
+    if (geminiIsRecurring == false && (geminiRecurrence == null || (geminiRecurrence is Map && geminiRecurrence['frequency'] == null))) {
+      return (false, null);
+    }
+
+    // Check Gemini extraction first if present
+    if (geminiIsRecurring == true || (geminiRecurrence is Map && geminiRecurrence['frequency'] != null)) {
+      if (geminiRecurrence is Map) {
+        return (true, Map<String, dynamic>.from(geminiRecurrence));
+      }
+      return (true, {'frequency': 'daily', 'interval': 1});
+    }
+
+    final lower = rawTranscript.toLowerCase();
+
+    if (RegExp(r'\b(every\s+day|daily)\b').hasMatch(lower)) {
+      log.add('Extracted daily recurrence from speech.');
+      return (true, {'frequency': 'daily', 'interval': 1});
+    }
+    if (RegExp(r'\b(every\s+2\s+weeks|every\s+two\s+weeks|bi-?weekly)\b').hasMatch(lower)) {
+      log.add('Extracted bi-weekly recurrence from speech.');
+      return (true, {'frequency': 'biweekly', 'interval': 1});
+    }
+    if (RegExp(r'\b(every\s+month|monthly)\b').hasMatch(lower)) {
+      log.add('Extracted monthly recurrence from speech.');
+      return (true, {'frequency': 'monthly', 'interval': 1});
+    }
+    if (RegExp(r'\b(every\s+year|annually|yearly)\b').hasMatch(lower)) {
+      log.add('Extracted yearly recurrence from speech.');
+      return (true, {'frequency': 'yearly', 'interval': 1});
+    }
+
+    final weekdayMap = {
+      'monday': 1, 'tuesday': 2, 'wednesday': 3, 'thursday': 4,
+      'friday': 5, 'saturday': 6, 'sunday': 7,
+      'mon': 1, 'tue': 2, 'wed': 3, 'thu': 4, 'fri': 5, 'sat': 6, 'sun': 7,
+    };
+    for (final entry in weekdayMap.entries) {
+      if (RegExp('\\bevery\\s+${entry.key}\\b').hasMatch(lower)) {
+        log.add('Extracted weekly recurrence on weekday ${entry.value} from speech.');
+        return (true, {'frequency': 'weekly', 'interval': 1, 'days_of_week': [entry.value]});
+      }
+    }
+    if (RegExp(r'\b(every\s+week|weekly)\b').hasMatch(lower)) {
+      log.add('Extracted weekly recurrence from speech.');
+      return (true, {'frequency': 'weekly', 'interval': 1});
+    }
+
+    return (false, null);
+  }
+
+  static NeedleReconciliationResult _reconcileMultipleTasks({
+    required String rawTranscript,
+    required List<Map<String, dynamic>> tasksJsonList,
+    required Map<String, dynamic> contextHeader,
+    required DateTime anchor,
+    required List<dynamic> accessibleMembers,
+    required List<dynamic> accessibleCommunities,
+    required List<String> log,
+    required bool geminiClarificationNeeded,
+    required String? geminiClarificationMsg,
+    required List<Map<String, dynamic>> geminiQuestionnaire,
+  }) {
+    final List<Map<String, dynamic>> reconciledTasks = [];
+    final List<String> overallMissingFields = [];
+    final List<Map<String, dynamic>> questionnaire = List.from(geminiQuestionnaire);
+
+    for (int i = 0; i < tasksJsonList.length; i++) {
+      final taskJson = tasksJsonList[i];
+      final tempId = taskJson['temp_id'] ?? 'task_${i + 1}';
+      final candidateTitle = (taskJson['title'] ?? '').toString().trim();
+      final sanitizedTitle = _sanitizeTitle(candidateTitle, rawTranscript, log);
+
+      final resolvedDueDate = _normalizeDueDate(
+        rawTranscript: rawTranscript,
+        geminiDueDate: taskJson['due_date']?.toString(),
+        geminiDueTime: (taskJson['due_time'] ?? taskJson['time'])?.toString(),
+        anchor: anchor,
+        log: log,
+      );
+
+      final resolvedPriority = _normalizePriority(
+        rawTranscript: rawTranscript,
+        geminiPriority: taskJson['priority']?.toString(),
+        log: log,
+      );
+
+      final (isRecurring, recurrenceRule) = _normalizeRecurrence(
+        rawTranscript: rawTranscript,
+        geminiRecurrence: taskJson['recurrence_rule'],
+        geminiIsRecurring: taskJson['is_recurring'],
+        log: log,
+      );
+
+      final resolvedAssignee = _resolveAssignee(
+        rawTranscript: rawTranscript,
+        geminiAssignee: (taskJson['assignee'] ?? taskJson['assignee_id'])?.toString(),
+        members: accessibleMembers,
+        log: log,
+      );
+
+      final resolvedCommunity = _resolveCommunity(
+        rawTranscript: rawTranscript,
+        geminiCommunity: (taskJson['community'] ?? taskJson['community_id'])?.toString(),
+        communities: accessibleCommunities,
+        log: log,
+      );
+
+      final resolvedSubtasks = _decomposeSubtasks(
+        rawTranscript: rawTranscript,
+        geminiSubtasks: taskJson['subtasks'],
+        defaultDueDate: resolvedDueDate,
+        log: log,
+      );
+
+      String? resolvedDescription = taskJson['description']?.toString().trim();
+      if (resolvedDescription == null || resolvedDescription.isEmpty || resolvedDescription == 'null') {
+        resolvedDescription = null;
+      }
+
+      final taskMap = _buildTaskMap(
+        title: sanitizedTitle,
+        description: resolvedDescription,
+        dueDate: resolvedDueDate,
+        priority: resolvedPriority,
+        assignee: resolvedAssignee,
+        communityId: resolvedCommunity,
+        subtasks: resolvedSubtasks,
+        isRecurring: isRecurring,
+        recurrenceRule: recurrenceRule,
+      );
+      taskMap['temp_id'] = tempId;
+      reconciledTasks.add(taskMap);
+
+      if (sanitizedTitle.isEmpty || sanitizedTitle.length < 2) {
+        overallMissingFields.add('$tempId:title');
+      }
+    }
+
+    final bool clarificationNeeded = geminiClarificationNeeded || overallMissingFields.isNotEmpty;
+    String? prompt = geminiClarificationMsg;
+
+    if (clarificationNeeded && (prompt == null || prompt.isEmpty)) {
+      final parts = <String>[];
+      for (final t in reconciledTasks) {
+        final title = t['title'] ?? 'task';
+        if (t['due_date'] == null) {
+          parts.add('When is "$title" due?');
+        }
+      }
+      prompt = parts.isNotEmpty
+          ? parts.join(' ')
+          : 'Could you clarify the details for these tasks?';
+    }
+
+    return NeedleReconciliationResult(
+      status: clarificationNeeded ? 'clarification_needed' : 'verified',
+      reconciliationLog: log..add('Reconciled ${reconciledTasks.length} separate tasks.'),
+      task: reconciledTasks.isNotEmpty ? reconciledTasks.first : {},
+      tasks: reconciledTasks,
+      missingFields: overallMissingFields,
+      disambiguationPrompt: prompt,
+      disambiguationQuestionnaire: questionnaire,
+    );
+  }
+
   static Map<String, dynamic> _buildTaskMap({
     required String title,
     required String? description,
@@ -533,6 +742,8 @@ class NeedleReconciliationEngine {
     required String? assignee,
     required String? communityId,
     required List<Map<String, dynamic>> subtasks,
+    bool isRecurring = false,
+    Map<String, dynamic>? recurrenceRule,
   }) {
     return {
       'title': title,
@@ -542,6 +753,8 @@ class NeedleReconciliationEngine {
       'assignee': assignee,
       'community_id': communityId,
       'subtasks': subtasks,
+      'is_recurring': isRecurring,
+      'recurrence_rule': recurrenceRule,
     };
   }
 }
