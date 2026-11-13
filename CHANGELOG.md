@@ -4,6 +4,28 @@ All notable changes to the **Helm** / **Waypoint** project will be documented in
 
 ---
 
+## [0.6.1] - 2026-11-14
+
+### 🚀 Added
+- **In-App Feedback & Bug Reporting System**:
+  - Modal dialog (`FeedbackDialog`) styled with Obsidian Precision tokens.
+  - Category selector chips: `General`, `Bug Report`, and `Feature Idea`.
+  - Contextual auto-fill for user name and email.
+  - Direct persistence into Supabase `feedback` table.
+  - Urgent WhatsApp support shortcut link.
+  - Global access points: header icon button, sidebar footer tile, Settings view, and Account view.
+
+### 🐛 Fixed
+- **Task Lifecycle & Completed Tasks Disappearance**:
+  - Corrected `TaskProvider._mutate` for `SyncActionType.update` to use Supabase PostgREST `.update(patch).eq('id', id)` instead of `.upsert(payload)`, resolving PostgreSQL `NOT NULL` constraint violations on partial updates.
+  - Added `.toLocal()` timezone normalization for `completedTasksToday` and `ScheduleView._getEventsForDay` calendar queries, preventing date-shift clipping.
+  - Guarded `localRowsMissingRemotely` in Supabase realtime sync against initial empty remote sets, preventing local task deletions during offline or reconnect states.
+  - Synchronized in-memory task collections immediately after addition and updates via `_refreshPersonalTasks()`.
+  - Fixed `TodayView` to accurately filter tasks when `TodayFilter.completed` is selected.
+  - Mapped all dated tasks across Hive storage for accurate `ScheduleView` calendar rendering.
+
+---
+
 ## [0.6.0] - 2026-11-14
 
 ### 🚀 Added
