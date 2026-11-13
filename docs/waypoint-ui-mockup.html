@@ -90,7 +90,7 @@
       </div>
     </div>
     <!-- Quick Add Button -->
-    <button onclick="switchView('today')" class="w-full flex items-center justify-between px-3 py-2 bg-[#88C0A4] text-[#1E2124] rounded font-semibold hover:bg-[#9ECBB5] transition-colors duration-150 border-none outline-none">
+    <button onclick="focusQuickInput()" class="w-full flex items-center justify-between px-3 py-2 bg-[#88C0A4] text-[#1E2124] rounded font-semibold hover:bg-[#9ECBB5] transition-colors duration-150 border-none outline-none">
       <span class="flex items-center gap-2">
         <span class="material-symbols-outlined text-[16px]">add</span>
         New Task
@@ -108,43 +108,59 @@
     <button id="nav-today" onclick="switchView('today')" class="nav-link w-full flex items-center gap-2.5 px-3 py-2 bg-surface-container text-[#88C0A4] border-l-2 border-[#88C0A4] rounded-r text-left transition-colors">
       <span class="material-symbols-outlined text-[18px]">calendar_today</span>
       <span class="flex-1 font-medium">Today</span>
-      <span class="font-mono text-[10px] bg-[#88C0A4]/20 text-[#88C0A4] px-1.5 py-0.5 rounded font-semibold">3</span>
+      <span class="font-mono text-[10px] bg-[#88C0A4]/20 text-[#88C0A4] px-1.5 py-0.5 rounded font-semibold">9</span>
     </button>
     <!-- Tab: Inbox -->
     <button id="nav-inbox" onclick="switchView('inbox')" class="nav-link w-full flex items-center gap-2.5 px-3 py-2 text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface rounded text-left transition-colors">
       <span class="material-symbols-outlined text-[18px]">inbox</span>
       <span class="flex-1">Inbox</span>
-      <span class="font-mono text-[10px] bg-surface-container-high text-on-surface-variant px-1.5 py-0.5 rounded border border-surface-variant">4</span>
+      <span class="font-mono text-[10px] bg-surface-container-high text-on-surface-variant px-1.5 py-0.5 rounded border border-surface-variant">10</span>
     </button>
     <!-- Tab: Recurring -->
     <button id="nav-recurring" onclick="switchView('recurring')" class="nav-link w-full flex items-center gap-2.5 px-3 py-2 text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface rounded text-left transition-colors">
       <span class="material-symbols-outlined text-[18px]">repeat</span>
       <span class="flex-1">Recurring</span>
-      <span class="font-mono text-[10px] text-on-surface-variant">3</span>
+      <span class="font-mono text-[10px] text-on-surface-variant">6</span>
     </button>
     <!-- Tab: Calendar -->
     <button id="nav-calendar" onclick="switchView('calendar')" class="nav-link w-full flex items-center gap-2.5 px-3 py-2 text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface rounded text-left transition-colors">
       <span class="material-symbols-outlined text-[18px]">event</span>
       <span class="flex-1">Schedule</span>
+      <span class="font-mono text-[10px] text-on-surface-variant">Today</span>
     </button>
-    <!-- Tab: Workspaces -->
-    <div class="pt-2 px-3 py-1 font-mono text-on-surface-variant/70 tracking-wider text-[10px] uppercase">
-      Groups
+
+    <!-- Workspaces / Communities -->
+    <div class="pt-3 px-3 py-1 font-mono text-on-surface-variant/70 tracking-wider text-[10px] uppercase">
+      Groups &amp; Workspaces
     </div>
-    <div class="px-1">
+    <div class="px-1 space-y-0.5">
       <a class="flex items-center justify-between text-on-surface-variant hover:text-on-surface text-[12px] transition-colors py-1.5 px-2 rounded hover:bg-surface-container" href="#" onclick="switchView('today')">
         <span class="flex items-center gap-2 truncate">
           <span class="w-1.5 h-1.5 rounded-full bg-[#88C0A4]"></span>
           WES Foundation
         </span>
-        <span class="font-mono text-[10px] text-on-surface-variant/60">2</span>
+        <span class="font-mono text-[10px] text-on-surface-variant/60">5</span>
       </a>
       <a class="flex items-center justify-between text-on-surface-variant hover:text-on-surface text-[12px] transition-colors py-1.5 px-2 rounded hover:bg-surface-container" href="#" onclick="switchView('today')">
         <span class="flex items-center gap-2 truncate">
           <span class="w-1.5 h-1.5 rounded-full bg-[#FFBF00]"></span>
+          Engineering &amp; Code
+        </span>
+        <span class="font-mono text-[10px] text-on-surface-variant/60">8</span>
+      </a>
+      <a class="flex items-center justify-between text-on-surface-variant hover:text-on-surface text-[12px] transition-colors py-1.5 px-2 rounded hover:bg-surface-container" href="#" onclick="switchView('today')">
+        <span class="flex items-center gap-2 truncate">
+          <span class="w-1.5 h-1.5 rounded-full bg-[#78909C]"></span>
           Personal &amp; Study
         </span>
-        <span class="font-mono text-[10px] text-on-surface-variant/60">5</span>
+        <span class="font-mono text-[10px] text-on-surface-variant/60">6</span>
+      </a>
+      <a class="flex items-center justify-between text-on-surface-variant hover:text-on-surface text-[12px] transition-colors py-1.5 px-2 rounded hover:bg-surface-container" href="#" onclick="switchView('today')">
+        <span class="flex items-center gap-2 truncate">
+          <span class="w-1.5 h-1.5 rounded-full bg-[#FF5252]"></span>
+          Eureka! Showcase
+        </span>
+        <span class="font-mono text-[10px] text-on-surface-variant/60">3</span>
       </a>
     </div>
   </nav>
@@ -187,9 +203,9 @@
 
     <!-- Center Navigation Tabs -->
     <nav class="hidden md:flex items-center gap-6">
-      <button onclick="switchView('today')" id="head-today" class="head-link text-[#88C0A4] border-b-2 border-[#88C0A4] pb-1 text-xs font-medium">Today</button>
-      <button onclick="switchView('inbox')" id="head-inbox" class="head-link text-on-surface-variant hover:text-on-surface pb-1 text-xs transition-colors">Inbox</button>
-      <button onclick="switchView('recurring')" id="head-recurring" class="head-link text-on-surface-variant hover:text-on-surface pb-1 text-xs transition-colors">Recurring</button>
+      <button onclick="switchView('today')" id="head-today" class="head-link text-[#88C0A4] border-b-2 border-[#88C0A4] pb-1 text-xs font-medium">Today (9)</button>
+      <button onclick="switchView('inbox')" id="head-inbox" class="head-link text-on-surface-variant hover:text-on-surface pb-1 text-xs transition-colors">Inbox (10)</button>
+      <button onclick="switchView('recurring')" id="head-recurring" class="head-link text-on-surface-variant hover:text-on-surface pb-1 text-xs transition-colors">Recurring (6)</button>
       <button onclick="switchView('calendar')" id="head-calendar" class="head-link text-on-surface-variant hover:text-on-surface pb-1 text-xs transition-colors">Schedule</button>
     </nav>
 
@@ -232,46 +248,48 @@
             <span class="text-surface-variant">•</span>
             <span class="font-mono text-[11px] text-on-surface-variant">Friday, November 13</span>
           </div>
-          <h2 class="text-2xl font-semibold text-on-surface tracking-tight">Active Tasks</h2>
+          <h2 class="text-2xl font-semibold text-on-surface tracking-tight">Active Worklist</h2>
           <p class="text-xs text-on-surface-variant flex items-center gap-2 mt-1">
-            <span>3 tasks to complete today</span>
+            <span>9 active tasks</span>
             <span class="text-outline-variant">•</span>
-            <span class="text-[#88C0A4] font-medium">1 high priority</span>
+            <span class="text-[#FF5252] font-medium">2 urgent</span>
+            <span class="text-outline-variant">•</span>
+            <span class="text-[#FFBF00] font-medium">3 high priority</span>
           </p>
         </div>
 
         <!-- Filter Chips Bar -->
         <div class="flex items-center gap-1.5 overflow-x-auto pb-1">
           <button class="px-3 py-1 bg-surface-container-high text-[#88C0A4] border border-[#88C0A4]/50 text-xs rounded flex items-center gap-1.5">
-            <span>All</span>
-            <span class="font-mono text-[10px] bg-[#88C0A4]/20 text-[#88C0A4] px-1 rounded font-semibold">3</span>
+            <span>All Active</span>
+            <span class="font-mono text-[10px] bg-[#88C0A4]/20 text-[#88C0A4] px-1 rounded font-semibold">9</span>
           </button>
           <button onclick="switchView('recurring')" class="px-3 py-1 bg-surface-container text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high border border-surface-variant text-xs rounded flex items-center gap-1.5 transition-colors">
             <span>Recurring</span>
-            <span class="font-mono text-[10px] bg-surface-variant text-on-surface-variant px-1 rounded">2</span>
+            <span class="font-mono text-[10px] bg-surface-variant text-on-surface-variant px-1 rounded">3</span>
           </button>
           <button class="px-3 py-1 bg-surface-container text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high border border-surface-variant text-xs rounded flex items-center gap-1.5 transition-colors">
             <span>High Priority</span>
-            <span class="font-mono text-[10px] bg-surface-variant text-on-surface-variant px-1 rounded">1</span>
+            <span class="font-mono text-[10px] bg-surface-variant text-on-surface-variant px-1 rounded">3</span>
           </button>
-          <button class="px-3 py-1 bg-surface-container text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high border border-surface-variant text-xs rounded transition-colors">
-            Completed
+          <button onclick="document.getElementById('completed-section').scrollIntoView({behavior: 'smooth'})" class="px-3 py-1 bg-surface-container text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high border border-surface-variant text-xs rounded transition-colors">
+            Completed (3)
           </button>
         </div>
       </div>
 
-      <!-- Task Cards -->
+      <!-- Task Cards Stack -->
       <div class="space-y-3">
-        <!-- Card 1 -->
+        <!-- Task 1: Urgent Regression Hotfix -->
         <div class="group relative bg-surface-container-high border border-surface-variant rounded hover:border-[#88C0A4] transition-colors duration-150 overflow-hidden">
           <div class="absolute left-0 top-0 bottom-0 w-1 bg-[#FF5252]"></div>
           <div class="p-4 pl-5 flex flex-col md:flex-row md:items-center justify-between gap-3">
             <div class="flex items-start gap-3 flex-1">
-              <button onclick="this.classList.toggle('bg-[#88C0A4]')" class="mt-0.5 w-4 h-4 rounded-[3px] border border-surface-variant bg-surface-container hover:border-[#88C0A4] flex items-center justify-center flex-shrink-0 transition-colors"></button>
+              <button onclick="toggleCardDone(this)" class="mt-0.5 w-4 h-4 rounded-[3px] border border-surface-variant bg-surface-container hover:border-[#88C0A4] flex items-center justify-center flex-shrink-0 transition-colors"></button>
               <div class="space-y-1">
                 <div class="flex items-center gap-2 flex-wrap">
                   <span class="text-sm font-medium text-on-surface group-hover:text-[#88C0A4] transition-colors">
-                    Deploy hotfix for authentication regression
+                    Deploy hotfix for authentication session regression
                   </span>
                   <span class="font-mono text-[10px] bg-[#FF5252]/15 text-[#FF5252] border border-[#FF5252]/30 px-1.5 py-0.5 rounded font-semibold">
                     URGENT
@@ -289,6 +307,7 @@
                     <span class="w-1.5 h-1.5 rounded-full bg-[#88C0A4]"></span>
                     Engineering
                   </span>
+                  <span class="font-mono text-on-surface-variant/70 text-[10px]">#TASK-102</span>
                 </div>
               </div>
             </div>
@@ -303,12 +322,48 @@
           </div>
         </div>
 
-        <!-- Card 2 -->
+        <!-- Task 2: Urgent Campus Permit Call -->
+        <div class="group relative bg-surface-container-high border border-surface-variant rounded hover:border-[#88C0A4] transition-colors duration-150 overflow-hidden">
+          <div class="absolute left-0 top-0 bottom-0 w-1 bg-[#FF5252]"></div>
+          <div class="p-4 pl-5 flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <div class="flex items-start gap-3 flex-1">
+              <button onclick="toggleCardDone(this)" class="mt-0.5 w-4 h-4 rounded-[3px] border border-surface-variant bg-surface-container hover:border-[#88C0A4] flex items-center justify-center flex-shrink-0 transition-colors"></button>
+              <div class="space-y-1">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <span class="text-sm font-medium text-on-surface group-hover:text-[#88C0A4] transition-colors">
+                    Confirm robotics lab room reservation &amp; security badge approvals
+                  </span>
+                  <span class="font-mono text-[10px] bg-[#FF5252]/15 text-[#FF5252] border border-[#FF5252]/30 px-1.5 py-0.5 rounded font-semibold">
+                    URGENT
+                  </span>
+                </div>
+                <div class="flex items-center gap-4 text-on-surface-variant text-xs pt-0.5">
+                  <span class="font-mono text-[11px] text-[#FF5252] flex items-center gap-1">
+                    <span class="material-symbols-outlined text-[13px]">alarm</span>
+                    Deadline 16:30
+                  </span>
+                  <span class="flex items-center gap-1 text-[11px]">
+                    <span class="w-1.5 h-1.5 rounded-full bg-[#FF5252]"></span>
+                    University
+                  </span>
+                  <span class="font-mono text-on-surface-variant/70 text-[10px]">#TASK-103</span>
+                </div>
+              </div>
+            </div>
+            <div class="flex items-center gap-1.5 self-end md:self-center opacity-80 md:opacity-0 group-hover:opacity-100 transition-opacity">
+              <button class="p-1.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container rounded border border-surface-variant">
+                <span class="material-symbols-outlined text-[15px]">edit</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Task 3: High Priority WES Workshop Syllabus -->
         <div class="group relative bg-surface-container-high border border-surface-variant rounded hover:border-[#88C0A4] transition-colors duration-150 overflow-hidden">
           <div class="absolute left-0 top-0 bottom-0 w-1 bg-[#FFBF00]"></div>
           <div class="p-4 pl-5 flex flex-col md:flex-row md:items-center justify-between gap-3">
             <div class="flex items-start gap-3 flex-1">
-              <button onclick="this.classList.toggle('bg-[#88C0A4]')" class="mt-0.5 w-4 h-4 rounded-[3px] border border-surface-variant bg-surface-container hover:border-[#88C0A4] flex items-center justify-center flex-shrink-0 transition-colors"></button>
+              <button onclick="toggleCardDone(this)" class="mt-0.5 w-4 h-4 rounded-[3px] border border-surface-variant bg-surface-container hover:border-[#88C0A4] flex items-center justify-center flex-shrink-0 transition-colors"></button>
               <div class="space-y-1.5 flex-1 max-w-xl">
                 <div class="flex items-center gap-2 flex-wrap">
                   <span class="text-sm font-medium text-on-surface group-hover:text-[#88C0A4] transition-colors">
@@ -321,6 +376,7 @@
                     WES Cell
                   </span>
                 </div>
+                <!-- Progress Meter -->
                 <div class="flex items-center gap-3">
                   <div class="w-32 h-1.5 bg-surface-container rounded overflow-hidden">
                     <div class="w-1/2 h-full bg-[#88C0A4] rounded"></div>
@@ -332,35 +388,38 @@
             </div>
             <div class="flex items-center gap-2 self-end md:self-center">
               <span class="font-mono text-[10px] text-on-surface-variant bg-surface-container px-2 py-1 rounded border border-surface-variant">
-                COMMUNITY
+                COMMUNITY: WES
               </span>
             </div>
           </div>
         </div>
 
-        <!-- Card 3 -->
+        <!-- Task 4: High Priority Pitch Deck (With Subtasks) -->
         <div class="group relative bg-surface-container-high border border-surface-variant rounded hover:border-[#88C0A4] transition-colors duration-150 overflow-hidden">
-          <div class="absolute left-0 top-0 bottom-0 w-1 bg-[#88C0A4]"></div>
+          <div class="absolute left-0 top-0 bottom-0 w-1 bg-[#FFBF00]"></div>
           <div class="p-4 pl-5 space-y-3">
             <div class="flex items-start justify-between gap-3">
               <div class="flex items-start gap-3">
-                <button onclick="this.classList.toggle('bg-[#88C0A4]')" class="mt-0.5 w-4 h-4 rounded-[3px] border border-surface-variant bg-surface-container hover:border-[#88C0A4] flex items-center justify-center flex-shrink-0 transition-colors"></button>
+                <button onclick="toggleCardDone(this)" class="mt-0.5 w-4 h-4 rounded-[3px] border border-surface-variant bg-surface-container hover:border-[#88C0A4] flex items-center justify-center flex-shrink-0 transition-colors"></button>
                 <div>
                   <div class="flex items-center gap-2 flex-wrap">
                     <h3 class="text-sm font-medium text-on-surface group-hover:text-[#88C0A4] transition-colors">
                       Review final quarterly deliverables &amp; pitch slides
                     </h3>
-                    <span class="font-mono text-[10px] bg-[#88C0A4]/15 text-[#88C0A4] border border-[#88C0A4]/30 px-1.5 py-0.5 rounded font-semibold">
-                      IN PROGRESS
+                    <span class="font-mono text-[10px] bg-[#FFBF00]/15 text-[#FFBF00] border border-[#FFBF00]/30 px-1.5 py-0.5 rounded font-semibold">
+                      HIGH
+                    </span>
+                    <span class="font-mono text-[10px] bg-surface-container text-[#88C0A4] border border-surface-variant px-1.5 py-0.5 rounded flex items-center gap-1">
+                      <span>⟳</span> Bi-weekly
                     </span>
                   </div>
                   <p class="text-xs text-on-surface-variant mt-0.5">
-                    Prepare slide deck for Eureka! showcase and review team updates.
+                    Prepare slide deck for Eureka! showcase and review mentor suggestions.
                   </p>
                 </div>
               </div>
               <div class="font-mono text-[10px] text-on-surface-variant bg-surface-container px-2 py-1 rounded border border-surface-variant">
-                DUE TODAY
+                DUE TODAY, 17:00
               </div>
             </div>
 
@@ -368,17 +427,17 @@
             <div class="ml-7 pl-3 border-l border-surface-variant space-y-1.5 py-1">
               <div class="flex items-center gap-2.5 text-on-surface-variant text-xs">
                 <div class="w-3.5 h-3.5 rounded-[2px] bg-[#88C0A4] text-[#1E2124] flex items-center justify-center flex-shrink-0 font-bold">✓</div>
-                <span class="line-through text-on-surface-variant/70">Finalize unit economics slide</span>
+                <span class="line-through text-on-surface-variant/70">Finalize unit economics and operating margin slide</span>
                 <span class="font-mono text-[10px] text-on-surface-variant/50 ml-auto">DONE</span>
               </div>
               <div class="flex items-center gap-2.5 text-on-surface-variant text-xs">
                 <div class="w-3.5 h-3.5 rounded-[2px] bg-[#88C0A4] text-[#1E2124] flex items-center justify-center flex-shrink-0 font-bold">✓</div>
-                <span class="line-through text-on-surface-variant/70">Export PDF deck</span>
+                <span class="line-through text-on-surface-variant/70">Export high-resolution PDF deck for presentation clicker</span>
                 <span class="font-mono text-[10px] text-on-surface-variant/50 ml-auto">DONE</span>
               </div>
               <div class="flex items-center gap-2.5 text-on-surface text-xs">
                 <div class="w-3.5 h-3.5 rounded-[2px] border border-surface-variant bg-surface-container flex-shrink-0"></div>
-                <span>Send draft to faculty mentor for feedback</span>
+                <span>Send draft link to faculty advisor for feedback</span>
                 <span class="font-mono text-[10px] text-[#FFBF00] bg-[#FFBF00]/10 px-1 rounded ml-auto">PENDING</span>
               </div>
             </div>
@@ -387,9 +446,224 @@
               <div class="flex items-center gap-3">
                 <span class="font-mono text-[11px] text-on-surface-variant hover:text-[#88C0A4] cursor-pointer">#pitch</span>
                 <span class="font-mono text-[11px] text-on-surface-variant hover:text-[#88C0A4] cursor-pointer">#showcase</span>
+                <span class="font-mono text-[11px] text-on-surface-variant hover:text-[#88C0A4] cursor-pointer">#eureka</span>
               </div>
               <span class="font-mono text-[10px]">Updated 10m ago</span>
             </div>
+          </div>
+        </div>
+
+        <!-- Task 5: High Priority Code Review -->
+        <div class="group relative bg-surface-container-high border border-surface-variant rounded hover:border-[#88C0A4] transition-colors duration-150 overflow-hidden">
+          <div class="absolute left-0 top-0 bottom-0 w-1 bg-[#FFBF00]"></div>
+          <div class="p-4 pl-5 flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <div class="flex items-start gap-3 flex-1">
+              <button onclick="toggleCardDone(this)" class="mt-0.5 w-4 h-4 rounded-[3px] border border-surface-variant bg-surface-container hover:border-[#88C0A4] flex items-center justify-center flex-shrink-0 transition-colors"></button>
+              <div class="space-y-1">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <span class="text-sm font-medium text-on-surface group-hover:text-[#88C0A4] transition-colors">
+                    Review pull request: offline audio voice feedback integration
+                  </span>
+                  <span class="font-mono text-[10px] bg-[#FFBF00]/15 text-[#FFBF00] border border-[#FFBF00]/30 px-1.5 py-0.5 rounded font-semibold">
+                    HIGH
+                  </span>
+                  <span class="font-mono text-[10px] bg-surface-container text-on-surface-variant border border-surface-variant px-1.5 py-0.5 rounded">
+                    #PR-42
+                  </span>
+                </div>
+                <div class="flex items-center gap-4 text-on-surface-variant text-xs pt-0.5">
+                  <span class="font-mono text-[11px] text-on-surface-variant flex items-center gap-1">
+                    <span class="material-symbols-outlined text-[13px]">schedule</span>
+                    Today, 19:00
+                  </span>
+                  <span class="flex items-center gap-1 text-[11px]">
+                    <span class="w-1.5 h-1.5 rounded-full bg-[#88C0A4]"></span>
+                    Engineering
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div class="flex items-center gap-1.5 self-end md:self-center opacity-80 md:opacity-0 group-hover:opacity-100 transition-opacity">
+              <button class="p-1.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container rounded border border-surface-variant">
+                <span class="material-symbols-outlined text-[15px]">edit</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Task 6: Medium Priority Budget Draft -->
+        <div class="group relative bg-surface-container-high border border-surface-variant rounded hover:border-[#88C0A4] transition-colors duration-150 overflow-hidden">
+          <div class="absolute left-0 top-0 bottom-0 w-1 bg-[#88C0A4]"></div>
+          <div class="p-4 pl-5 flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <div class="flex items-start gap-3 flex-1">
+              <button onclick="toggleCardDone(this)" class="mt-0.5 w-4 h-4 rounded-[3px] border border-surface-variant bg-surface-container hover:border-[#88C0A4] flex items-center justify-center flex-shrink-0 transition-colors"></button>
+              <div class="space-y-1">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <span class="text-sm font-medium text-on-surface group-hover:text-[#88C0A4] transition-colors">
+                    Draft budget allocation spreadsheet for winter student workshop
+                  </span>
+                  <span class="font-mono text-[10px] bg-[#88C0A4]/15 text-[#88C0A4] border border-[#88C0A4]/30 px-1.5 py-0.5 rounded font-semibold">
+                    MEDIUM
+                  </span>
+                </div>
+                <div class="flex items-center gap-4 text-on-surface-variant text-xs pt-0.5">
+                  <span class="font-mono text-[11px] text-on-surface-variant flex items-center gap-1">
+                    <span class="material-symbols-outlined text-[13px]">schedule</span>
+                    Today, 21:00
+                  </span>
+                  <span class="flex items-center gap-1 text-[11px]">
+                    <span class="w-1.5 h-1.5 rounded-full bg-[#88C0A4]"></span>
+                    WES Foundation
+                  </span>
+                  <span class="font-mono text-[10px] text-on-surface-variant">Estimated 45 min</span>
+                </div>
+              </div>
+            </div>
+            <div class="flex items-center gap-1.5 self-end md:self-center opacity-80 md:opacity-0 group-hover:opacity-100 transition-opacity">
+              <button class="p-1.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container rounded border border-surface-variant">
+                <span class="material-symbols-outlined text-[15px]">edit</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Task 7: Medium Priority Faculty Follow-Up -->
+        <div class="group relative bg-surface-container-high border border-surface-variant rounded hover:border-[#88C0A4] transition-colors duration-150 overflow-hidden">
+          <div class="absolute left-0 top-0 bottom-0 w-1 bg-[#88C0A4]"></div>
+          <div class="p-4 pl-5 flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <div class="flex items-start gap-3 flex-1">
+              <button onclick="toggleCardDone(this)" class="mt-0.5 w-4 h-4 rounded-[3px] border border-surface-variant bg-surface-container hover:border-[#88C0A4] flex items-center justify-center flex-shrink-0 transition-colors"></button>
+              <div class="space-y-1">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <span class="text-sm font-medium text-on-surface group-hover:text-[#88C0A4] transition-colors">
+                    Call department coordinator regarding elective course credits
+                  </span>
+                  <span class="font-mono text-[10px] bg-[#88C0A4]/15 text-[#88C0A4] border border-[#88C0A4]/30 px-1.5 py-0.5 rounded font-semibold">
+                    MEDIUM
+                  </span>
+                </div>
+                <div class="flex items-center gap-4 text-on-surface-variant text-xs pt-0.5">
+                  <span class="font-mono text-[11px] text-on-surface-variant flex items-center gap-1">
+                    <span class="material-symbols-outlined text-[13px]">call</span>
+                    Today, 17:30
+                  </span>
+                  <span class="flex items-center gap-1 text-[11px]">
+                    <span class="w-1.5 h-1.5 rounded-full bg-[#78909C]"></span>
+                    University
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div class="flex items-center gap-1.5 self-end md:self-center opacity-80 md:opacity-0 group-hover:opacity-100 transition-opacity">
+              <button class="p-1.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container rounded border border-surface-variant">
+                <span class="material-symbols-outlined text-[15px]">edit</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Task 8: Routine Study Prep -->
+        <div class="group relative bg-surface-container-high border border-surface-variant rounded hover:border-[#88C0A4] transition-colors duration-150 overflow-hidden">
+          <div class="absolute left-0 top-0 bottom-0 w-1 bg-[#78909C]"></div>
+          <div class="p-4 pl-5 flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <div class="flex items-start gap-3 flex-1">
+              <button onclick="toggleCardDone(this)" class="mt-0.5 w-4 h-4 rounded-[3px] border border-surface-variant bg-surface-container hover:border-[#88C0A4] flex items-center justify-center flex-shrink-0 transition-colors"></button>
+              <div class="space-y-1">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <span class="text-sm font-medium text-on-surface group-hover:text-[#88C0A4] transition-colors">
+                    Read chapter 4 on state machines in distributed systems
+                  </span>
+                  <span class="font-mono text-[10px] bg-surface-container text-[#78909C] border border-surface-variant px-1.5 py-0.5 rounded font-semibold">
+                    ROUTINE
+                  </span>
+                  <span class="font-mono text-[10px] bg-surface-container text-[#88C0A4] border border-surface-variant px-1.5 py-0.5 rounded flex items-center gap-1">
+                    <span>⟳</span> Every Weekday
+                  </span>
+                </div>
+                <div class="flex items-center gap-4 text-on-surface-variant text-xs pt-0.5">
+                  <span class="font-mono text-[11px] text-on-surface-variant flex items-center gap-1">
+                    <span class="material-symbols-outlined text-[13px]">book</span>
+                    Tonight, 22:00
+                  </span>
+                  <span class="flex items-center gap-1 text-[11px]">
+                    <span class="w-1.5 h-1.5 rounded-full bg-[#78909C]"></span>
+                    Self Study
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div class="flex items-center gap-1.5 self-end md:self-center opacity-80 md:opacity-0 group-hover:opacity-100 transition-opacity">
+              <button class="p-1.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container rounded border border-surface-variant">
+                <span class="material-symbols-outlined text-[15px]">edit</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Task 9: Low Priority Supply Order -->
+        <div class="group relative bg-surface-container-high border border-surface-variant rounded hover:border-[#88C0A4] transition-colors duration-150 overflow-hidden">
+          <div class="absolute left-0 top-0 bottom-0 w-1 bg-[#78909C]"></div>
+          <div class="p-4 pl-5 flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <div class="flex items-start gap-3 flex-1">
+              <button onclick="toggleCardDone(this)" class="mt-0.5 w-4 h-4 rounded-[3px] border border-surface-variant bg-surface-container hover:border-[#88C0A4] flex items-center justify-center flex-shrink-0 transition-colors"></button>
+              <div class="space-y-1">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <span class="text-sm font-medium text-on-surface group-hover:text-[#88C0A4] transition-colors">
+                    Order 64GB USB recovery flash drives for robotics lab
+                  </span>
+                  <span class="font-mono text-[10px] bg-surface-container text-[#78909C] border border-surface-variant px-1.5 py-0.5 rounded font-semibold">
+                    LOW
+                  </span>
+                </div>
+                <div class="flex items-center gap-4 text-on-surface-variant text-xs pt-0.5">
+                  <span class="font-mono text-[11px] text-on-surface-variant flex items-center gap-1">
+                    <span class="material-symbols-outlined text-[13px]">shopping_cart</span>
+                    Flexible due date
+                  </span>
+                  <span class="font-mono text-[11px] text-on-surface-variant/70">#supplies</span>
+                </div>
+              </div>
+            </div>
+            <div class="flex items-center gap-1.5 self-end md:self-center opacity-80 md:opacity-0 group-hover:opacity-100 transition-opacity">
+              <button class="p-1.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container rounded border border-surface-variant">
+                <span class="material-symbols-outlined text-[15px]">edit</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Completed Section (Collapsible) -->
+      <div id="completed-section" class="pt-4 border-t border-surface-variant/60">
+        <div class="flex items-center justify-between mb-3">
+          <span class="font-mono text-xs text-on-surface-variant flex items-center gap-2">
+            <span class="material-symbols-outlined text-[16px] text-[#88C0A4]">check_circle</span>
+            Completed Today (3 tasks)
+          </span>
+          <span class="font-mono text-[10px] text-on-surface-variant/60">Nice work!</span>
+        </div>
+        <div class="space-y-2 opacity-75">
+          <div class="p-3 bg-surface-container-high/40 border border-surface-variant/40 rounded flex items-center gap-3">
+            <div class="w-4 h-4 rounded-[3px] bg-[#88C0A4] text-[#1E2124] flex items-center justify-center flex-shrink-0 text-xs font-bold">✓</div>
+            <span class="line-through text-xs text-on-surface-variant/70 flex-1">
+              Submit weekly assignment for Software Architecture &amp; Design
+            </span>
+            <span class="font-mono text-[10px] text-on-surface-variant/50">11:30 AM</span>
+          </div>
+          <div class="p-3 bg-surface-container-high/40 border border-surface-variant/40 rounded flex items-center gap-3">
+            <div class="w-4 h-4 rounded-[3px] bg-[#88C0A4] text-[#1E2124] flex items-center justify-center flex-shrink-0 text-xs font-bold">✓</div>
+            <span class="line-through text-xs text-on-surface-variant/70 flex-1">
+              Send meeting summary notes to WES Foundation chapter leads
+            </span>
+            <span class="font-mono text-[10px] text-on-surface-variant/50">09:45 AM</span>
+          </div>
+          <div class="p-3 bg-surface-container-high/40 border border-surface-variant/40 rounded flex items-center gap-3">
+            <div class="w-4 h-4 rounded-[3px] bg-[#88C0A4] text-[#1E2124] flex items-center justify-center flex-shrink-0 text-xs font-bold">✓</div>
+            <span class="line-through text-xs text-on-surface-variant/70 flex-1">
+              Morning voice dispatch &amp; daily goal review
+            </span>
+            <span class="font-mono text-[10px] text-on-surface-variant/50">08:30 AM</span>
           </div>
         </div>
       </div>
@@ -402,14 +676,14 @@
           <div class="flex items-center gap-2 mb-1">
             <span class="font-mono text-[#88C0A4] text-[11px] uppercase tracking-wider font-semibold">Triage &amp; Quick Capture</span>
             <span class="text-surface-variant">•</span>
-            <span class="font-mono text-[11px] text-on-surface-variant">4 unsorted items</span>
+            <span class="font-mono text-[11px] text-on-surface-variant">10 unsorted items</span>
           </div>
-          <h2 class="text-2xl font-semibold text-on-surface tracking-tight">Inbox</h2>
+          <h2 class="text-2xl font-semibold text-on-surface tracking-tight">Inbox Queue</h2>
           <p class="text-xs text-on-surface-variant mt-1">
             Capture thoughts quickly. Schedule, assign, or convert them to projects when ready.
           </p>
         </div>
-        <button class="px-3 py-1.5 bg-[#88C0A4] text-[#1E2124] rounded text-xs font-semibold hover:bg-[#9ECBB5] flex items-center gap-1.5">
+        <button onclick="focusQuickInput()" class="px-3 py-1.5 bg-[#88C0A4] text-[#1E2124] rounded text-xs font-semibold hover:bg-[#9ECBB5] flex items-center gap-1.5">
           <span class="material-symbols-outlined text-[16px]">add</span>
           Quick Add
         </button>
@@ -420,10 +694,10 @@
         <!-- Item 1 -->
         <div class="p-3.5 bg-surface-container-high border border-surface-variant rounded hover:border-[#88C0A4] transition-colors flex items-center justify-between gap-4">
           <div class="flex items-center gap-3 flex-1">
-            <div class="w-2 h-2 rounded-full bg-on-surface-variant/50"></div>
+            <div class="w-2 h-2 rounded-full bg-[#88C0A4]"></div>
             <div>
-              <p class="text-sm font-medium text-on-surface">Draft partnership proposal for regional design hackathon</p>
-              <p class="text-xs text-on-surface-variant font-mono mt-0.5">Captured via Voice • 1 hour ago</p>
+              <p class="text-sm font-medium text-on-surface">Draft sponsorship email for regional student engineering hackathon</p>
+              <p class="text-xs text-on-surface-variant font-mono mt-0.5">Captured via Voice • 15 minutes ago</p>
             </div>
           </div>
           <div class="flex items-center gap-2">
@@ -440,10 +714,10 @@
         <!-- Item 2 -->
         <div class="p-3.5 bg-surface-container-high border border-surface-variant rounded hover:border-[#88C0A4] transition-colors flex items-center justify-between gap-4">
           <div class="flex items-center gap-3 flex-1">
-            <div class="w-2 h-2 rounded-full bg-on-surface-variant/50"></div>
+            <div class="w-2 h-2 rounded-full bg-[#FFBF00]"></div>
             <div>
-              <p class="text-sm font-medium text-on-surface">Order USB-C audio testing adapter for Lenovo laptop</p>
-              <p class="text-xs text-on-surface-variant font-mono mt-0.5">Quick Note • Yesterday</p>
+              <p class="text-sm font-medium text-on-surface">Order USB-C microphone adapter for audio latency testing</p>
+              <p class="text-xs text-on-surface-variant font-mono mt-0.5">Quick Note • 1 hour ago</p>
             </div>
           </div>
           <div class="flex items-center gap-2">
@@ -462,8 +736,8 @@
           <div class="flex items-center gap-3 flex-1">
             <div class="w-2 h-2 rounded-full bg-on-surface-variant/50"></div>
             <div>
-              <p class="text-sm font-medium text-on-surface">Follow up with club treasurer on semester event ledger</p>
-              <p class="text-xs text-on-surface-variant font-mono mt-0.5">Captured via Web • 2 days ago</p>
+              <p class="text-sm font-medium text-on-surface">Follow up with treasurer regarding semester expense report</p>
+              <p class="text-xs text-on-surface-variant font-mono mt-0.5">WES Cell • 3 hours ago</p>
             </div>
           </div>
           <div class="flex items-center gap-2">
@@ -482,8 +756,88 @@
           <div class="flex items-center gap-3 flex-1">
             <div class="w-2 h-2 rounded-full bg-on-surface-variant/50"></div>
             <div>
-              <p class="text-sm font-medium text-on-surface">Check student mentor schedules for upcoming orientation week</p>
-              <p class="text-xs text-on-surface-variant font-mono mt-0.5">Shared by WES Chapter • Nov 10</p>
+              <p class="text-sm font-medium text-on-surface">Review orientation schedule for student mentorship volunteers</p>
+              <p class="text-xs text-on-surface-variant font-mono mt-0.5">Shared Document • Yesterday</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <button class="px-2.5 py-1 bg-surface-container border border-surface-variant hover:border-[#88C0A4] text-xs rounded text-on-surface flex items-center gap-1">
+              <span class="material-symbols-outlined text-[14px]">calendar_today</span>
+              Schedule
+            </button>
+            <button class="p-1 text-on-surface-variant hover:text-[#88C0A4] rounded" title="Archive">
+              <span class="material-symbols-outlined text-[16px]">archive</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Item 5 -->
+        <div class="p-3.5 bg-surface-container-high border border-surface-variant rounded hover:border-[#88C0A4] transition-colors flex items-center justify-between gap-4">
+          <div class="flex items-center gap-3 flex-1">
+            <div class="w-2 h-2 rounded-full bg-on-surface-variant/50"></div>
+            <div>
+              <p class="text-sm font-medium text-on-surface">Renew domain name for student cell web showcase</p>
+              <p class="text-xs text-on-surface-variant font-mono mt-0.5">Email Forward • Yesterday</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <button class="px-2.5 py-1 bg-surface-container border border-surface-variant hover:border-[#88C0A4] text-xs rounded text-on-surface flex items-center gap-1">
+              <span class="material-symbols-outlined text-[14px]">calendar_today</span>
+              Schedule
+            </button>
+            <button class="p-1 text-on-surface-variant hover:text-[#88C0A4] rounded" title="Archive">
+              <span class="material-symbols-outlined text-[16px]">archive</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Item 6 -->
+        <div class="p-3.5 bg-surface-container-high border border-surface-variant rounded hover:border-[#88C0A4] transition-colors flex items-center justify-between gap-4">
+          <div class="flex items-center gap-3 flex-1">
+            <div class="w-2 h-2 rounded-full bg-on-surface-variant/50"></div>
+            <div>
+              <p class="text-sm font-medium text-on-surface">Backup local database snapshots to encrypted cloud storage</p>
+              <p class="text-xs text-on-surface-variant font-mono mt-0.5">System Reminder • 2 days ago</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <button class="px-2.5 py-1 bg-surface-container border border-surface-variant hover:border-[#88C0A4] text-xs rounded text-on-surface flex items-center gap-1">
+              <span class="material-symbols-outlined text-[14px]">calendar_today</span>
+              Schedule
+            </button>
+            <button class="p-1 text-on-surface-variant hover:text-[#88C0A4] rounded" title="Archive">
+              <span class="material-symbols-outlined text-[16px]">archive</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Item 7 -->
+        <div class="p-3.5 bg-surface-container-high border border-surface-variant rounded hover:border-[#88C0A4] transition-colors flex items-center justify-between gap-4">
+          <div class="flex items-center gap-3 flex-1">
+            <div class="w-2 h-2 rounded-full bg-on-surface-variant/50"></div>
+            <div>
+              <p class="text-sm font-medium text-on-surface">Print posters for campus innovation seminar</p>
+              <p class="text-xs text-on-surface-variant font-mono mt-0.5">Quick Clip • Nov 10</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <button class="px-2.5 py-1 bg-surface-container border border-surface-variant hover:border-[#88C0A4] text-xs rounded text-on-surface flex items-center gap-1">
+              <span class="material-symbols-outlined text-[14px]">calendar_today</span>
+              Schedule
+            </button>
+            <button class="p-1 text-on-surface-variant hover:text-[#88C0A4] rounded" title="Archive">
+              <span class="material-symbols-outlined text-[16px]">archive</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Item 8 -->
+        <div class="p-3.5 bg-surface-container-high border border-surface-variant rounded hover:border-[#88C0A4] transition-colors flex items-center justify-between gap-4">
+          <div class="flex items-center gap-3 flex-1">
+            <div class="w-2 h-2 rounded-full bg-on-surface-variant/50"></div>
+            <div>
+              <p class="text-sm font-medium text-on-surface">Test multi-turn voice disambiguation on Android phone build</p>
+              <p class="text-xs text-on-surface-variant font-mono mt-0.5">Voice Note • Nov 09</p>
             </div>
           </div>
           <div class="flex items-center gap-2">
@@ -506,7 +860,7 @@
           <div class="flex items-center gap-2 mb-1">
             <span class="font-mono text-[#88C0A4] text-[11px] uppercase tracking-wider font-semibold">Repeating Schedules</span>
             <span class="text-surface-variant">•</span>
-            <span class="font-mono text-[11px] text-on-surface-variant">Spawn-on-completion active</span>
+            <span class="font-mono text-[11px] text-on-surface-variant">6 active rules</span>
           </div>
           <h2 class="text-2xl font-semibold text-on-surface tracking-tight">Recurring Tasks</h2>
           <p class="text-xs text-on-surface-variant mt-1">
@@ -520,19 +874,18 @@
       </div>
 
       <div class="space-y-3">
-        <!-- Recurring Card 1 -->
+        <!-- Rule 1: Weekly Sprint Sync -->
         <div class="p-4 bg-surface-container-high border border-surface-variant rounded hover:border-[#88C0A4] transition-colors space-y-3">
           <div class="flex items-start justify-between gap-4">
             <div class="space-y-1">
               <div class="flex items-center gap-2">
-                <span class="text-sm font-semibold text-on-surface">Weekly team sync &amp; milestone review</span>
+                <span class="text-sm font-semibold text-on-surface">Weekly team sprint sync &amp; deliverable check</span>
                 <span class="font-mono text-[10px] bg-[#88C0A4]/15 text-[#88C0A4] border border-[#88C0A4]/30 px-1.5 py-0.5 rounded font-semibold">
                   EVERY MONDAY
                 </span>
               </div>
-              <p class="text-xs text-on-surface-variant">Review backlog progress, triage blockers, and assign weekly deliverables.</p>
+              <p class="text-xs text-on-surface-variant">Review backlog milestones, triage blockers, and assign weekly targets.</p>
             </div>
-            <!-- Switch Indicator -->
             <div class="flex items-center gap-2">
               <span class="text-xs font-mono text-[#88C0A4]">Active</span>
               <div class="w-8 h-4 bg-[#88C0A4] rounded-full relative cursor-pointer">
@@ -546,14 +899,14 @@
           </div>
         </div>
 
-        <!-- Recurring Card 2 -->
+        <!-- Rule 2: Monthly Financial Reconciliation -->
         <div class="p-4 bg-surface-container-high border border-surface-variant rounded hover:border-[#88C0A4] transition-colors space-y-3">
           <div class="flex items-start justify-between gap-4">
             <div class="space-y-1">
               <div class="flex items-center gap-2">
                 <span class="text-sm font-semibold text-on-surface">Submit monthly chapter expense report</span>
                 <span class="font-mono text-[10px] bg-[#FFBF00]/15 text-[#FFBF00] border border-[#FFBF00]/30 px-1.5 py-0.5 rounded font-semibold">
-                  MONTHLY
+                  MONTHLY (1ST)
                 </span>
               </div>
               <p class="text-xs text-on-surface-variant">Reconcile coupon ledger, compile receipts, and share with WES office.</p>
@@ -571,7 +924,7 @@
           </div>
         </div>
 
-        <!-- Recurring Card 3 -->
+        <!-- Rule 3: Daily Morning Review -->
         <div class="p-4 bg-surface-container-high border border-surface-variant rounded hover:border-[#88C0A4] transition-colors space-y-3">
           <div class="flex items-start justify-between gap-4">
             <div class="space-y-1">
@@ -591,8 +944,83 @@
             </div>
           </div>
           <div class="flex items-center justify-between text-xs text-on-surface-variant pt-2 border-t border-surface-variant/60 font-mono text-[11px]">
-            <span>Next occurrence: Mon, Nov 16 at 09:00</span>
+            <span>Next occurrence: Mon, Nov 16 at 08:30</span>
             <span>Workspace: Personal</span>
+          </div>
+        </div>
+
+        <!-- Rule 4: Bi-Weekly Mentor Check-In -->
+        <div class="p-4 bg-surface-container-high border border-surface-variant rounded hover:border-[#88C0A4] transition-colors space-y-3">
+          <div class="flex items-start justify-between gap-4">
+            <div class="space-y-1">
+              <div class="flex items-center gap-2">
+                <span class="text-sm font-semibold text-on-surface">Bi-weekly faculty advisor progress sync</span>
+                <span class="font-mono text-[10px] bg-surface-container text-[#88C0A4] border border-surface-variant px-1.5 py-0.5 rounded font-semibold">
+                  EVERY 2 WEEKS
+                </span>
+              </div>
+              <p class="text-xs text-on-surface-variant">Review research milestones and present working demo build.</p>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="text-xs font-mono text-[#88C0A4]">Active</span>
+              <div class="w-8 h-4 bg-[#88C0A4] rounded-full relative cursor-pointer">
+                <div class="w-3 h-3 bg-[#1E2124] rounded-full absolute right-0.5 top-0.5"></div>
+              </div>
+            </div>
+          </div>
+          <div class="flex items-center justify-between text-xs text-on-surface-variant pt-2 border-t border-surface-variant/60 font-mono text-[11px]">
+            <span>Next occurrence: Thu, Nov 26 at 15:00</span>
+            <span>Workspace: University</span>
+          </div>
+        </div>
+
+        <!-- Rule 5: Weekly Exercise & Physical Well-being -->
+        <div class="p-4 bg-surface-container-high border border-surface-variant rounded hover:border-[#88C0A4] transition-colors space-y-3">
+          <div class="flex items-start justify-between gap-4">
+            <div class="space-y-1">
+              <div class="flex items-center gap-2">
+                <span class="text-sm font-semibold text-on-surface">Weekend 5K run &amp; mobility training</span>
+                <span class="font-mono text-[10px] bg-surface-container text-[#78909C] border border-surface-variant px-1.5 py-0.5 rounded font-semibold">
+                  EVERY SATURDAY
+                </span>
+              </div>
+              <p class="text-xs text-on-surface-variant">Track split times and review recovery stats.</p>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="text-xs font-mono text-[#88C0A4]">Active</span>
+              <div class="w-8 h-4 bg-[#88C0A4] rounded-full relative cursor-pointer">
+                <div class="w-3 h-3 bg-[#1E2124] rounded-full absolute right-0.5 top-0.5"></div>
+              </div>
+            </div>
+          </div>
+          <div class="flex items-center justify-between text-xs text-on-surface-variant pt-2 border-t border-surface-variant/60 font-mono text-[11px]">
+            <span>Next occurrence: Sat, Nov 14 at 07:00</span>
+            <span>Workspace: Personal</span>
+          </div>
+        </div>
+
+        <!-- Rule 6: Quarterly Server Review -->
+        <div class="p-4 bg-surface-container-high border border-surface-variant rounded hover:border-[#88C0A4] transition-colors space-y-3">
+          <div class="flex items-start justify-between gap-4">
+            <div class="space-y-1">
+              <div class="flex items-center gap-2">
+                <span class="text-sm font-semibold text-on-surface">Quarterly security credential &amp; API token rotation</span>
+                <span class="font-mono text-[10px] bg-[#FFBF00]/15 text-[#FFBF00] border border-[#FFBF00]/30 px-1.5 py-0.5 rounded font-semibold">
+                  EVERY 3 MONTHS
+                </span>
+              </div>
+              <p class="text-xs text-on-surface-variant">Audit Supabase tokens, edge secrets, and GitHub deployment keys.</p>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="text-xs font-mono text-[#88C0A4]">Active</span>
+              <div class="w-8 h-4 bg-[#88C0A4] rounded-full relative cursor-pointer">
+                <div class="w-3 h-3 bg-[#1E2124] rounded-full absolute right-0.5 top-0.5"></div>
+              </div>
+            </div>
+          </div>
+          <div class="flex items-center justify-between text-xs text-on-surface-variant pt-2 border-t border-surface-variant/60 font-mono text-[11px]">
+            <span>Next occurrence: Jan 15, 2027</span>
+            <span>Workspace: Engineering</span>
           </div>
         </div>
       </div>
@@ -605,11 +1033,11 @@
           <div class="flex items-center gap-2 mb-1">
             <span class="font-mono text-[#88C0A4] text-[11px] uppercase tracking-wider font-semibold">Timeline &amp; Calendar</span>
             <span class="text-surface-variant">•</span>
-            <span class="font-mono text-[11px] text-on-surface-variant">November 2026</span>
+            <span class="font-mono text-[11px] text-on-surface-variant">Friday, Nov 13, 2026</span>
           </div>
           <h2 class="text-2xl font-semibold text-on-surface tracking-tight">Today's Schedule</h2>
           <p class="text-xs text-on-surface-variant mt-1">
-            Time-blocked view of tasks and scheduled commitments for today.
+            Time-blocked view of tasks, meetings, and scheduled milestones.
           </p>
         </div>
         <div class="flex items-center gap-2">
@@ -621,44 +1049,74 @@
 
       <!-- Schedule Timeline Slots -->
       <div class="space-y-2">
-        <!-- 09:00 -->
+        <!-- 08:30 -->
         <div class="flex items-start gap-4 p-3 bg-surface-container-high/60 border border-surface-variant/60 rounded">
-          <div class="w-16 font-mono text-xs text-[#88C0A4] pt-0.5">09:00 AM</div>
+          <div class="w-16 font-mono text-xs text-[#88C0A4] pt-0.5">08:30 AM</div>
           <div class="flex-1">
             <p class="text-xs font-semibold text-on-surface">Daily planning &amp; morning audio review</p>
-            <p class="text-[11px] text-on-surface-variant">Completed • 25 min</p>
+            <p class="text-[11px] text-on-surface-variant">Completed • 25 min • Personal</p>
           </div>
           <span class="font-mono text-[10px] text-[#88C0A4] bg-[#88C0A4]/10 px-2 py-0.5 rounded">DONE</span>
         </div>
 
-        <!-- 11:30 -->
+        <!-- 10:00 -->
         <div class="flex items-start gap-4 p-3 bg-surface-container-high/60 border border-surface-variant/60 rounded">
-          <div class="w-16 font-mono text-xs text-on-surface-variant pt-0.5">11:30 AM</div>
+          <div class="w-16 font-mono text-xs text-[#88C0A4] pt-0.5">10:00 AM</div>
           <div class="flex-1">
-            <p class="text-xs font-semibold text-on-surface">WES Foundation curriculum review call</p>
-            <p class="text-[11px] text-on-surface-variant">Completed • 45 min</p>
+            <p class="text-xs font-semibold text-on-surface">Software Architecture lecture &amp; assignment check</p>
+            <p class="text-[11px] text-on-surface-variant">Completed • 1 hour 30 min • Hall B4</p>
           </div>
           <span class="font-mono text-[10px] text-[#88C0A4] bg-[#88C0A4]/10 px-2 py-0.5 rounded">DONE</span>
         </div>
 
-        <!-- 15:00 -->
-        <div class="flex items-start gap-4 p-3 bg-surface-container-high border border-surface-variant rounded">
-          <div class="w-16 font-mono text-xs text-[#FFBF00] pt-0.5">03:00 PM</div>
+        <!-- 12:30 -->
+        <div class="flex items-start gap-4 p-3 bg-surface-container-high/60 border border-surface-variant/60 rounded">
+          <div class="w-16 font-mono text-xs text-[#88C0A4] pt-0.5">12:30 PM</div>
           <div class="flex-1">
-            <p class="text-xs font-semibold text-on-surface">Student mentor training session prep</p>
-            <p class="text-[11px] text-on-surface-variant">In progress • 1 hour slot</p>
+            <p class="text-xs font-semibold text-on-surface">WES Foundation curriculum review sync</p>
+            <p class="text-[11px] text-on-surface-variant">Completed • 45 min • Chapter Room</p>
+          </div>
+          <span class="font-mono text-[10px] text-[#88C0A4] bg-[#88C0A4]/10 px-2 py-0.5 rounded">DONE</span>
+        </div>
+
+        <!-- 14:00 -->
+        <div class="flex items-start gap-4 p-3 bg-surface-container-high border border-surface-variant rounded">
+          <div class="w-16 font-mono text-xs text-[#FFBF00] pt-0.5">02:00 PM</div>
+          <div class="flex-1">
+            <p class="text-xs font-semibold text-on-surface">Prepare presentation deck for Eureka! competition</p>
+            <p class="text-[11px] text-on-surface-variant">In progress • 1 hr 30 min • Slide rehearsal</p>
           </div>
           <span class="font-mono text-[10px] text-[#FFBF00] bg-[#FFBF00]/10 px-2 py-0.5 rounded">NOW</span>
+        </div>
+
+        <!-- 16:30 -->
+        <div class="flex items-start gap-4 p-3 bg-surface-container-high border border-surface-variant rounded">
+          <div class="w-16 font-mono text-xs text-[#FF5252] pt-0.5">04:30 PM</div>
+          <div class="flex-1">
+            <p class="text-xs font-semibold text-on-surface">Confirm robotics lab room reservation &amp; security approvals</p>
+            <p class="text-[11px] text-on-surface-variant">Scheduled • Urgent milestone deadline</p>
+          </div>
+          <span class="font-mono text-[10px] text-[#FF5252] bg-[#FF5252]/10 px-2 py-0.5 rounded">UPCOMING</span>
+        </div>
+
+        <!-- 17:30 -->
+        <div class="flex items-start gap-4 p-3 bg-surface-container-high border border-surface-variant rounded">
+          <div class="w-16 font-mono text-xs text-on-surface-variant pt-0.5">05:30 PM</div>
+          <div class="flex-1">
+            <p class="text-xs font-semibold text-on-surface">Call department coordinator regarding elective course credits</p>
+            <p class="text-[11px] text-on-surface-variant">Scheduled • 15 min phone call</p>
+          </div>
+          <span class="font-mono text-[10px] text-on-surface-variant bg-surface-container px-2 py-0.5 rounded">SCHEDULED</span>
         </div>
 
         <!-- 18:00 -->
         <div class="flex items-start gap-4 p-3 bg-surface-container-high border border-surface-variant rounded">
           <div class="w-16 font-mono text-xs text-[#FF5252] pt-0.5">06:00 PM</div>
           <div class="flex-1">
-            <p class="text-xs font-semibold text-on-surface">Deploy hotfix for authentication regression</p>
-            <p class="text-[11px] text-on-surface-variant">Upcoming • Critical milestone</p>
+            <p class="text-xs font-semibold text-on-surface">Deploy hotfix for authentication session regression</p>
+            <p class="text-[11px] text-on-surface-variant">Scheduled • Release candidate tag v0.5.2</p>
           </div>
-          <span class="font-mono text-[10px] text-[#FF5252] bg-[#FF5252]/10 px-2 py-0.5 rounded">UPCOMING</span>
+          <span class="font-mono text-[10px] text-[#FF5252] bg-[#FF5252]/10 px-2 py-0.5 rounded">CRITICAL</span>
         </div>
 
         <!-- 20:30 -->
@@ -666,7 +1124,17 @@
           <div class="w-16 font-mono text-xs text-on-surface-variant pt-0.5">08:30 PM</div>
           <div class="flex-1">
             <p class="text-xs font-semibold text-on-surface">Coordinate WES Foundation student workshop syllabus</p>
-            <p class="text-[11px] text-on-surface-variant">Scheduled • 4 subtasks</p>
+            <p class="text-[11px] text-on-surface-variant">Scheduled • Subtask checklist review</p>
+          </div>
+          <span class="font-mono text-[10px] text-on-surface-variant bg-surface-container px-2 py-0.5 rounded">SCHEDULED</span>
+        </div>
+
+        <!-- 22:00 -->
+        <div class="flex items-start gap-4 p-3 bg-surface-container-high/60 border border-surface-variant/60 rounded">
+          <div class="w-16 font-mono text-xs text-on-surface-variant pt-0.5">10:00 PM</div>
+          <div class="flex-1">
+            <p class="text-xs font-semibold text-on-surface">Evening wrap-up &amp; tomorrow's priorities</p>
+            <p class="text-[11px] text-on-surface-variant">Personal routine • 15 min</p>
           </div>
           <span class="font-mono text-[10px] text-on-surface-variant bg-surface-container px-2 py-0.5 rounded">SCHEDULED</span>
         </div>
@@ -690,12 +1158,12 @@
             <h3 class="text-sm font-semibold text-on-surface">AI Voice Assistant</h3>
           </div>
           <p class="text-xs text-on-surface-variant">
-            Waypoint extracts tasks, dates, and subtasks directly from your voice.
+            Waypoint extracts tasks, dates, and subtasks directly from spoken dictation.
           </p>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
             <div class="p-3 bg-surface-container rounded border border-surface-variant/60 flex items-center justify-between">
               <div>
-                <p class="text-xs font-medium text-on-surface">Natural Speech Confirmation</p>
+                <p class="text-xs font-medium text-on-surface">Voice Confirmation</p>
                 <p class="text-[11px] text-on-surface-variant">Speak back verified details before saving</p>
               </div>
               <div class="w-8 h-4 bg-[#88C0A4] rounded-full relative cursor-pointer">
@@ -704,7 +1172,7 @@
             </div>
             <div class="p-3 bg-surface-container rounded border border-surface-variant/60 flex items-center justify-between">
               <div>
-                <p class="text-xs font-medium text-on-surface">Speech Speed</p>
+                <p class="text-xs font-medium text-on-surface">Voice Speed</p>
                 <p class="text-[11px] text-on-surface-variant font-mono">1.05x (Optimal clarity)</p>
               </div>
               <span class="font-mono text-xs text-[#88C0A4]">Fast</span>
@@ -725,7 +1193,7 @@
             </div>
             <div class="flex items-center gap-2 opacity-50 cursor-not-allowed">
               <div class="w-4 h-4 rounded-full bg-[#F8FAFC] border border-surface-variant"></div>
-              <span class="text-xs text-on-surface-variant">Light (Coming soon)</span>
+              <span class="text-xs text-on-surface-variant">Light Mode (Coming soon)</span>
             </div>
           </div>
         </div>
@@ -734,10 +1202,10 @@
         <div class="p-4 bg-surface-container-high border border-surface-variant rounded space-y-3">
           <div class="flex items-center gap-2">
             <span class="material-symbols-outlined text-[18px] text-[#88C0A4]">cloud_done</span>
-            <h3 class="text-sm font-semibold text-on-surface">Cloud Backup &amp; Device Sync</h3>
+            <h3 class="text-sm font-semibold text-on-surface">Account &amp; Device Backup</h3>
           </div>
           <p class="text-xs text-on-surface-variant">
-            Your data is stored securely on this device and syncs to your account when online.
+            Your data is stored safely on this device and mirrors to your cloud workspace when online.
           </p>
           <div class="p-3 bg-surface-container rounded border border-surface-variant flex items-center justify-between">
             <div class="flex items-center gap-3">
@@ -746,7 +1214,7 @@
               </div>
               <div>
                 <p class="text-xs font-semibold text-on-surface">Lakshya Jadhav</p>
-                <p class="text-[11px] text-on-surface-variant font-mono">user@waypoint.app • Pro Tier</p>
+                <p class="text-[11px] text-on-surface-variant font-mono">user@waypoint.app • Pro Plan</p>
               </div>
             </div>
             <span class="font-mono text-[11px] text-[#88C0A4] bg-[#88C0A4]/10 px-2 py-1 rounded">CONNECTED</span>
@@ -800,7 +1268,7 @@
       <div class="w-1 bg-[#88C0A4] h-14 rounded animate-pulse" style="animation-delay: 150ms"></div>
       <div class="w-1 bg-[#88C0A4] h-5 rounded animate-pulse" style="animation-delay: 250ms"></div>
     </div>
-    <p class="text-xs text-center text-on-surface-variant font-mono">Listening... Speak a task and due date</p>
+    <p class="text-xs text-center text-on-surface-variant font-mono">Listening... Speak a task, milestone, or date</p>
     <div class="flex justify-center gap-2 pt-2">
       <button onclick="hideVoiceModal()" class="px-4 py-1.5 bg-[#88C0A4] text-[#1E2124] rounded text-xs font-semibold hover:bg-[#9ECBB5]">
         Done
@@ -855,11 +1323,25 @@
     document.getElementById('voice-modal').classList.add('hidden');
   }
 
+  function focusQuickInput() {
+    switchView('today');
+    const input = document.getElementById('quick-input');
+    if (input) input.focus();
+  }
+
+  function toggleCardDone(btn) {
+    btn.classList.toggle('bg-[#88C0A4]');
+    const card = btn.closest('.group');
+    if (card) {
+      card.classList.toggle('opacity-50');
+    }
+  }
+
   function quickAddTask() {
     const input = document.getElementById('quick-input');
     const val = input.value.trim();
     if (!val) return;
-    alert('Task created: ' + val);
+    alert('Task added to Today: ' + val);
     input.value = '';
   }
 </script>
