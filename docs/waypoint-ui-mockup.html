@@ -7,9 +7,9 @@
 <!-- Google Fonts: Geist & JetBrains Mono -->
 <link href="https://fonts.googleapis.com" rel="preconnect"/>
 <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
-<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
 <!-- Material Symbols Outlined -->
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
 <!-- Tailwind CSS with Forms and Container Queries -->
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
 <!-- Tailwind Theme Configuration -->
@@ -18,7 +18,7 @@
       darkMode: "class",
       theme: {
         extend: {
-          "colors": {
+          colors: {
             "outline-variant": "#404943",
             "surface-variant": "#323538",
             "on-background": "#e1e2e6",
@@ -40,13 +40,13 @@
             "surface-container": "#1d2023",
             "surface-container-highest": "#323538"
           },
-          "borderRadius": {
+          borderRadius: {
             "DEFAULT": "0.125rem",
             "lg": "0.25rem",
             "xl": "0.5rem",
             "full": "0.75rem"
           },
-          "fontFamily": {
+          fontFamily: {
             "sans": ["Geist", "sans-serif"],
             "mono": ["JetBrains Mono", "monospace"]
           }
@@ -78,192 +78,95 @@
     }
 </style>
 </head>
-<body class="bg-background text-on-surface antialiased flex h-screen overflow-hidden select-none font-sans text-sm">
+<body class="bg-background text-on-surface antialiased flex flex-col h-screen overflow-hidden select-none font-sans text-sm">
 
-<!-- MOBILE SIDEBAR BACKDROP OVERLAY -->
-<div id="mobile-backdrop" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-40 hidden md:hidden transition-opacity" onclick="toggleMobileSidebar()"></div>
-
-<!-- 1. SIDEBAR NAVIGATION (DRAWER ON MOBILE, FIXED RAIL ON DESKTOP) -->
-<aside id="sidebar-drawer" class="fixed left-0 top-0 bottom-0 z-50 w-72 md:w-64 bg-surface-container-low border-r border-surface-variant flex flex-col justify-between select-none transform -translate-x-full md:translate-x-0 transition-transform duration-200 ease-in-out">
-  <!-- Header / Brand Anchor -->
-  <div class="p-4">
-    <div class="flex items-center justify-between mb-4">
-      <div class="flex items-center gap-3 cursor-pointer" onclick="switchView('today'); closeMobileSidebar();">
-        <div aria-label="Waypoint Monogram" class="w-8 h-8 rounded bg-surface-container flex items-center justify-center border border-surface-variant text-primary flex-shrink-0">
-          <svg class="w-4 h-4 fill-current text-[#88C0A4]" viewBox="0 0 24 24">
-            <path d="M12 2L2 12l10 10 10-10L12 2zm0 4.5l5.5 5.5-5.5 5.5-5.5-5.5L12 6.5z"></path>
-          </svg>
-        </div>
-        <div>
-          <h1 class="text-base font-semibold text-on-surface tracking-tight">Waypoint</h1>
-          <p class="font-mono text-on-surface-variant text-[11px] leading-tight">Personal Workspace</p>
-        </div>
+<!-- ==================== TOP NAVIGATION HEADER (UNIFIED DESKTOP & MOBILE) ==================== -->
+<header class="sticky top-0 z-30 flex items-center justify-between px-3 sm:px-6 lg:px-8 w-full h-14 bg-surface border-b border-surface-variant flex-shrink-0">
+  <!-- Left: Logo & Omni Search -->
+  <div class="flex items-center gap-3 sm:gap-5">
+    <div class="flex items-center gap-2.5 cursor-pointer" onclick="switchView('today')" title="Waypoint Home">
+      <div aria-label="Waypoint Monogram" class="w-8 h-8 rounded bg-surface-container flex items-center justify-center border border-surface-variant text-[#88C0A4] flex-shrink-0 shadow-sm">
+        <svg class="w-4 h-4 fill-current text-[#88C0A4]" viewBox="0 0 24 24">
+          <path d="M12 2L2 12l10 10 10-10L12 2zm0 4.5l5.5 5.5-5.5 5.5-5.5-5.5L12 6.5z"></path>
+        </svg>
       </div>
-      <!-- Close drawer on mobile -->
-      <button onclick="toggleMobileSidebar()" class="md:hidden text-on-surface-variant hover:text-on-surface p-1">
-        <span class="material-symbols-outlined text-[20px]">close</span>
-      </button>
+      <div>
+        <h1 class="text-sm sm:text-base font-semibold text-on-surface tracking-tight leading-tight">Waypoint</h1>
+        <p class="font-mono text-on-surface-variant text-[10px] leading-none hidden sm:block">Smart Workspace</p>
+      </div>
     </div>
 
-    <!-- Quick Add Button -->
-    <button onclick="focusQuickInput(); closeMobileSidebar();" class="w-full flex items-center justify-between px-3 py-2 bg-[#88C0A4] text-[#1E2124] rounded font-semibold hover:bg-[#9ECBB5] transition-colors duration-150 border-none outline-none">
-      <span class="flex items-center gap-2">
-        <span class="material-symbols-outlined text-[16px]">add</span>
-        New Task
+    <!-- Mobile View Title Indicator -->
+    <div class="md:hidden flex items-center gap-1.5 pl-2 border-l border-surface-variant">
+      <span class="w-2 h-2 rounded-full bg-[#88C0A4]"></span>
+      <span id="mobile-header-title" class="text-xs font-semibold text-on-surface">Today</span>
+    </div>
+
+    <!-- Desktop Search Bar -->
+    <div class="hidden lg:flex relative w-64 xl:w-72">
+      <span class="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-on-surface-variant">
+        <span class="material-symbols-outlined text-[16px]">search</span>
       </span>
-      <span class="font-mono text-[10px] bg-[#1E2124]/20 text-[#1E2124] px-1.5 py-0.5 rounded font-semibold">⌘N</span>
-    </button>
+      <input class="w-full pl-8 pr-12 py-1.5 bg-surface-container-high text-on-surface text-xs border border-surface-variant rounded focus:border-[#88C0A4] focus:outline-none placeholder-on-surface-variant/60" placeholder="Search tasks, reminders, notes..." type="text"/>
+      <div class="absolute inset-y-0 right-0 pr-2 flex items-center">
+        <span class="font-mono text-[10px] bg-surface-variant px-1.5 py-0.5 rounded text-on-surface-variant border border-outline-variant/30">⌘K</span>
+      </div>
+    </div>
   </div>
 
-  <!-- Navigation Items -->
-  <nav class="flex-1 px-2 space-y-0.5 overflow-y-auto">
-    <div class="px-3 py-1 font-mono text-on-surface-variant/70 tracking-wider text-[10px] uppercase">
-      Views
-    </div>
-    <!-- Tab: Today (Active default) -->
-    <button id="nav-today" onclick="switchView('today'); closeMobileSidebar();" class="nav-link w-full flex items-center gap-2.5 px-3 py-2.5 bg-surface-container text-[#88C0A4] border-l-2 border-[#88C0A4] rounded-r text-left transition-colors">
-      <span class="material-symbols-outlined text-[18px]">calendar_today</span>
-      <span class="flex-1 font-medium">Today</span>
-      <span class="font-mono text-[10px] bg-[#88C0A4]/20 text-[#88C0A4] px-1.5 py-0.5 rounded font-semibold">9</span>
+  <!-- Center Navigation Tabs (Hidden on mobile) -->
+  <nav class="hidden md:flex items-center gap-4 lg:gap-6">
+    <button onclick="switchView('today')" id="head-today" class="head-link text-[#88C0A4] border-b-2 border-[#88C0A4] pb-1 text-xs font-medium cursor-pointer">
+      Today (<span class="today-count-badge">9</span>)
     </button>
-    <!-- Tab: Inbox -->
-    <button id="nav-inbox" onclick="switchView('inbox'); closeMobileSidebar();" class="nav-link w-full flex items-center gap-2.5 px-3 py-2.5 text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface rounded text-left transition-colors">
-      <span class="material-symbols-outlined text-[18px]">inbox</span>
-      <span class="flex-1">Inbox</span>
-      <span class="font-mono text-[10px] bg-surface-container-high text-on-surface-variant px-1.5 py-0.5 rounded border border-surface-variant">10</span>
+    <button onclick="switchView('inbox')" id="head-inbox" class="head-link text-on-surface-variant hover:text-on-surface pb-1 text-xs transition-colors cursor-pointer">
+      Inbox (10)
     </button>
-    <!-- Tab: Recurring -->
-    <button id="nav-recurring" onclick="switchView('recurring'); closeMobileSidebar();" class="nav-link w-full flex items-center gap-2.5 px-3 py-2.5 text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface rounded text-left transition-colors">
-      <span class="material-symbols-outlined text-[18px]">repeat</span>
-      <span class="flex-1">Recurring</span>
-      <span class="font-mono text-[10px] text-on-surface-variant">6</span>
+    <button onclick="switchView('recurring')" id="head-recurring" class="head-link text-on-surface-variant hover:text-on-surface pb-1 text-xs transition-colors cursor-pointer">
+      Recurring (6)
     </button>
-    <!-- Tab: Calendar -->
-    <button id="nav-calendar" onclick="switchView('calendar'); closeMobileSidebar();" class="nav-link w-full flex items-center gap-2.5 px-3 py-2.5 text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface rounded text-left transition-colors">
-      <span class="material-symbols-outlined text-[18px]">event</span>
-      <span class="flex-1">Schedule</span>
-      <span class="font-mono text-[10px] text-on-surface-variant">Today</span>
+    <button onclick="switchView('calendar')" id="head-calendar" class="head-link text-on-surface-variant hover:text-on-surface pb-1 text-xs transition-colors cursor-pointer">
+      Schedule
     </button>
-
-    <!-- Workspaces / Communities -->
-    <div class="pt-3 px-3 py-1 font-mono text-on-surface-variant/70 tracking-wider text-[10px] uppercase">
-      Groups &amp; Workspaces
-    </div>
-    <div class="px-1 space-y-0.5">
-      <a class="flex items-center justify-between text-on-surface-variant hover:text-on-surface text-[12px] transition-colors py-2 px-2 rounded hover:bg-surface-container" href="#" onclick="switchView('today'); closeMobileSidebar();">
-        <span class="flex items-center gap-2 truncate">
-          <span class="w-1.5 h-1.5 rounded-full bg-[#88C0A4]"></span>
-          WES Foundation
-        </span>
-        <span class="font-mono text-[10px] text-on-surface-variant/60">5</span>
-      </a>
-      <a class="flex items-center justify-between text-on-surface-variant hover:text-on-surface text-[12px] transition-colors py-2 px-2 rounded hover:bg-surface-container" href="#" onclick="switchView('today'); closeMobileSidebar();">
-        <span class="flex items-center gap-2 truncate">
-          <span class="w-1.5 h-1.5 rounded-full bg-[#FFBF00]"></span>
-          Engineering &amp; Code
-        </span>
-        <span class="font-mono text-[10px] text-on-surface-variant/60">8</span>
-      </a>
-      <a class="flex items-center justify-between text-on-surface-variant hover:text-on-surface text-[12px] transition-colors py-2 px-2 rounded hover:bg-surface-container" href="#" onclick="switchView('today'); closeMobileSidebar();">
-        <span class="flex items-center gap-2 truncate">
-          <span class="w-1.5 h-1.5 rounded-full bg-[#78909C]"></span>
-          Personal &amp; Study
-        </span>
-        <span class="font-mono text-[10px] text-on-surface-variant/60">6</span>
-      </a>
-      <a class="flex items-center justify-between text-on-surface-variant hover:text-on-surface text-[12px] transition-colors py-2 px-2 rounded hover:bg-surface-container" href="#" onclick="switchView('today'); closeMobileSidebar();">
-        <span class="flex items-center gap-2 truncate">
-          <span class="w-1.5 h-1.5 rounded-full bg-[#FF5252]"></span>
-          Eureka! Showcase
-        </span>
-        <span class="font-mono text-[10px] text-on-surface-variant/60">3</span>
-      </a>
-    </div>
+    <button onclick="switchView('settings')" id="head-settings" class="head-link text-on-surface-variant hover:text-on-surface pb-1 text-xs transition-colors cursor-pointer">
+      Settings
+    </button>
   </nav>
 
-  <!-- Sidebar Footer Status -->
-  <div class="p-3 border-t border-surface-variant bg-surface-container-lowest/50 space-y-2">
-    <div class="flex items-center justify-between px-3 py-1.5 bg-surface-container rounded border border-surface-variant">
-      <div class="flex items-center gap-2">
-        <span class="w-2 h-2 rounded-full bg-[#88C0A4]"></span>
-        <span class="font-mono text-[10px] text-[#88C0A4] uppercase font-semibold">All Changes Saved</span>
+  <!-- Right Trailing Controls -->
+  <div class="flex items-center gap-1.5 sm:gap-2.5">
+    <!-- PROMINENT "+ Add Task" ACTION BUTTON -->
+    <button onclick="openTaskModal()" class="flex items-center gap-1.5 px-3 py-1.5 bg-[#88C0A4] text-[#1E2124] rounded font-semibold text-xs hover:bg-[#9ECBB5] transition-colors shadow-sm cursor-pointer" title="Add New Task (⌘N)">
+      <span class="material-symbols-outlined text-[16px]">add</span>
+      <span class="hidden xs:inline">Add Task</span>
+      <span class="hidden sm:inline font-mono text-[9px] bg-[#1E2124]/20 text-[#1E2124] px-1 py-0.5 rounded font-semibold">⌘N</span>
+    </button>
+
+    <!-- AI Voice Assistant Button -->
+    <button onclick="showVoiceModal()" class="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 bg-surface-container text-[#88C0A4] border border-surface-variant hover:border-[#88C0A4] rounded text-xs transition-colors cursor-pointer" title="AI Voice Assistant">
+      <span class="material-symbols-outlined text-[16px] text-[#88C0A4]">mic</span>
+      <span class="hidden xl:inline font-mono text-[11px] font-medium">Voice</span>
+    </button>
+
+    <!-- Notifications Bell -->
+    <button class="relative p-1.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container rounded transition-colors" title="Notifications">
+      <span class="material-symbols-outlined text-[18px]">notifications</span>
+      <span class="absolute top-1 right-1 w-2 h-2 bg-[#FFBF00] rounded-full"></span>
+    </button>
+
+    <!-- User Avatar -->
+    <div class="flex items-center pl-1 cursor-pointer" onclick="switchView('settings')" title="User Profile & Settings">
+      <div class="w-7 h-7 rounded bg-surface-container-high border border-surface-variant flex items-center justify-center font-mono text-[11px] text-[#88C0A4] font-semibold relative">
+        LJ
+        <span class="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-[#88C0A4] ring-2 ring-surface"></span>
       </div>
-      <span class="font-mono text-[9px] text-on-surface-variant">Cloud Active</span>
-    </div>
-    <div class="flex items-center justify-between pt-1">
-      <button id="nav-settings" onclick="switchView('settings'); closeMobileSidebar();" class="nav-link flex items-center gap-1.5 text-on-surface-variant hover:text-on-surface text-xs">
-        <span class="material-symbols-outlined text-[16px]">tune</span>
-        Settings
-      </button>
-      <span class="font-mono text-on-surface-variant/60 text-[10px]">Offline Ready</span>
     </div>
   </div>
-</aside>
+</header>
 
-<!-- 2. MAIN APPLICATION WORKSPACE SHELL -->
-<div class="ml-0 md:ml-64 flex-1 flex flex-col h-screen overflow-hidden bg-background">
-  <!-- Top Navigation Bar (Responsive) -->
-  <header class="sticky top-0 z-30 flex items-center justify-between px-3 sm:px-6 w-full h-14 bg-surface border-b border-surface-variant flex-shrink-0">
-    <!-- Left: Hamburger (Mobile) + Omni Search (Desktop) -->
-    <div class="flex items-center gap-2 sm:gap-3">
-      <!-- Mobile Drawer Button -->
-      <button onclick="toggleMobileSidebar()" class="md:hidden p-2 text-on-surface-variant hover:text-on-surface rounded flex items-center justify-center" aria-label="Open Navigation">
-        <span class="material-symbols-outlined text-[22px]">menu</span>
-      </button>
-
-      <!-- Mobile Active Title -->
-      <div class="md:hidden flex items-center gap-1.5">
-        <div class="w-2 h-2 rounded-full bg-[#88C0A4]"></div>
-        <span id="mobile-header-title" class="text-sm font-semibold text-on-surface">Today</span>
-      </div>
-
-      <!-- Desktop Search Bar -->
-      <div class="hidden md:flex relative w-80 lg:w-96">
-        <span class="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-on-surface-variant">
-          <span class="material-symbols-outlined text-[16px]">search</span>
-        </span>
-        <input class="w-full pl-8 pr-12 py-1.5 bg-surface-container-high text-on-surface text-xs border border-surface-variant rounded focus:border-[#88C0A4] focus:outline-none placeholder-on-surface-variant/60" placeholder="Search tasks, reminders, notes..." type="text"/>
-        <div class="absolute inset-y-0 right-0 pr-2 flex items-center">
-          <span class="font-mono text-[10px] bg-surface-variant px-1.5 py-0.5 rounded text-on-surface-variant border border-outline-variant/30">⌘K</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- Center Navigation Tabs (Hidden on mobile) -->
-    <nav class="hidden md:flex items-center gap-6">
-      <button onclick="switchView('today')" id="head-today" class="head-link text-[#88C0A4] border-b-2 border-[#88C0A4] pb-1 text-xs font-medium">Today (9)</button>
-      <button onclick="switchView('inbox')" id="head-inbox" class="head-link text-on-surface-variant hover:text-on-surface pb-1 text-xs transition-colors">Inbox (10)</button>
-      <button onclick="switchView('recurring')" id="head-recurring" class="head-link text-on-surface-variant hover:text-on-surface pb-1 text-xs transition-colors">Recurring (6)</button>
-      <button onclick="switchView('calendar')" id="head-calendar" class="head-link text-on-surface-variant hover:text-on-surface pb-1 text-xs transition-colors">Schedule</button>
-    </nav>
-
-    <!-- Right Trailing Controls -->
-    <div class="flex items-center gap-1.5 sm:gap-3">
-      <!-- AI Voice Assistant Button -->
-      <button onclick="showVoiceModal()" class="flex items-center gap-1.5 px-2.5 sm:px-3 py-1 bg-surface-container text-[#88C0A4] border border-surface-variant hover:border-[#88C0A4] rounded text-xs transition-colors" title="AI Voice Assistant">
-        <span class="material-symbols-outlined text-[16px] text-[#88C0A4]">mic</span>
-        <span class="hidden sm:inline font-mono text-[11px] font-medium">Voice</span>
-      </button>
-
-      <!-- Sync Status & Notification Icons -->
-      <div class="flex items-center gap-1 border-l border-surface-variant pl-2 sm:pl-3">
-        <button class="relative p-1.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container rounded transition-colors" title="Notifications">
-          <span class="material-symbols-outlined text-[18px]">notifications</span>
-          <span class="absolute top-1 right-1 w-2 h-2 bg-[#FFBF00] rounded-full"></span>
-        </button>
-      </div>
-
-      <!-- User Avatar -->
-      <div class="flex items-center gap-2 pl-1 sm:pl-2 cursor-pointer" onclick="switchView('settings')">
-        <div class="w-7 h-7 rounded bg-surface-container-high border border-surface-variant flex items-center justify-center font-mono text-[11px] text-[#88C0A4] font-semibold relative">
-          LJ
-          <span class="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-[#88C0A4] ring-2 ring-surface"></span>
-        </div>
-      </div>
-    </div>
-  </header>
-
-  <!-- 3. VIEWS CONTAINER (Scrollable Area) -->
+<!-- ==================== MAIN WORKSPACE (CENTERED SINGLE-COLUMN) ==================== -->
+<div class="w-full flex-1 flex flex-col overflow-hidden bg-background">
+<!-- 3. VIEWS CONTAINER (Scrollable Area) -->
   <main class="flex-1 overflow-y-auto px-3 sm:px-6 py-4 sm:py-6 pb-36 md:pb-28 relative">
 
     <!-- ==================== VIEW 1: TODAY'S FOCUS (DEFAULT) ==================== -->
@@ -278,7 +181,7 @@
           </div>
           <h2 class="text-xl sm:text-2xl font-semibold text-on-surface tracking-tight">Active Worklist</h2>
           <p class="text-xs text-on-surface-variant flex items-center gap-2 mt-0.5">
-            <span>9 active tasks</span>
+            <span><span id="stat-active-count">9</span> active tasks</span>
             <span class="text-outline-variant">•</span>
             <span class="text-[#FF5252] font-medium">2 urgent</span>
           </p>
@@ -288,7 +191,7 @@
         <div class="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
           <button class="px-2.5 sm:px-3 py-1 bg-surface-container-high text-[#88C0A4] border border-[#88C0A4]/50 text-xs rounded flex items-center gap-1.5 flex-shrink-0">
             <span>All Active</span>
-            <span class="font-mono text-[10px] bg-[#88C0A4]/20 text-[#88C0A4] px-1 rounded font-semibold">9</span>
+            <span class="font-mono text-[10px] bg-[#88C0A4]/20 text-[#88C0A4] px-1 rounded font-semibold today-count-badge">9</span>
           </button>
           <button onclick="switchView('recurring')" class="px-2.5 sm:px-3 py-1 bg-surface-container text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high border border-surface-variant text-xs rounded flex items-center gap-1.5 transition-colors flex-shrink-0">
             <span>Recurring</span>
@@ -305,7 +208,7 @@
       </div>
 
       <!-- Task Cards Stack -->
-      <div class="space-y-2.5 sm:space-y-3">
+      <div id="today-tasks-container" class="space-y-2.5 sm:space-y-3">
         <!-- Task 1: Urgent Regression Hotfix -->
         <div class="group relative bg-surface-container-high border border-surface-variant rounded hover:border-[#88C0A4] transition-colors duration-150 overflow-hidden">
           <div class="absolute left-0 top-0 bottom-0 w-1 bg-[#FF5252]"></div>
@@ -889,46 +792,52 @@
 
   </main>
 
-  <!-- 4. FLOATING BOTTOM COMMAND BAR (RESPONSIVE DOCKED ON PHONE, CENTERED ON DESKTOP) -->
-  <div class="fixed bottom-14 md:bottom-5 left-0 md:left-64 right-0 flex justify-center px-3 sm:px-4 pointer-events-none z-30">
+  <!-- ==================== FLOATING COMMAND BAR ==================== -->
+  <div class="fixed bottom-16 md:bottom-6 left-0 right-0 flex justify-center px-3 sm:px-4 pointer-events-none z-30">
     <div class="w-full max-w-2xl bg-surface-container-high/95 backdrop-blur-md border border-surface-variant rounded p-1.5 sm:p-2 flex items-center gap-2 pointer-events-auto shadow-2xl">
-      <!-- Command Input Field -->
-      <input id="quick-input" onkeydown="if(event.key==='Enter') quickAddTask()" class="flex-1 bg-transparent text-on-surface text-xs border-none focus:ring-0 focus:outline-none placeholder-on-surface-variant/60 pl-2" placeholder="Type a task command or tap mic..." type="text"/>
+      <!-- Quick Command Input -->
+      <input id="quick-input" onkeydown="if(event.key==='Enter') quickAddTask()" class="flex-1 bg-transparent text-on-surface text-xs border-none focus:ring-0 focus:outline-none placeholder-on-surface-variant/60 pl-2" placeholder="Quickly add a task or prompt voice assistant (Press Enter)..." type="text"/>
 
       <!-- Right Action Cluster -->
       <div class="flex items-center gap-1">
         <!-- AI Voice Assistant Trigger -->
-        <button onclick="showVoiceModal()" class="p-1.5 text-[#88C0A4] hover:bg-surface-container rounded transition-colors flex items-center justify-center" title="AI Voice Assistant">
+        <button onclick="showVoiceModal()" class="p-1.5 text-[#88C0A4] hover:bg-surface-container rounded transition-colors flex items-center justify-center cursor-pointer" title="AI Voice Assistant">
           <span class="material-symbols-outlined text-[18px]">mic</span>
         </button>
 
-        <!-- Send Command Button -->
-        <button onclick="quickAddTask()" class="p-1.5 text-on-surface-variant hover:text-[#88C0A4] hover:bg-surface-container rounded transition-colors flex items-center justify-center" title="Add Task">
+        <!-- Quick Add / Send Button -->
+        <button onclick="quickAddTask()" class="p-1.5 text-on-surface-variant hover:text-[#88C0A4] hover:bg-surface-container rounded transition-colors flex items-center justify-center cursor-pointer" title="Save Quick Task">
           <span class="material-symbols-outlined text-[18px]">send</span>
         </button>
       </div>
     </div>
   </div>
 
-  <!-- 5. MOBILE BOTTOM NAVIGATION BAR (PHONE SCREENS ONLY) -->
+  <!-- ==================== MOBILE BOTTOM NAVIGATION DOCK ==================== -->
   <nav class="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-surface border-t border-surface-variant flex items-center justify-around h-14 px-2 safe-area-pb">
-    <button onclick="switchView('today')" id="mob-nav-today" class="mob-link flex flex-col items-center justify-center flex-1 py-1 text-[#88C0A4]">
+    <button onclick="switchView('today')" id="mob-nav-today" class="mob-link flex flex-col items-center justify-center flex-1 py-1 text-[#88C0A4] cursor-pointer">
       <span class="material-symbols-outlined text-[20px]">calendar_today</span>
       <span class="text-[10px] font-medium mt-0.5">Today</span>
     </button>
-    <button onclick="switchView('inbox')" id="mob-nav-inbox" class="mob-link flex flex-col items-center justify-center flex-1 py-1 text-on-surface-variant">
+    <button onclick="switchView('inbox')" id="mob-nav-inbox" class="mob-link flex flex-col items-center justify-center flex-1 py-1 text-on-surface-variant cursor-pointer">
       <span class="material-symbols-outlined text-[20px]">inbox</span>
       <span class="text-[10px] font-medium mt-0.5">Inbox</span>
     </button>
-    <button onclick="switchView('recurring')" id="mob-nav-recurring" class="mob-link flex flex-col items-center justify-center flex-1 py-1 text-on-surface-variant">
+    <button onclick="openTaskModal()" class="flex flex-col items-center justify-center px-3 py-1 text-[#88C0A4] cursor-pointer" title="Add Task">
+      <div class="w-8 h-8 rounded-full bg-[#88C0A4] text-[#1E2124] flex items-center justify-center shadow-md">
+        <span class="material-symbols-outlined text-[20px]">add</span>
+      </div>
+      <span class="text-[10px] font-semibold text-[#88C0A4] mt-0.5">Add</span>
+    </button>
+    <button onclick="switchView('recurring')" id="mob-nav-recurring" class="mob-link flex flex-col items-center justify-center flex-1 py-1 text-on-surface-variant cursor-pointer">
       <span class="material-symbols-outlined text-[20px]">repeat</span>
       <span class="text-[10px] font-medium mt-0.5">Repeat</span>
     </button>
-    <button onclick="switchView('calendar')" id="mob-nav-calendar" class="mob-link flex flex-col items-center justify-center flex-1 py-1 text-on-surface-variant">
+    <button onclick="switchView('calendar')" id="mob-nav-calendar" class="mob-link flex flex-col items-center justify-center flex-1 py-1 text-on-surface-variant cursor-pointer">
       <span class="material-symbols-outlined text-[20px]">event</span>
       <span class="text-[10px] font-medium mt-0.5">Schedule</span>
     </button>
-    <button onclick="switchView('settings')" id="mob-nav-settings" class="mob-link flex flex-col items-center justify-center flex-1 py-1 text-on-surface-variant">
+    <button onclick="switchView('settings')" id="mob-nav-settings" class="mob-link flex flex-col items-center justify-center flex-1 py-1 text-on-surface-variant cursor-pointer">
       <span class="material-symbols-outlined text-[20px]">tune</span>
       <span class="text-[10px] font-medium mt-0.5">Settings</span>
     </button>
@@ -936,7 +845,123 @@
 
 </div>
 
-<!-- Simple Voice Overlay Modal Simulation -->
+<!-- ==================== INTERACTIVE TASK CREATION SLIDE-OVER DRAWER ==================== -->
+<div id="task-modal-backdrop" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden opacity-0 transition-opacity duration-200" onclick="if(event.target===this) closeTaskModal()">
+  <div class="fixed inset-y-0 right-0 max-w-full flex">
+    <div id="task-modal-panel" class="w-screen max-w-md bg-surface border-l border-surface-variant flex flex-col shadow-2xl transform translate-x-full transition-transform duration-200 ease-in-out">
+      <!-- Drawer Header -->
+      <div class="px-5 py-4 border-b border-surface-variant flex items-center justify-between bg-surface-container">
+        <div>
+          <h3 class="text-sm sm:text-base font-semibold text-on-surface">New Task / Checkpoint</h3>
+          <p class="font-mono text-[11px] text-on-surface-variant">Create scheduled task or recurring cadence</p>
+        </div>
+        <button onclick="closeTaskModal()" class="text-on-surface-variant hover:text-on-surface p-1 rounded hover:bg-surface-variant cursor-pointer">
+          <span class="material-symbols-outlined text-[20px]">close</span>
+        </button>
+      </div>
+
+      <!-- Drawer Form Body -->
+      <div class="flex-1 overflow-y-auto p-5 space-y-4">
+        <!-- Title Input -->
+        <div>
+          <label class="block font-mono text-[11px] text-on-surface-variant mb-1 uppercase tracking-wider">Task Title *</label>
+          <input id="modal-task-title" class="w-full h-10 px-3 bg-surface-container-lowest border border-surface-variant text-on-surface placeholder:text-on-surface-variant/50 text-xs sm:text-sm rounded focus:border-[#88C0A4] focus:ring-0 outline-none" placeholder="e.g., Deliver WES Foundation quarterly ledger audit" type="text" />
+        </div>
+
+        <!-- Description Input -->
+        <div>
+          <label class="block font-mono text-[11px] text-on-surface-variant mb-1 uppercase tracking-wider">Notes / Acceptance Criteria</label>
+          <textarea id="modal-task-desc" class="w-full h-20 p-2.5 bg-surface-container-lowest border border-surface-variant text-on-surface placeholder:text-on-surface-variant/50 text-xs rounded focus:border-[#88C0A4] focus:ring-0 outline-none resize-none" placeholder="Add context, sub-deliverables, or key milestones..."></textarea>
+        </div>
+
+        <!-- Priority Selector -->
+        <div>
+          <label class="block font-mono text-[11px] text-on-surface-variant mb-1 uppercase tracking-wider">Priority Level</label>
+          <div class="grid grid-cols-4 gap-2">
+            <button type="button" onclick="selectPriority('urgent')" id="prio-urgent" class="prio-btn py-1.5 px-2 rounded border border-[#FF5252]/40 bg-[#FF5252]/15 text-[#FF5252] text-xs font-mono font-medium flex items-center justify-center gap-1 transition-colors cursor-pointer">
+              <span class="w-1.5 h-1.5 rounded-full bg-[#FF5252]"></span>
+              Urgent
+            </button>
+            <button type="button" onclick="selectPriority('high')" id="prio-high" class="prio-btn py-1.5 px-2 rounded border border-surface-variant text-on-surface-variant text-xs font-mono flex items-center justify-center gap-1 hover:border-[#FFBF00]/50 transition-colors cursor-pointer">
+              <span class="w-1.5 h-1.5 rounded-full bg-[#FFBF00]"></span>
+              High
+            </button>
+            <button type="button" onclick="selectPriority('medium')" id="prio-medium" class="prio-btn py-1.5 px-2 rounded border border-surface-variant text-on-surface-variant text-xs font-mono flex items-center justify-center gap-1 hover:border-[#88C0A4]/50 transition-colors cursor-pointer">
+              <span class="w-1.5 h-1.5 rounded-full bg-[#88C0A4]"></span>
+              Med
+            </button>
+            <button type="button" onclick="selectPriority('low')" id="prio-low" class="prio-btn py-1.5 px-2 rounded border border-surface-variant text-on-surface-variant text-xs font-mono flex items-center justify-center gap-1 hover:border-[#78909C]/50 transition-colors cursor-pointer">
+              <span class="w-1.5 h-1.5 rounded-full bg-[#78909C]"></span>
+              Low
+            </button>
+          </div>
+        </div>
+
+        <!-- Schedule & Recurrence Grid -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block font-mono text-[11px] text-on-surface-variant mb-1 uppercase tracking-wider">Target Date</label>
+            <input id="modal-task-date" class="w-full h-9 px-2.5 bg-surface-container-lowest border border-surface-variant text-on-surface text-xs rounded focus:border-[#88C0A4] focus:ring-0 outline-none" type="date" />
+          </div>
+          <div>
+            <label class="block font-mono text-[11px] text-on-surface-variant mb-1 uppercase tracking-wider">Recurrence Cadence</label>
+            <select id="modal-task-recurrence" class="w-full h-9 px-2.5 bg-surface-container-lowest border border-surface-variant text-on-surface text-xs rounded focus:border-[#88C0A4] focus:ring-0 outline-none">
+              <option value="none">One-time Task</option>
+              <option value="daily">Daily</option>
+              <option value="weekly">Weekly (7-Day Cycle)</option>
+              <option value="biweekly">Bi-Weekly</option>
+              <option value="monthly">Monthly</option>
+              <option value="custom">Custom Recurrence...</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Group / Workspace Selector -->
+        <div>
+          <label class="block font-mono text-[11px] text-on-surface-variant mb-1 uppercase tracking-wider">Workspace / Group</label>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <button type="button" onclick="selectWorkspace('Personal')" id="ws-Personal" class="ws-btn py-1.5 px-2 rounded border border-[#88C0A4] bg-[#88C0A4]/10 text-[#88C0A4] text-xs font-mono transition-colors truncate cursor-pointer">Personal</button>
+            <button type="button" onclick="selectWorkspace('Engineering')" id="ws-Engineering" class="ws-btn py-1.5 px-2 rounded border border-surface-variant text-on-surface-variant hover:border-[#88C0A4]/50 text-xs font-mono transition-colors truncate cursor-pointer">Engineering</button>
+            <button type="button" onclick="selectWorkspace('WES Foundation')" id="ws-WES" class="ws-btn py-1.5 px-2 rounded border border-surface-variant text-on-surface-variant hover:border-[#88C0A4]/50 text-xs font-mono transition-colors truncate cursor-pointer">WES Cell</button>
+            <button type="button" onclick="selectWorkspace('Eureka Showcase')" id="ws-Eureka" class="ws-btn py-1.5 px-2 rounded border border-surface-variant text-on-surface-variant hover:border-[#88C0A4]/50 text-xs font-mono transition-colors truncate cursor-pointer">Eureka!</button>
+          </div>
+        </div>
+
+        <!-- Atomic Subtasks Checklist -->
+        <div>
+          <label class="block font-mono text-[11px] text-on-surface-variant mb-1 uppercase tracking-wider">Atomic Checkpoints / Subtasks</label>
+          <div id="subtasks-container" class="space-y-2">
+            <div class="subtask-row flex items-center gap-2">
+              <span class="w-4 h-4 rounded border border-surface-variant bg-surface-container-lowest shrink-0 flex items-center justify-center"></span>
+              <input class="subtask-input flex-1 h-8 px-2.5 bg-surface-container-lowest border border-surface-variant text-on-surface text-xs rounded focus:border-[#88C0A4] focus:ring-0 outline-none" placeholder="Checkpoint description..." type="text" value="Review architecture & data contracts" />
+              <button type="button" onclick="this.closest('.subtask-row').remove()" class="text-on-surface-variant hover:text-[#FF5252] p-1 cursor-pointer">
+                <span class="material-symbols-outlined text-[16px]">delete</span>
+              </button>
+            </div>
+          </div>
+          <button type="button" onclick="addSubtaskRow()" class="mt-2 text-[#88C0A4] font-mono text-[11px] hover:underline flex items-center gap-1 cursor-pointer">
+            <span class="material-symbols-outlined text-[14px]">add_circle</span>
+            <span>Add checkpoint</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Drawer Footer Action Buttons -->
+      <div class="px-5 py-3.5 border-t border-surface-variant bg-surface-container flex items-center justify-between">
+        <button onclick="closeTaskModal()" class="px-4 py-2 rounded bg-transparent hover:bg-surface-container-high border border-surface-variant text-on-surface text-xs transition-colors cursor-pointer">
+          Cancel
+        </button>
+        <button onclick="commitTaskModal()" class="px-4 py-2 rounded bg-[#88C0A4] hover:bg-[#9ECBB5] text-[#1E2124] text-xs font-semibold flex items-center gap-2 transition-colors cursor-pointer shadow-sm">
+          <span class="material-symbols-outlined text-[16px]">check</span>
+          <span>Create Task</span>
+          <span class="font-mono text-[10px] px-1 py-0.5 bg-[#1E2124]/20 rounded font-semibold">⌘↵</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== VOICE OVERLAY MODAL ==================== -->
 <div id="voice-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4" onclick="if(event.target===this) hideVoiceModal()">
   <div class="w-full max-w-sm sm:max-w-md bg-surface-container-high border border-surface-variant rounded-lg p-5 sm:p-6 space-y-4 shadow-2xl">
     <div class="flex items-center justify-between">
@@ -969,28 +994,20 @@
   </div>
 </div>
 
-<!-- Minimalist Responsive Navigation JS -->
+<!-- ==================== JAVASCRIPT CONTROLLERS ==================== -->
 <script>
+  let currentPriority = 'urgent';
+  let currentWorkspace = 'Personal';
+  let activeTaskCount = 9;
+
+  // View Navigation Switcher
   function switchView(viewId) {
-    // 1. Hide all pages
     document.querySelectorAll('.view-page').forEach(page => page.classList.add('hidden'));
 
-    // 2. Show active page
     const activePage = document.getElementById('view-' + viewId);
     if (activePage) activePage.classList.remove('hidden');
 
-    // 3. Reset all desktop sidebar links
-    document.querySelectorAll('.nav-link').forEach(link => {
-      link.classList.remove('bg-surface-container', 'text-[#88C0A4]', 'border-l-2', 'border-[#88C0A4]');
-      link.classList.add('text-on-surface-variant');
-    });
-    const currentNav = document.getElementById('nav-' + viewId);
-    if (currentNav) {
-      currentNav.classList.remove('text-on-surface-variant');
-      currentNav.classList.add('bg-surface-container', 'text-[#88C0A4]', 'border-l-2', 'border-[#88C0A4]');
-    }
-
-    // 4. Update desktop header tabs
+    // Update desktop header tabs
     document.querySelectorAll('.head-link').forEach(h => {
       h.classList.remove('text-[#88C0A4]', 'border-b-2', 'border-[#88C0A4]', 'font-medium');
       h.classList.add('text-on-surface-variant');
@@ -1001,7 +1018,7 @@
       currentHead.classList.add('text-[#88C0A4]', 'border-b-2', 'border-[#88C0A4]', 'font-medium');
     }
 
-    // 5. Update mobile bottom navigation bar
+    // Update mobile bottom dock
     document.querySelectorAll('.mob-link').forEach(m => {
       m.classList.remove('text-[#88C0A4]');
       m.classList.add('text-on-surface-variant');
@@ -1012,7 +1029,7 @@
       currentMob.classList.add('text-[#88C0A4]');
     }
 
-    // 6. Update mobile top header title
+    // Update mobile header title
     const titleMap = {
       'today': 'Today',
       'inbox': 'Inbox',
@@ -1026,42 +1043,164 @@
     }
   }
 
-  function toggleMobileSidebar() {
-    const drawer = document.getElementById('sidebar-drawer');
-    const backdrop = document.getElementById('mobile-backdrop');
-    if (drawer && backdrop) {
-      const isClosed = drawer.classList.contains('-translate-x-full');
-      if (isClosed) {
-        drawer.classList.remove('-translate-x-full');
-        backdrop.classList.remove('hidden');
-      } else {
-        drawer.classList.add('-translate-x-full');
-        backdrop.classList.add('hidden');
-      }
-    }
+  // Slide-over Modal Controls
+  function openTaskModal() {
+    const backdrop = document.getElementById('task-modal-backdrop');
+    const panel = document.getElementById('task-modal-panel');
+    backdrop.classList.remove('hidden');
+    setTimeout(() => {
+      backdrop.classList.remove('opacity-0');
+      panel.classList.remove('translate-x-full');
+      panel.classList.add('translate-x-0');
+      document.getElementById('modal-task-title').focus();
+    }, 10);
   }
 
-  function closeMobileSidebar() {
-    const drawer = document.getElementById('sidebar-drawer');
-    const backdrop = document.getElementById('mobile-backdrop');
-    if (drawer && backdrop) {
-      drawer.classList.add('-translate-x-full');
+  function closeTaskModal() {
+    const backdrop = document.getElementById('task-modal-backdrop');
+    const panel = document.getElementById('task-modal-panel');
+    panel.classList.remove('translate-x-0');
+    panel.classList.add('translate-x-full');
+    backdrop.classList.add('opacity-0');
+    setTimeout(() => {
       backdrop.classList.add('hidden');
+    }, 200);
+  }
+
+  function selectPriority(prio) {
+    currentPriority = prio;
+    const prioConfig = {
+      'urgent': { color: '#FF5252', bg: 'bg-[#FF5252]/15', border: 'border-[#FF5252]/40', text: 'text-[#FF5252]' },
+      'high': { color: '#FFBF00', bg: 'bg-[#FFBF00]/15', border: 'border-[#FFBF00]/40', text: 'text-[#FFBF00]' },
+      'medium': { color: '#88C0A4', bg: 'bg-[#88C0A4]/15', border: 'border-[#88C0A4]/40', text: 'text-[#88C0A4]' },
+      'low': { color: '#78909C', bg: 'bg-[#78909C]/15', border: 'border-[#78909C]/40', text: 'text-[#78909C]' }
+    };
+
+    document.querySelectorAll('.prio-btn').forEach(btn => {
+      btn.className = 'prio-btn py-1.5 px-2 rounded border border-surface-variant text-on-surface-variant text-xs font-mono flex items-center justify-center gap-1 transition-colors cursor-pointer';
+    });
+
+    const activeBtn = document.getElementById('prio-' + prio);
+    if (activeBtn) {
+      const cfg = prioConfig[prio];
+      activeBtn.className = `prio-btn py-1.5 px-2 rounded border ${cfg.border} ${cfg.bg} ${cfg.text} text-xs font-mono font-medium flex items-center justify-center gap-1 transition-colors cursor-pointer`;
     }
   }
 
-  function showVoiceModal() {
-    document.getElementById('voice-modal').classList.remove('hidden');
+  function selectWorkspace(ws) {
+    currentWorkspace = ws;
+    document.querySelectorAll('.ws-btn').forEach(btn => {
+      btn.className = 'ws-btn py-1.5 px-2 rounded border border-surface-variant text-on-surface-variant hover:border-[#88C0A4]/50 text-xs font-mono transition-colors truncate cursor-pointer';
+    });
+    const idMap = {
+      'Personal': 'ws-Personal',
+      'Engineering': 'ws-Engineering',
+      'WES Foundation': 'ws-WES',
+      'Eureka Showcase': 'ws-Eureka'
+    };
+    const activeBtn = document.getElementById(idMap[ws]);
+    if (activeBtn) {
+      activeBtn.className = 'ws-btn py-1.5 px-2 rounded border border-[#88C0A4] bg-[#88C0A4]/10 text-[#88C0A4] text-xs font-mono transition-colors truncate cursor-pointer';
+    }
   }
 
-  function hideVoiceModal() {
-    document.getElementById('voice-modal').classList.add('hidden');
+  function addSubtaskRow() {
+    const container = document.getElementById('subtasks-container');
+    const div = document.createElement('div');
+    div.className = 'subtask-row flex items-center gap-2';
+    div.innerHTML = `
+      <span class="w-4 h-4 rounded border border-surface-variant bg-surface-container-lowest shrink-0"></span>
+      <input class="subtask-input flex-1 h-8 px-2.5 bg-surface-container-lowest border border-surface-variant text-on-surface text-xs rounded focus:border-[#88C0A4] focus:ring-0 outline-none" placeholder="Checkpoint description..." type="text"/>
+      <button type="button" onclick="this.closest('.subtask-row').remove()" class="text-on-surface-variant hover:text-[#FF5252] p-1 cursor-pointer">
+        <span class="material-symbols-outlined text-[16px]">delete</span>
+      </button>
+    `;
+    container.appendChild(div);
+    div.querySelector('input').focus();
   }
 
-  function focusQuickInput() {
+  function commitTaskModal() {
+    const titleInput = document.getElementById('modal-task-title');
+    const title = titleInput.value.trim();
+    if (!title) {
+      titleInput.classList.add('border-[#FF5252]');
+      titleInput.focus();
+      return;
+    }
+    titleInput.classList.remove('border-[#FF5252]');
+
+    const recurrence = document.getElementById('modal-task-recurrence').value;
+    const dateVal = document.getElementById('modal-task-date').value || 'Today, 18:00';
+
+    const prioConfig = {
+      'urgent': { stripe: '#FF5252', badge: 'URGENT', badgeCls: 'bg-[#FF5252]/15 text-[#FF5252] border-[#FF5252]/30' },
+      'high': { stripe: '#FFBF00', badge: 'HIGH', badgeCls: 'bg-[#FFBF00]/15 text-[#FFBF00] border-[#FFBF00]/30' },
+      'medium': { stripe: '#88C0A4', badge: 'MED', badgeCls: 'bg-[#88C0A4]/15 text-[#88C0A4] border-[#88C0A4]/30' },
+      'low': { stripe: '#78909C', badge: 'LOW', badgeCls: 'bg-[#78909C]/15 text-[#78909C] border-[#78909C]/30' }
+    };
+    const prio = prioConfig[currentPriority] || prioConfig['medium'];
+
+    const recTag = recurrence !== 'none' ? `<span class="font-mono text-[10px] bg-surface-container text-[#88C0A4] border border-surface-variant px-1.5 py-0.5 rounded flex items-center gap-1"><span>⟳</span> ${recurrence.toUpperCase()}</span>` : '';
+
+    const newId = '#TASK-' + Math.floor(100 + Math.random() * 900);
+
+    const card = document.createElement('div');
+    card.className = 'group relative bg-surface-container-high border border-surface-variant rounded hover:border-[#88C0A4] transition-colors duration-150 overflow-hidden';
+    card.innerHTML = `
+      <div class="absolute left-0 top-0 bottom-0 w-1" style="background-color: ${prio.stripe}"></div>
+      <div class="p-3.5 sm:p-4 pl-4 sm:pl-5 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3">
+        <div class="flex items-start gap-3 flex-1">
+          <button onclick="toggleCardDone(this)" class="mt-0.5 w-4 h-4 rounded-[3px] border border-surface-variant bg-surface-container hover:border-[#88C0A4] flex items-center justify-center flex-shrink-0 transition-colors cursor-pointer"></button>
+          <div class="space-y-1">
+            <div class="flex items-center gap-2 flex-wrap">
+              <span class="text-xs sm:text-sm font-medium text-on-surface group-hover:text-[#88C0A4] transition-colors">
+                ${title}
+              </span>
+              <span class="font-mono text-[10px] border px-1.5 py-0.5 rounded font-semibold ${prio.badgeCls}">
+                ${prio.badge}
+              </span>
+              ${recTag}
+            </div>
+            <div class="flex items-center gap-3 sm:gap-4 text-on-surface-variant text-xs pt-0.5 flex-wrap">
+              <span class="font-mono text-[11px] text-on-surface-variant flex items-center gap-1">
+                <span class="material-symbols-outlined text-[13px]">schedule</span>
+                ${dateVal}
+              </span>
+              <span class="flex items-center gap-1 text-[11px]">
+                <span class="w-1.5 h-1.5 rounded-full" style="background-color: ${prio.stripe}"></span>
+                ${currentWorkspace}
+              </span>
+              <span class="font-mono text-on-surface-variant/70 text-[10px]">${newId}</span>
+            </div>
+          </div>
+        </div>
+        <div class="flex items-center gap-1.5 self-end sm:self-center opacity-90 sm:opacity-0 group-hover:opacity-100 transition-opacity">
+          <button class="p-1.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container rounded border border-surface-variant cursor-pointer" title="Reschedule">
+            <span class="material-symbols-outlined text-[15px]">event_repeat</span>
+          </button>
+          <button class="p-1.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container rounded border border-surface-variant cursor-pointer" title="Edit">
+            <span class="material-symbols-outlined text-[15px]">edit</span>
+          </button>
+        </div>
+      </div>
+    `;
+
+    const container = document.getElementById('today-tasks-container');
+    if (container) {
+      container.insertBefore(card, container.firstChild);
+    }
+
+    // Update counts
+    activeTaskCount++;
+    document.querySelectorAll('.today-count-badge').forEach(b => b.textContent = activeTaskCount);
+    const statActive = document.getElementById('stat-active-count');
+    if (statActive) statActive.textContent = activeTaskCount;
+
+    // Reset inputs & close
+    titleInput.value = '';
+    document.getElementById('modal-task-desc').value = '';
+    closeTaskModal();
     switchView('today');
-    const input = document.getElementById('quick-input');
-    if (input) input.focus();
   }
 
   function toggleCardDone(btn) {
@@ -1076,9 +1215,42 @@
     const input = document.getElementById('quick-input');
     const val = input.value.trim();
     if (!val) return;
-    alert('Task added: ' + val);
+
+    // Set modal title and open modal for instant customization, or auto-commit
+    document.getElementById('modal-task-title').value = val;
     input.value = '';
+    commitTaskModal();
   }
+
+  function showVoiceModal() {
+    document.getElementById('voice-modal').classList.remove('hidden');
+  }
+
+  function hideVoiceModal() {
+    document.getElementById('voice-modal').classList.add('hidden');
+  }
+
+  // Global Keyboard Shortcuts
+  document.addEventListener('keydown', (e) => {
+    // ⌘N or Ctrl+N: Add Task
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'n') {
+      e.preventDefault();
+      openTaskModal();
+    }
+    // Escape: Close Modal
+    if (e.key === 'Escape') {
+      closeTaskModal();
+      hideVoiceModal();
+    }
+    // ⌘Enter or Ctrl+Enter: Commit Task
+    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+      const modal = document.getElementById('task-modal-backdrop');
+      if (!modal.classList.contains('hidden')) {
+        e.preventDefault();
+        commitTaskModal();
+      }
+    }
+  });
 </script>
 
 </body>
