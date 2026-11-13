@@ -6,6 +6,7 @@
     <title>Helm Operator Console & Feedback Dashboard</title>
     <!-- Use a specific version to ensure stability -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.1/dist/umd/supabase.js"></script>
+    <script src="feedback_data.js"></script>
     <style>
         :root {
             --bg-color: #1A1C1E;
@@ -166,7 +167,25 @@
     <div class="container">
         <div class="header">
             <h1>Helm Operator Console</h1>
-            <button class="btn refresh-btn" onclick="fetchFeedback()">REFRESH DATA</button>
+            <div style="display: flex; gap: 8px;">
+                <button class="btn" style="background: var(--primary-color); color: #111;" onclick="loadFromCliScript()">LOAD CLI DATA</button>
+                <button class="btn refresh-btn" onclick="fetchFeedback()">REFRESH CLOUD</button>
+            </div>
+        </div>
+
+        <div class="card" style="margin-bottom: 24px; border: 1px solid rgba(136, 192, 164, 0.35);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <h3 style="margin: 0; color: var(--primary-color);">Local CLI Output Sync</h3>
+                <span id="cli-badge" class="preview-badge" style="color: var(--primary-color);">Auto-sync enabled</span>
+            </div>
+            <p style="font-size: 13px; color: var(--text-secondary); margin: 0 0 12px 0;">
+                Outputs from <code>fetch_feedback.ps1</code> load automatically via <code>feedback_data.js</code>, or paste raw JSON output below.
+            </p>
+            <div style="display: flex; gap: 8px;">
+                <input type="text" id="json-paste-input" placeholder='Paste JSON array e.g. [{"name":"...","email":"...","message":"..."}]' style="flex: 1; margin: 0;">
+                <button class="btn" style="background: #444; color: #fff;" onclick="loadFromPastedJson()">PARSE &amp; VIEW</button>
+            </div>
+            <div id="cli-status-banner" style="display:none; margin-top: 10px; font-size: 13px; color: var(--primary-color); font-weight: bold;"></div>
         </div>
 
         <div class="auth-panel">
@@ -293,6 +312,59 @@
             card.appendChild(el('div', 'message', item.message || '(empty message)'));
             return card;
         }
+
+        function displayRecords(data, sourceLabel) {
+            const grid = document.getElementById('feedback-grid');
+            const loading = document.getElementById('loading');
+            const status = document.getElementById('cli-status-banner');
+            const errorBanner = document.getElementById('error-banner');
+            errorBanner.style.display = 'none';
+            grid.innerHTML = '';
+            loading.style.display = 'none';
+
+            if (status) {
+                status.style.display = 'block';
+                status.style.color = 'var(--primary-color)';
+                status.textContent = `${sourceLabel}: ${data.length} feedback record(s) loaded.`;
+            }
+
+            if (!data || data.length === 0) {
+                loading.innerText = 'No feedback entries found.';
+                loading.style.display = 'block';
+                return;
+            }
+
+            data.forEach(item => grid.appendChild(renderCard(item)));
+        }
+
+        function loadFromCliScript() {
+            if (window.FEEDBACK_RECORDS && Array.isArray(window.FEEDBACK_RECORDS) && window.FEEDBACK_RECORDS.length > 0) {
+                displayRecords(window.FEEDBACK_RECORDS, 'Loaded from feedback_data.js');
+            } else {
+                const status = document.getElementById('cli-status-banner');
+                status.style.display = 'block';
+                status.style.color = 'var(--warning-color)';
+                status.textContent = 'feedback_data.js contains 0 records. Run fetch_feedback.ps1 in terminal first.';
+            }
+        }
+
+        function loadFromPastedJson() {
+            const raw = document.getElementById('json-paste-input').value.trim();
+            if (!raw) return;
+            try {
+                const parsed = JSON.parse(raw);
+                const list = Array.isArray(parsed) ? parsed : [parsed];
+                displayRecords(list, 'Loaded from pasted JSON');
+            } catch (e) {
+                alert('Invalid JSON: ' + e.message);
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            if (window.FEEDBACK_RECORDS && Array.isArray(window.FEEDBACK_RECORDS) && window.FEEDBACK_RECORDS.length > 0) {
+                displayRecords(window.FEEDBACK_RECORDS, 'Auto-loaded from CLI export');
+            }
+        });
 
         async function fetchFeedback() {
             const grid = document.getElementById('feedback-grid');

@@ -12,3 +12,4 @@ supabase/functions/.env.local
 .vercel/
 *.log
 supabase/.temp/
+tools/admin/feedback_data.js
