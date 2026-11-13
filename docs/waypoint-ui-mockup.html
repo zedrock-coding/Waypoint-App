@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Waypoint — Local-First Task Execution Engine</title>
+<!-- Google Fonts: Geist & JetBrains Mono -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols Outlined -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS with Forms and Container Queries -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Tailwind Theme Configuration -->
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+            "outline-variant": "#404943",
+            "surface-variant": "#323538",
+            "on-background": "#e1e2e6",
+            "secondary-fixed-dim": "#b9c8de",
+            "on-secondary-fixed-variant": "#39485a",
+            "on-secondary": "#233143",
+            "on-primary-fixed": "#002114",
+            "tertiary-fixed-dim": "#fbbc00",
+            "secondary": "#b9c8de",
+            "surface-container-low": "#191c1f",
+            "surface-container-high": "#272a2d",
+            "on-primary-fixed-variant": "#17503a",
+            "tertiary-fixed": "#ffdfa0",
+            "on-error": "#690005",
+            "on-surface-variant": "#c0c9c2",
+            "error-container": "#93000a",
+            "on-tertiary-fixed-variant": "#5c4300",
+            "background": "#111417",
+            "primary-fixed-dim": "#9ad3b6",
+            "surface": "#111417",
+            "on-tertiary": "#402d00",
+            "outline": "#8a938c",
+            "on-primary-container": "#164f39",
+            "on-secondary-fixed": "#0d1c2d",
+            "tertiary": "#ffc747",
+            "tertiary-container": "#e4ab00",
+            "surface-dim": "#111417",
+            "on-error-container": "#ffdad6",
+            "secondary-fixed": "#d4e4fa",
+            "surface-bright": "#37393d",
+            "secondary-container": "#39485a",
+            "surface-tint": "#9ad3b6",
+            "error": "#ffb4ab",
+            "surface-container-lowest": "#0b0f11",
+            "on-primary": "#003826",
+            "primary-fixed": "#b5efd1",
+            "primary-container": "#88c0a4",
+            "inverse-surface": "#e1e2e6",
+            "on-tertiary-container": "#5b4200",
+            "on-surface": "#e1e2e6",
+            "on-tertiary-fixed": "#261a00",
+            "primary": "#a3dcbf",
+            "surface-container": "#1d2023",
+            "inverse-primary": "#326851",
+            "on-secondary-container": "#a7b6cc",
+            "inverse-on-surface": "#2e3134",
+            "surface-container-highest": "#323538"
+          },
+          "borderRadius": {
+            "DEFAULT": "0.125rem",
+            "lg": "0.25rem",
+            "xl": "0.5rem",
+            "full": "0.75rem"
+          },
+          "fontFamily": {
+            "sans": ["Geist", "sans-serif"],
+            "mono": ["JetBrains Mono", "monospace"]
+          }
+        }
+      }
+    }
+</script>
+<style>
+    /* Technical baseline reset and custom scrollbars */
+    ::-webkit-scrollbar {
+      width: 5px;
+      height: 5px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #191c1f;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #323538;
+      border-radius: 2px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #404943;
+    }
+</style>
+</head>
+<body class="bg-background text-on-surface antialiased flex h-screen overflow-hidden select-none font-sans text-sm">
+<!-- 1. LEFT SIDEBAR NAVIGATION -->
+<aside class="fixed left-0 top-0 bottom-0 z-40 w-64 bg-surface-container-low border-r border-surface-variant flex flex-col justify-between select-none">
+  <!-- Header / Brand Anchor -->
+  <div class="p-4">
+    <div class="flex items-center gap-3 mb-4">
+      <div aria-label="Waypoint System Monogram" class="w-8 h-8 rounded bg-surface-container flex items-center justify-center border border-surface-variant text-primary flex-shrink-0">
+        <svg class="w-4 h-4 fill-current text-[#88C0A4]" viewBox="0 0 24 24">
+          <path d="M12 2L2 12l10 10 10-10L12 2zm0 4.5l5.5 5.5-5.5 5.5-5.5-5.5L12 6.5z"></path>
+        </svg>
+      </div>
+      <div>
+        <h1 class="text-base font-semibold text-on-surface tracking-tight">Waypoint</h1>
+        <p class="font-mono text-on-surface-variant text-[11px] leading-tight">Local-First Engine</p>
+      </div>
+    </div>
+    <!-- Quick Add Button -->
+    <button class="w-full flex items-center justify-between px-3 py-2 bg-[#88C0A4] text-[#1E2124] rounded font-semibold hover:bg-[#9ECBB5] transition-colors duration-150 border-none outline-none">
+      <span class="flex items-center gap-2">
+        <span class="material-symbols-outlined text-[16px]">add</span>
+        New Task
+      </span>
+      <span class="font-mono text-[10px] bg-[#1E2124]/20 text-[#1E2124] px-1.5 py-0.5 rounded font-semibold">⌘N</span>
+    </button>
+  </div>
+
+  <!-- Navigation Items -->
+  <nav class="flex-1 px-2 space-y-0.5 overflow-y-auto">
+    <div class="px-3 py-1 font-mono text-on-surface-variant/70 tracking-wider text-[10px] uppercase">
+      Execution Queues
+    </div>
+    <!-- Tab: Inbox -->
+    <a class="flex items-center gap-2.5 px-3 py-2 text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors duration-150 rounded" href="#">
+      <span class="material-symbols-outlined text-[18px]">inbox</span>
+      <span class="flex-1">Inbox</span>
+      <span class="font-mono text-[10px] bg-surface-container-high text-on-surface-variant px-1.5 py-0.5 rounded border border-surface-variant">12</span>
+    </a>
+    <!-- Tab: Today (ACTIVE) -->
+    <a class="flex items-center gap-2.5 px-3 py-2 bg-surface-container text-[#88C0A4] border-l-2 border-[#88C0A4] rounded-r" href="#">
+      <span class="material-symbols-outlined text-[18px]">calendar_today</span>
+      <span class="flex-1 font-medium">Today</span>
+      <span class="font-mono text-[10px] bg-[#88C0A4]/20 text-[#88C0A4] px-1.5 py-0.5 rounded font-semibold">5</span>
+    </a>
+    <!-- Tab: Periodicity -->
+    <a class="flex items-center gap-2.5 px-3 py-2 text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors duration-150 rounded" href="#">
+      <span class="material-symbols-outlined text-[18px]">repeat</span>
+      <span class="flex-1">Recurring</span>
+      <span class="font-mono text-[10px] text-on-surface-variant">3</span>
+    </a>
+    <!-- Tab: Workspaces -->
+    <a class="flex items-center gap-2.5 px-3 py-2 text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors duration-150 rounded" href="#">
+      <span class="material-symbols-outlined text-[18px]">folder</span>
+      <span class="flex-1">Workspaces</span>
+    </a>
+    <!-- Sub-Workspace Group: WES Foundation -->
+    <div class="pl-6 pr-3 py-1">
+      <a class="flex items-center justify-between text-on-surface-variant hover:text-on-surface text-[12px] transition-colors py-1" href="#">
+        <span class="flex items-center gap-1.5 truncate">
+          <span class="w-1.5 h-1.5 rounded-full bg-[#88C0A4]/70"></span>
+          WES Foundation
+        </span>
+        <span class="font-mono text-[10px] text-on-surface-variant/60">4</span>
+      </a>
+    </div>
+  </nav>
+
+  <!-- Sidebar Footer Telemetry & System Status -->
+  <div class="p-3 border-t border-surface-variant bg-surface-container-lowest/50 space-y-2">
+    <div class="flex items-center justify-between px-3 py-1.5 bg-surface-container rounded border border-surface-variant">
+      <div class="flex items-center gap-2">
+        <span class="w-2 h-2 rounded-full bg-[#88C0A4] animate-pulse"></span>
+        <span class="font-mono text-[10px] text-[#88C0A4] uppercase font-semibold">Local-First Synced</span>
+      </div>
+      <span class="font-mono text-[9px] text-on-surface-variant">v0.5.1</span>
+    </div>
+    <div class="flex items-center justify-between pt-1">
+      <button class="flex items-center gap-1.5 text-on-surface-variant hover:text-on-surface text-xs">
+        <span class="material-symbols-outlined text-[16px]">tune</span>
+        Settings
+      </button>
+      <span class="font-mono text-on-surface-variant/60 text-[10px]">HIVE OFFLINE</span>
+    </div>
+  </div>
+</aside>
+
+<!-- 2. MAIN APPLICATION WORKSPACE SHELL -->
+<div class="ml-64 flex-1 flex flex-col h-screen overflow-hidden bg-background">
+  <!-- Top Navigation Bar -->
+  <header class="sticky top-0 z-30 flex items-center justify-between px-6 w-full h-14 bg-surface border-b border-surface-variant flex-shrink-0">
+    <!-- Omni Search -->
+    <div class="flex items-center gap-3 w-96">
+      <div class="relative w-full">
+        <span class="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-on-surface-variant">
+          <span class="material-symbols-outlined text-[16px]">search</span>
+        </span>
+        <input class="w-full pl-8 pr-12 py-1.5 bg-surface-container-high text-on-surface text-xs border border-surface-variant rounded focus:border-[#88C0A4] focus:outline-none placeholder-on-surface-variant/60" placeholder="Search tasks, tags, commands..." type="text"/>
+        <div class="absolute inset-y-0 right-0 pr-2 flex items-center">
+          <span class="font-mono text-[10px] bg-surface-variant px-1.5 py-0.5 rounded text-on-surface-variant border border-outline-variant/30">⌘K</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Center Navigation Links -->
+    <nav class="hidden md:flex items-center gap-6">
+      <a class="text-[#88C0A4] border-b border-[#88C0A4] pb-1 text-xs font-medium" href="#">Tasks</a>
+      <a class="text-on-surface-variant hover:text-on-surface pb-1 text-xs transition-colors" href="#">Calendar</a>
+      <a class="text-on-surface-variant hover:text-on-surface pb-1 text-xs transition-colors" href="#">Categories</a>
+    </nav>
+
+    <!-- Right Trailing Controls -->
+    <div class="flex items-center gap-3">
+      <!-- AI Voice Assistant Button (Matches Header aesthetic) -->
+      <button class="flex items-center gap-1.5 px-3 py-1 bg-surface-container text-[#88C0A4] border border-surface-variant hover:border-[#88C0A4] rounded text-xs transition-colors" title="AI Voice Assistant">
+        <span class="material-symbols-outlined text-[16px] text-[#88C0A4]">mic</span>
+        <span class="font-mono text-[11px] font-medium">AI Voice</span>
+      </button>
+
+      <!-- Sync Status & Notification Icons -->
+      <div class="flex items-center gap-1 border-l border-surface-variant pl-3">
+        <button class="p-1.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container rounded transition-colors" title="Sync Status">
+          <span class="material-symbols-outlined text-[18px]">sync</span>
+        </button>
+        <button class="relative p-1.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container rounded transition-colors" title="Notifications">
+          <span class="material-symbols-outlined text-[18px]">notifications</span>
+          <span class="absolute top-1 right-1 w-2 h-2 bg-[#FFBF00] rounded-full"></span>
+        </button>
+      </div>
+
+      <!-- User Avatar -->
+      <div class="flex items-center gap-2 pl-2">
+        <div class="w-7 h-7 rounded bg-surface-container-high border border-surface-variant flex items-center justify-center font-mono text-[11px] text-[#88C0A4] font-semibold relative">
+          LJ
+          <span class="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-[#88C0A4] ring-2 ring-surface"></span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- 3. MAIN EXECUTION FEED -->
+  <main class="flex-1 overflow-y-auto px-6 py-6 pb-28 relative">
+    <div class="max-w-4xl mx-auto space-y-5">
+      <!-- Header Information Bar -->
+      <div class="flex flex-col md:flex-row md:items-end justify-between gap-3 border-b border-surface-variant pb-4">
+        <div>
+          <div class="flex items-center gap-2 mb-1">
+            <span class="font-mono text-[#88C0A4] text-[11px] uppercase tracking-wider font-semibold">Local Worklist Engine</span>
+            <span class="text-surface-variant">•</span>
+            <span class="font-mono text-[11px] text-on-surface-variant">Last synced: 2m ago</span>
+          </div>
+          <h2 class="text-2xl font-semibold text-on-surface tracking-tight">Today's Focus</h2>
+          <p class="text-xs text-on-surface-variant flex items-center gap-2 mt-1">
+            <span>Friday, November 13</span>
+            <span class="text-outline-variant">•</span>
+            <span class="text-[#88C0A4] font-medium">3 tasks pending</span>
+          </p>
+        </div>
+
+        <!-- Quick Filters Bar -->
+        <div class="flex items-center gap-1.5 overflow-x-auto pb-1">
+          <button class="px-3 py-1 bg-surface-container-high text-[#88C0A4] border border-[#88C0A4]/50 text-xs rounded flex items-center gap-1.5">
+            <span>All Active</span>
+            <span class="font-mono text-[10px] bg-[#88C0A4]/20 text-[#88C0A4] px-1 rounded font-semibold">3</span>
+          </button>
+          <button class="px-3 py-1 bg-surface-container text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high border border-surface-variant text-xs rounded flex items-center gap-1.5 transition-colors">
+            <span>Recurring</span>
+            <span class="font-mono text-[10px] bg-surface-variant text-on-surface-variant px-1 rounded">2</span>
+          </button>
+          <button class="px-3 py-1 bg-surface-container text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high border border-surface-variant text-xs rounded flex items-center gap-1.5 transition-colors">
+            <span>High Priority</span>
+            <span class="font-mono text-[10px] bg-surface-variant text-on-surface-variant px-1 rounded">1</span>
+          </button>
+          <button class="px-3 py-1 bg-surface-container text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high border border-surface-variant text-xs rounded transition-colors">
+            Completed
+          </button>
+        </div>
+      </div>
+
+      <!-- Task Execution Cards Stack -->
+      <div class="space-y-3">
+        <!-- CARD 1: Authentication Regression Hotfix (Urgent + Recurring) -->
+        <div class="group relative bg-surface-container-high border border-surface-variant rounded hover:border-[#88C0A4] transition-colors duration-150 overflow-hidden">
+          <div class="absolute left-0 top-0 bottom-0 w-1 bg-[#FF5252]"></div>
+          <div class="p-4 pl-5 flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <div class="flex items-start gap-3 flex-1">
+              <button aria-label="Toggle task completion" class="mt-0.5 w-4 h-4 rounded-[3px] border border-surface-variant bg-surface-container hover:border-[#88C0A4] flex items-center justify-center flex-shrink-0 transition-colors">
+              </button>
+              <div class="space-y-1">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <span class="text-sm font-medium text-on-surface group-hover:text-[#88C0A4] transition-colors">
+                    Deploy hotfix for authentication regression
+                  </span>
+                  <span class="font-mono text-[10px] bg-[#FF5252]/15 text-[#FF5252] border border-[#FF5252]/30 px-1.5 py-0.5 rounded font-semibold">
+                    URGENT
+                  </span>
+                  <span class="font-mono text-[10px] bg-surface-container text-[#88C0A4] border border-surface-variant px-1.5 py-0.5 rounded flex items-center gap-1">
+                    <span>⟳</span> Every Monday
+                  </span>
+                </div>
+                <div class="flex items-center gap-4 text-on-surface-variant text-xs pt-0.5">
+                  <span class="font-mono text-[11px] text-on-surface-variant flex items-center gap-1">
+                    <span class="material-symbols-outlined text-[13px]">schedule</span>
+                    Today, 18:00
+                  </span>
+                  <span class="flex items-center gap-1 text-[11px]">
+                    <span class="w-1.5 h-1.5 rounded-full bg-[#88C0A4]"></span>
+                    Core Engine
+                  </span>
+                  <span class="font-mono text-on-surface-variant/70 text-[10px]">
+                    #TASK-102
+                  </span>
+                </div>
+              </div>
+            </div>
+            <!-- Quick Actions -->
+            <div class="flex items-center gap-1.5 self-end md:self-center opacity-80 md:opacity-0 group-hover:opacity-100 transition-opacity">
+              <button class="p-1.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container rounded border border-surface-variant" title="Reschedule">
+                <span class="material-symbols-outlined text-[15px]">event_repeat</span>
+              </button>
+              <button class="p-1.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container rounded border border-surface-variant" title="Edit Parameters">
+                <span class="material-symbols-outlined text-[15px]">edit</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- CARD 2: WES Foundation Workshop Syllabus -->
+        <div class="group relative bg-surface-container-high border border-surface-variant rounded hover:border-[#88C0A4] transition-colors duration-150 overflow-hidden">
+          <div class="absolute left-0 top-0 bottom-0 w-1 bg-[#FFBF00]"></div>
+          <div class="p-4 pl-5 flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <div class="flex items-start gap-3 flex-1">
+              <button aria-label="Toggle task completion" class="mt-0.5 w-4 h-4 rounded-[3px] border border-surface-variant bg-surface-container hover:border-[#88C0A4] flex items-center justify-center flex-shrink-0 transition-colors">
+              </button>
+              <div class="space-y-1.5 flex-1 max-w-xl">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <span class="text-sm font-medium text-on-surface group-hover:text-[#88C0A4] transition-colors">
+                    Coordinate WES Foundation student workshop syllabus
+                  </span>
+                  <span class="font-mono text-[10px] bg-[#FFBF00]/15 text-[#FFBF00] border border-[#FFBF00]/30 px-1.5 py-0.5 rounded font-semibold">
+                    HIGH
+                  </span>
+                  <span class="font-mono text-[10px] bg-surface-container text-on-surface-variant border border-surface-variant px-1.5 py-0.5 rounded">
+                    WES Cell
+                  </span>
+                </div>
+                <!-- Progress Meter -->
+                <div class="flex items-center gap-3">
+                  <div class="w-32 h-1.5 bg-surface-container rounded overflow-hidden">
+                    <div class="w-1/2 h-full bg-[#88C0A4] rounded"></div>
+                  </div>
+                  <span class="font-mono text-[11px] text-on-surface-variant">2/4 subtasks</span>
+                  <span class="font-mono text-[11px] text-on-surface-variant">Due 20:30</span>
+                </div>
+              </div>
+            </div>
+            <div class="flex items-center gap-2 self-end md:self-center">
+              <span class="font-mono text-[10px] text-on-surface-variant bg-surface-container px-2 py-1 rounded border border-surface-variant">
+                COMMUNITY: WES
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- CARD 3: Audit local-first Hive sync queue & conflict rules (Expanded Checklist) -->
+        <div class="group relative bg-surface-container-high border border-surface-variant rounded hover:border-[#88C0A4] transition-colors duration-150 overflow-hidden">
+          <div class="absolute left-0 top-0 bottom-0 w-1 bg-[#88C0A4]"></div>
+          <div class="p-4 pl-5 space-y-3">
+            <div class="flex items-start justify-between gap-3">
+              <div class="flex items-start gap-3">
+                <button aria-label="Toggle task completion" class="mt-0.5 w-4 h-4 rounded-[3px] border border-surface-variant bg-surface-container hover:border-[#88C0A4] flex items-center justify-center flex-shrink-0 transition-colors">
+                </button>
+                <div>
+                  <div class="flex items-center gap-2 flex-wrap">
+                    <h3 class="text-sm font-medium text-on-surface group-hover:text-[#88C0A4] transition-colors">
+                      Audit local-first Hive sync queue &amp; conflict rules
+                    </h3>
+                    <span class="font-mono text-[10px] bg-[#88C0A4]/15 text-[#88C0A4] border border-[#88C0A4]/30 px-1.5 py-0.5 rounded font-semibold">
+                      IN PROGRESS
+                    </span>
+                  </div>
+                  <p class="text-xs text-on-surface-variant mt-0.5">
+                    Verify deterministic last-write-wins and remote-delete conflict preservation.
+                  </p>
+                </div>
+              </div>
+              <div class="font-mono text-[10px] text-on-surface-variant bg-surface-container px-2 py-1 rounded border border-surface-variant">
+                CRDT SYNC
+              </div>
+            </div>
+
+            <!-- Subtask Checklist -->
+            <div class="ml-7 pl-3 border-l border-surface-variant space-y-1.5 py-1">
+              <div class="flex items-center gap-2.5 text-on-surface-variant text-xs">
+                <div class="w-3.5 h-3.5 rounded-[2px] bg-[#88C0A4] text-[#1E2124] flex items-center justify-center flex-shrink-0 font-bold">
+                  ✓
+                </div>
+                <span class="line-through text-on-surface-variant/70">
+                  Profile disk write latency for batch offline mutations
+                </span>
+                <span class="font-mono text-[10px] text-on-surface-variant/50 ml-auto">0.8ms</span>
+              </div>
+              <div class="flex items-center gap-2.5 text-on-surface-variant text-xs">
+                <div class="w-3.5 h-3.5 rounded-[2px] bg-[#88C0A4] text-[#1E2124] flex items-center justify-center flex-shrink-0 font-bold">
+                  ✓
+                </div>
+                <span class="line-through text-on-surface-variant/70">
+                  Test spawn-on-completion rollover for recurring tasks
+                </span>
+                <span class="font-mono text-[10px] text-on-surface-variant/50 ml-auto">VERIFIED</span>
+              </div>
+              <div class="flex items-center gap-2.5 text-on-surface text-xs">
+                <div class="w-3.5 h-3.5 rounded-[2px] border border-surface-variant bg-surface-container flex-shrink-0"></div>
+                <span>
+                  Verify unified command bar mic trigger with full-screen AI overlay
+                </span>
+                <span class="font-mono text-[10px] text-[#FFBF00] bg-[#FFBF00]/10 px-1 rounded ml-auto">TESTING</span>
+              </div>
+            </div>
+
+            <!-- Metadata Footer -->
+            <div class="flex items-center justify-between pt-1 border-t border-surface-variant/60 text-xs text-on-surface-variant">
+              <div class="flex items-center gap-3">
+                <span class="font-mono text-[11px] text-on-surface-variant hover:text-[#88C0A4] transition-colors cursor-pointer">#sync</span>
+                <span class="font-mono text-[11px] text-on-surface-variant hover:text-[#88C0A4] transition-colors cursor-pointer">#periodicity</span>
+              </div>
+              <span class="font-mono text-[10px]">Updated 5m ago</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- 4. FLOATING BOTTOM COMMAND BAR (UNIFIED TYPING & VOICE UI) -->
+  <div class="fixed bottom-5 left-64 right-0 flex justify-center px-4 pointer-events-none z-50">
+    <div class="w-full max-w-2xl bg-surface-container-high/95 backdrop-blur-md border border-surface-variant rounded p-2 flex items-center gap-2.5 pointer-events-auto shadow-2xl">
+      <!-- Command Input Field -->
+      <input class="flex-1 bg-transparent text-on-surface text-xs border-none focus:ring-0 focus:outline-none placeholder-on-surface-variant/60 pl-2" placeholder="Type a task command or tap mic to speak..." type="text"/>
+
+      <!-- Right Action Cluster: Mic Icon matches Header exactly -->
+      <div class="flex items-center gap-1">
+        <!-- AI Voice Assistant Trigger (Matches Header Icon) -->
+        <button class="p-1.5 text-[#88C0A4] hover:bg-surface-container rounded transition-colors flex items-center justify-center" title="AI Voice Assistant">
+          <span class="material-symbols-outlined text-[18px]">mic</span>
+        </button>
+
+        <!-- Send Command Button -->
+        <button class="p-1.5 text-on-surface-variant hover:text-[#88C0A4] hover:bg-surface-container rounded transition-colors flex items-center justify-center" title="Send command">
+          <span class="material-symbols-outlined text-[18px]">send</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

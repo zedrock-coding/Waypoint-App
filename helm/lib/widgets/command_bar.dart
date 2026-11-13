@@ -134,22 +134,6 @@ class _CommandBarWidgetState extends State<CommandBarWidget>
     }
   }
 
-  Future<void> _toggleListening() async {
-    if (_isAiSpeaking) return;
-
-    try {
-      if (_isListening) {
-        await _stopAndProcessVoice();
-        return;
-      }
-
-      await _startVoiceCapture();
-    } catch (e) {
-      debugPrint('Voice toggle error: $e');
-      if (mounted) setState(() => _isListening = false);
-    }
-  }
-
   Future<bool> _startSttOnly() async {
     try {
       final available = await _stt.initialize(
@@ -759,15 +743,7 @@ class _CommandBarWidgetState extends State<CommandBarWidget>
   Widget _buildNormalInput(ColorScheme colorScheme) {
     return Row(
       children: [
-        IconButton(
-          icon: const Icon(
-            Icons.auto_awesome,
-            size: 20,
-            color: Color(0xFF88C0A4),
-          ),
-          tooltip: 'AI Voice Assistant (Full Screen)',
-          onPressed: () => _openVoiceOverlay(context),
-        ),
+        const SizedBox(width: 12),
         Expanded(
           child: TextField(
             controller: _textController,
@@ -775,7 +751,7 @@ class _CommandBarWidgetState extends State<CommandBarWidget>
             decoration: InputDecoration(
               hintText: _clarificationPrompt != null
                   ? 'AI: $_clarificationPrompt'
-                  : 'Type or speak a task command...',
+                  : 'Type a command or tap mic...',
               hintStyle: _clarificationPrompt != null
                   ? const TextStyle(
                       color: Color(0xFF88C0A4),
@@ -794,12 +770,12 @@ class _CommandBarWidgetState extends State<CommandBarWidget>
           ),
         ),
         IconButton(
-          icon: Icon(
-            _clarificationPrompt != null ? Icons.mic : Icons.mic_none,
-            color: colorScheme.primary,
+          icon: const Icon(
+            Icons.mic_rounded,
+            color: Color(0xFF88C0A4),
           ),
-          onPressed: (_isLoading || _isAiSpeaking) ? null : _toggleListening,
-          tooltip: 'Speak task command',
+          onPressed: _isLoading ? null : () => _openVoiceOverlay(context),
+          tooltip: 'AI Voice Assistant',
         ),
         IconButton(
           icon: Icon(

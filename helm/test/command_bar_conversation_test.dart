@@ -6,6 +6,7 @@ import 'package:waypoint/models/unified_task.dart';
 import 'package:waypoint/providers/task_provider.dart';
 import 'package:waypoint/services/ai_service.dart';
 import 'package:waypoint/widgets/command_bar.dart';
+import 'package:waypoint/ai_voice_overlay.dart';
 
 class MockAiService extends Fake implements AiService {
   int callCount = 0;
@@ -125,7 +126,7 @@ void main() {
     });
   });
 
-  testWidgets('CommandBarWidget mounts with full voice assistant trigger and command input', (tester) async {
+  testWidgets('CommandBarWidget mounts with AI voice assistant trigger and command input', (tester) async {
     final aiService = MockAiService();
     final taskProvider = MockTaskProvider();
 
@@ -144,11 +145,10 @@ void main() {
     );
 
     expect(find.byType(TextField), findsOneWidget);
-    expect(find.byIcon(Icons.mic_none), findsOneWidget);
-    expect(find.byIcon(Icons.auto_awesome), findsOneWidget);
+    expect(find.byIcon(Icons.mic_rounded), findsOneWidget);
   });
 
-  testWidgets('CommandBarWidget voice tap starts capture and renders active listening pill with Done and Cancel', (tester) async {
+  testWidgets('CommandBarWidget voice tap opens AI voice overlay', (tester) async {
     final aiService = MockAiService();
     final taskProvider = MockTaskProvider();
 
@@ -167,22 +167,11 @@ void main() {
     );
 
     // Tap mic button
-    await tester.tap(find.byIcon(Icons.mic_none));
+    await tester.tap(find.byIcon(Icons.mic_rounded));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
 
-    // Verify it transitions to listening pill
-    expect(find.text('Listening'), findsOneWidget);
-    expect(find.text('Done'), findsOneWidget);
-    expect(find.byIcon(Icons.close), findsOneWidget);
-
-    // Tap cancel
-    await tester.tap(find.byIcon(Icons.close));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 100));
-
-    // Verify returns to normal input
-    expect(find.byType(TextField), findsOneWidget);
-    expect(find.byIcon(Icons.mic_none), findsOneWidget);
+    // Verify it transitions to AI voice overlay
+    expect(find.byType(AIVoiceOverlay), findsOneWidget);
   });
 }
