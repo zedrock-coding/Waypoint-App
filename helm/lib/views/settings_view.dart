@@ -10,6 +10,7 @@ import '../services/navigation_provider.dart';
 import '../services/sync_service.dart';
 import '../theme/app_theme.dart';
 import '../theme_provider.dart';
+import '../widgets/feedback_dialog.dart';
 
 class SettingsView extends StatefulWidget {
   const SettingsView({super.key});
@@ -1030,6 +1031,16 @@ class _SettingsViewState extends State<SettingsView> {
                       subtitle: Text('Version details, architecture, and legal licenses', style: AppTheme.monoStyle(fontSize: 10)),
                       trailing: const Icon(Icons.chevron_right_rounded, color: AppTheme.onSurfaceVariant),
                       onTap: () => Navigator.pushNamed(context, '/about'),
+                    ),
+                    const Divider(color: AppTheme.surfaceVariant, height: 1),
+                    ListTile(
+                      dense: true,
+                      contentPadding: EdgeInsets.zero,
+                      leading: const Icon(Icons.chat_bubble_outline_rounded, color: AppTheme.mint, size: 20),
+                      title: const Text('Send Feedback & Bug Report', style: TextStyle(fontSize: 13, color: AppTheme.onSurface)),
+                      subtitle: Text('Report bugs, request features, or send thoughts', style: AppTheme.monoStyle(fontSize: 10)),
+                      trailing: const Icon(Icons.chevron_right_rounded, color: AppTheme.onSurfaceVariant),
+                      onTap: () => showFeedbackDialog(context),
                     ),
                   ],
                 ),

@@ -9,6 +9,7 @@ import 'widgets/task_form_utils.dart';
 import 'widgets/notification_feed.dart';
 import 'widgets/user_avatar.dart';
 import 'widgets/waypoint_logo.dart';
+import 'widgets/feedback_dialog.dart';
 import 'services/navigation_provider.dart';
 import 'services/sync_service.dart';
 import 'services/supabase_service.dart';
@@ -595,11 +596,22 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
                         ],
                       ),
                     ),
-                    Text(
-                      'Offline Ready',
-                      style: AppTheme.monoStyle(
-                        fontSize: 9.5,
-                        color: AppTheme.onSurfaceVariant.withValues(alpha: 0.6),
+                    InkWell(
+                      onTap: () => showFeedbackDialog(context),
+                      borderRadius: BorderRadius.circular(4),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.chat_bubble_outline_rounded, size: 13, color: AppTheme.mint),
+                          const SizedBox(width: 5),
+                          Text(
+                            'Feedback',
+                            style: AppTheme.monoStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                              color: AppTheme.mint,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
@@ -1027,6 +1039,17 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
                     }
                   },
                 ),
+              ),
+
+              const SizedBox(width: 4),
+
+              // Feedback Action Button
+              IconButton(
+                icon: const Icon(Icons.chat_bubble_outline_rounded, size: 17),
+                color: AppTheme.mint,
+                hoverColor: AppTheme.surfaceContainer,
+                tooltip: 'Send Feedback',
+                onPressed: () => showFeedbackDialog(context),
               ),
 
               const SizedBox(width: 4),

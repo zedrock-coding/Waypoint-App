@@ -7,6 +7,7 @@ import '../services/navigation_provider.dart';
 import '../services/supabase_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/user_avatar.dart';
+import '../widgets/feedback_dialog.dart';
 
 class AccountView extends StatefulWidget {
   final VoidCallback onBackToToday;
@@ -697,6 +698,74 @@ class _AccountViewState extends State<AccountView> {
                           }).toList(),
                         );
                       },
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 14),
+
+            // Feedback & Support Box
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppTheme.surfaceContainer,
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(color: AppTheme.surfaceVariant),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: AppTheme.mint.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: const Center(
+                        child: Icon(
+                          Icons.chat_bubble_outline_rounded,
+                          size: 18,
+                          color: AppTheme.mint,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Support & Feedback',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: AppTheme.onSurface,
+                            ),
+                          ),
+                          Text(
+                            'Share your thoughts, suggestions, or report issues.',
+                            style: AppTheme.monoStyle(
+                              fontSize: 10,
+                              color: AppTheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    ElevatedButton(
+                      onPressed: () => showFeedbackDialog(context),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.mint,
+                        foregroundColor: AppTheme.onMint,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      ),
+                      child: const Text('Feedback', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                     ),
                   ],
                 ),
