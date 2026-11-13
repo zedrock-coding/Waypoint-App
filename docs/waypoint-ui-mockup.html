@@ -78,97 +78,186 @@
     }
 </style>
 </head>
-<body class="bg-background text-on-surface antialiased flex flex-col h-screen overflow-hidden select-none font-sans text-sm">
+<body class="bg-background text-on-surface antialiased flex h-screen overflow-hidden select-none font-sans text-sm">
 
-<!-- ==================== TOP NAVIGATION HEADER (UNIFIED DESKTOP & MOBILE) ==================== -->
-<header class="sticky top-0 z-30 flex items-center justify-between px-3 sm:px-6 lg:px-8 w-full h-14 bg-surface border-b border-surface-variant flex-shrink-0">
-  <!-- Left: Logo & Omni Search -->
-  <div class="flex items-center gap-3 sm:gap-5">
-    <div class="flex items-center gap-2.5 cursor-pointer" onclick="switchView('today')" title="Waypoint Home">
+<!-- ==================== 1. DESKTOP SIDEBAR (VISIBLE ON DESKTOP ONLY, HIDDEN ON MOBILE) ==================== -->
+<aside id="desktop-sidebar" class="hidden md:flex w-64 bg-surface-container-low border-r border-surface-variant flex-col justify-between flex-shrink-0 z-30 select-none h-full">
+  <!-- Header / Brand Anchor -->
+  <div class="p-4">
+    <div class="flex items-center gap-3 mb-4 cursor-pointer" onclick="switchView('today')">
       <div aria-label="Waypoint Monogram" class="w-8 h-8 rounded bg-surface-container flex items-center justify-center border border-surface-variant text-[#88C0A4] flex-shrink-0 shadow-sm">
         <svg class="w-4 h-4 fill-current text-[#88C0A4]" viewBox="0 0 24 24">
           <path d="M12 2L2 12l10 10 10-10L12 2zm0 4.5l5.5 5.5-5.5 5.5-5.5-5.5L12 6.5z"></path>
         </svg>
       </div>
       <div>
-        <h1 class="text-sm sm:text-base font-semibold text-on-surface tracking-tight leading-tight">Waypoint</h1>
-        <p class="font-mono text-on-surface-variant text-[10px] leading-none hidden sm:block">Smart Workspace</p>
+        <h1 class="text-base font-semibold text-on-surface tracking-tight leading-tight">Waypoint</h1>
+        <p class="font-mono text-on-surface-variant text-[11px] leading-tight">Personal Workspace</p>
       </div>
     </div>
 
-    <!-- Mobile View Title Indicator -->
-    <div class="md:hidden flex items-center gap-1.5 pl-2 border-l border-surface-variant">
-      <span class="w-2 h-2 rounded-full bg-[#88C0A4]"></span>
-      <span id="mobile-header-title" class="text-xs font-semibold text-on-surface">Today</span>
-    </div>
-
-    <!-- Desktop Search Bar -->
-    <div class="hidden lg:flex relative w-64 xl:w-72">
-      <span class="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-on-surface-variant">
-        <span class="material-symbols-outlined text-[16px]">search</span>
+    <!-- Quick Add Button -->
+    <button onclick="openTaskModal()" class="w-full flex items-center justify-between px-3 py-2 bg-[#88C0A4] text-[#1E2124] rounded font-semibold hover:bg-[#9ECBB5] transition-colors duration-150 border-none outline-none cursor-pointer shadow-sm">
+      <span class="flex items-center gap-2">
+        <span class="material-symbols-outlined text-[16px]">add</span>
+        New Task
       </span>
-      <input class="w-full pl-8 pr-12 py-1.5 bg-surface-container-high text-on-surface text-xs border border-surface-variant rounded focus:border-[#88C0A4] focus:outline-none placeholder-on-surface-variant/60" placeholder="Search tasks, reminders, notes..." type="text"/>
-      <div class="absolute inset-y-0 right-0 pr-2 flex items-center">
-        <span class="font-mono text-[10px] bg-surface-variant px-1.5 py-0.5 rounded text-on-surface-variant border border-outline-variant/30">⌘K</span>
-      </div>
-    </div>
+      <span class="font-mono text-[10px] bg-[#1E2124]/20 text-[#1E2124] px-1.5 py-0.5 rounded font-semibold">⌘N</span>
+    </button>
   </div>
 
-  <!-- Center Navigation Tabs (Hidden on mobile) -->
-  <nav class="hidden md:flex items-center gap-4 lg:gap-6">
-    <button onclick="switchView('today')" id="head-today" class="head-link text-[#88C0A4] border-b-2 border-[#88C0A4] pb-1 text-xs font-medium cursor-pointer">
-      Today (<span class="today-count-badge">9</span>)
+  <!-- Navigation Items -->
+  <nav class="flex-1 px-2 space-y-0.5 overflow-y-auto">
+    <div class="px-3 py-1 font-mono text-on-surface-variant/70 tracking-wider text-[10px] uppercase">
+      Views
+    </div>
+    <!-- Tab: Today (Active default) -->
+    <button id="nav-today" onclick="switchView('today')" class="nav-link w-full flex items-center gap-2.5 px-3 py-2 bg-surface-container text-[#88C0A4] border-l-2 border-[#88C0A4] rounded-r text-left transition-colors cursor-pointer">
+      <span class="material-symbols-outlined text-[18px]">calendar_today</span>
+      <span class="flex-1 font-medium">Today</span>
+      <span class="font-mono text-[10px] bg-[#88C0A4]/20 text-[#88C0A4] px-1.5 py-0.5 rounded font-semibold today-count-badge">9</span>
     </button>
-    <button onclick="switchView('inbox')" id="head-inbox" class="head-link text-on-surface-variant hover:text-on-surface pb-1 text-xs transition-colors cursor-pointer">
-      Inbox (10)
+    <!-- Tab: Inbox -->
+    <button id="nav-inbox" onclick="switchView('inbox')" class="nav-link w-full flex items-center gap-2.5 px-3 py-2 text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface rounded text-left transition-colors cursor-pointer">
+      <span class="material-symbols-outlined text-[18px]">inbox</span>
+      <span class="flex-1">Inbox</span>
+      <span class="font-mono text-[10px] bg-surface-container-high text-on-surface-variant px-1.5 py-0.5 rounded border border-surface-variant">10</span>
     </button>
-    <button onclick="switchView('recurring')" id="head-recurring" class="head-link text-on-surface-variant hover:text-on-surface pb-1 text-xs transition-colors cursor-pointer">
-      Recurring (6)
+    <!-- Tab: Recurring -->
+    <button id="nav-recurring" onclick="switchView('recurring')" class="nav-link w-full flex items-center gap-2.5 px-3 py-2 text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface rounded text-left transition-colors cursor-pointer">
+      <span class="material-symbols-outlined text-[18px]">repeat</span>
+      <span class="flex-1">Recurring</span>
+      <span class="font-mono text-[10px] text-on-surface-variant">6</span>
     </button>
-    <button onclick="switchView('calendar')" id="head-calendar" class="head-link text-on-surface-variant hover:text-on-surface pb-1 text-xs transition-colors cursor-pointer">
-      Schedule
+    <!-- Tab: Calendar -->
+    <button id="nav-calendar" onclick="switchView('calendar')" class="nav-link w-full flex items-center gap-2.5 px-3 py-2 text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface rounded text-left transition-colors cursor-pointer">
+      <span class="material-symbols-outlined text-[18px]">event</span>
+      <span class="flex-1">Schedule</span>
+      <span class="font-mono text-[10px] text-on-surface-variant">Today</span>
     </button>
-    <button onclick="switchView('settings')" id="head-settings" class="head-link text-on-surface-variant hover:text-on-surface pb-1 text-xs transition-colors cursor-pointer">
-      Settings
-    </button>
+
+    <!-- Workspaces / Communities -->
+    <div class="pt-3 px-3 py-1 font-mono text-on-surface-variant/70 tracking-wider text-[10px] uppercase">
+      Groups &amp; Workspaces
+    </div>
+    <div class="px-1 space-y-0.5">
+      <a class="flex items-center justify-between text-on-surface-variant hover:text-on-surface text-[12px] transition-colors py-1.5 px-2 rounded hover:bg-surface-container" href="#" onclick="switchView('today')">
+        <span class="flex items-center gap-2 truncate">
+          <span class="w-1.5 h-1.5 rounded-full bg-[#88C0A4]"></span>
+          WES Foundation
+        </span>
+        <span class="font-mono text-[10px] text-on-surface-variant/60">5</span>
+      </a>
+      <a class="flex items-center justify-between text-on-surface-variant hover:text-on-surface text-[12px] transition-colors py-1.5 px-2 rounded hover:bg-surface-container" href="#" onclick="switchView('today')">
+        <span class="flex items-center gap-2 truncate">
+          <span class="w-1.5 h-1.5 rounded-full bg-[#FFBF00]"></span>
+          Engineering &amp; Code
+        </span>
+        <span class="font-mono text-[10px] text-on-surface-variant/60">8</span>
+      </a>
+      <a class="flex items-center justify-between text-on-surface-variant hover:text-on-surface text-[12px] transition-colors py-1.5 px-2 rounded hover:bg-surface-container" href="#" onclick="switchView('today')">
+        <span class="flex items-center gap-2 truncate">
+          <span class="w-1.5 h-1.5 rounded-full bg-[#78909C]"></span>
+          Personal &amp; Study
+        </span>
+        <span class="font-mono text-[10px] text-on-surface-variant/60">6</span>
+      </a>
+      <a class="flex items-center justify-between text-on-surface-variant hover:text-on-surface text-[12px] transition-colors py-1.5 px-2 rounded hover:bg-surface-container" href="#" onclick="switchView('today')">
+        <span class="flex items-center gap-2 truncate">
+          <span class="w-1.5 h-1.5 rounded-full bg-[#FF5252]"></span>
+          Eureka! Showcase
+        </span>
+        <span class="font-mono text-[10px] text-on-surface-variant/60">3</span>
+      </a>
+    </div>
   </nav>
 
-  <!-- Right Trailing Controls -->
-  <div class="flex items-center gap-1.5 sm:gap-2.5">
-    <!-- PROMINENT "+ Add Task" ACTION BUTTON -->
-    <button onclick="openTaskModal()" class="flex items-center gap-1.5 px-3 py-1.5 bg-[#88C0A4] text-[#1E2124] rounded font-semibold text-xs hover:bg-[#9ECBB5] transition-colors shadow-sm cursor-pointer" title="Add New Task (⌘N)">
-      <span class="material-symbols-outlined text-[16px]">add</span>
-      <span class="hidden xs:inline">Add Task</span>
-      <span class="hidden sm:inline font-mono text-[9px] bg-[#1E2124]/20 text-[#1E2124] px-1 py-0.5 rounded font-semibold">⌘N</span>
-    </button>
-
-    <!-- AI Voice Assistant Button -->
-    <button onclick="showVoiceModal()" class="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 bg-surface-container text-[#88C0A4] border border-surface-variant hover:border-[#88C0A4] rounded text-xs transition-colors cursor-pointer" title="AI Voice Assistant">
-      <span class="material-symbols-outlined text-[16px] text-[#88C0A4]">mic</span>
-      <span class="hidden xl:inline font-mono text-[11px] font-medium">Voice</span>
-    </button>
-
-    <!-- Notifications Bell -->
-    <button class="relative p-1.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container rounded transition-colors" title="Notifications">
-      <span class="material-symbols-outlined text-[18px]">notifications</span>
-      <span class="absolute top-1 right-1 w-2 h-2 bg-[#FFBF00] rounded-full"></span>
-    </button>
-
-    <!-- User Avatar -->
-    <div class="flex items-center pl-1 cursor-pointer" onclick="switchView('settings')" title="User Profile & Settings">
-      <div class="w-7 h-7 rounded bg-surface-container-high border border-surface-variant flex items-center justify-center font-mono text-[11px] text-[#88C0A4] font-semibold relative">
-        LJ
-        <span class="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-[#88C0A4] ring-2 ring-surface"></span>
+  <!-- Sidebar Footer Status -->
+  <div class="p-3 border-t border-surface-variant bg-surface-container-lowest/50 space-y-2">
+    <div class="flex items-center justify-between px-3 py-1.5 bg-surface-container rounded border border-surface-variant">
+      <div class="flex items-center gap-2">
+        <span class="w-2 h-2 rounded-full bg-[#88C0A4]"></span>
+        <span class="font-mono text-[10px] text-[#88C0A4] uppercase font-semibold">All Changes Saved</span>
       </div>
+      <span class="font-mono text-[9px] text-on-surface-variant">Cloud Active</span>
+    </div>
+    <div class="flex items-center justify-between pt-1">
+      <button id="nav-settings" onclick="switchView('settings')" class="nav-link flex items-center gap-1.5 text-on-surface-variant hover:text-on-surface text-xs cursor-pointer">
+        <span class="material-symbols-outlined text-[16px]">tune</span>
+        Settings
+      </button>
+      <span class="font-mono text-on-surface-variant/60 text-[10px]">Offline Ready</span>
     </div>
   </div>
-</header>
+</aside>
 
-<!-- ==================== MAIN WORKSPACE (CENTERED SINGLE-COLUMN) ==================== -->
-<div class="w-full flex-1 flex flex-col overflow-hidden bg-background">
-<!-- 3. VIEWS CONTAINER (Scrollable Area) -->
-  <main class="flex-1 overflow-y-auto px-3 sm:px-6 py-4 sm:py-6 pb-36 md:pb-28 relative">
+<!-- ==================== 2. MAIN APPLICATION WORKSPACE ==================== -->
+<div class="flex-1 flex flex-col h-screen overflow-hidden bg-background min-w-0 relative">
+  <!-- Top Navigation Header -->
+  <header class="sticky top-0 z-20 flex items-center justify-between px-3 sm:px-6 w-full h-14 bg-surface border-b border-surface-variant flex-shrink-0">
+    <!-- Left: Brand (Mobile) / Search (Desktop) -->
+    <div class="flex items-center gap-2.5 sm:gap-4">
+      <!-- Mobile Logo & Title (Desktop uses Sidebar) -->
+      <div class="flex md:hidden items-center gap-2 cursor-pointer" onclick="switchView('today')">
+        <div class="w-7 h-7 rounded bg-surface-container flex items-center justify-center border border-surface-variant text-[#88C0A4] flex-shrink-0">
+          <svg class="w-3.5 h-3.5 fill-current text-[#88C0A4]" viewBox="0 0 24 24">
+            <path d="M12 2L2 12l10 10 10-10L12 2zm0 4.5l5.5 5.5-5.5 5.5-5.5-5.5L12 6.5z"></path>
+          </svg>
+        </div>
+        <span class="text-sm font-semibold text-on-surface">Waypoint</span>
+      </div>
 
+      <!-- Mobile Active Title Pill -->
+      <div class="md:hidden flex items-center gap-1.5 pl-2 border-l border-surface-variant">
+        <span class="w-2 h-2 rounded-full bg-[#88C0A4]"></span>
+        <span id="mobile-header-title" class="text-xs font-semibold text-on-surface">Today</span>
+      </div>
+
+      <!-- Desktop Omni Search -->
+      <div class="hidden md:flex relative w-72 lg:w-96">
+        <span class="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-on-surface-variant">
+          <span class="material-symbols-outlined text-[16px]">search</span>
+        </span>
+        <input class="w-full pl-8 pr-12 py-1.5 bg-surface-container-high text-on-surface text-xs border border-surface-variant rounded focus:border-[#88C0A4] focus:outline-none placeholder-on-surface-variant/60" placeholder="Search tasks, reminders, notes..." type="text"/>
+        <div class="absolute inset-y-0 right-0 pr-2 flex items-center">
+          <span class="font-mono text-[10px] bg-surface-variant px-1.5 py-0.5 rounded text-on-surface-variant border border-outline-variant/30">⌘K</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Controls Cluster -->
+    <div class="flex items-center gap-1.5 sm:gap-2.5">
+      <!-- Add Task Button -->
+      <button onclick="openTaskModal()" class="flex items-center gap-1.5 px-3 py-1.5 bg-[#88C0A4] text-[#1E2124] rounded font-semibold text-xs hover:bg-[#9ECBB5] transition-colors shadow-sm cursor-pointer" title="Add New Task (⌘N)">
+        <span class="material-symbols-outlined text-[16px]">add</span>
+        <span class="hidden xs:inline">Add Task</span>
+        <span class="hidden sm:inline font-mono text-[9px] bg-[#1E2124]/20 text-[#1E2124] px-1 py-0.5 rounded font-semibold">⌘N</span>
+      </button>
+
+      <!-- AI Voice Assistant Button -->
+      <button onclick="showVoiceModal()" class="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 bg-surface-container text-[#88C0A4] border border-surface-variant hover:border-[#88C0A4] rounded text-xs transition-colors cursor-pointer" title="AI Voice Assistant">
+        <span class="material-symbols-outlined text-[16px] text-[#88C0A4]">mic</span>
+        <span class="hidden xl:inline font-mono text-[11px] font-medium">Voice</span>
+      </button>
+
+      <!-- Notifications Bell -->
+      <button class="relative p-1.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container rounded transition-colors" title="Notifications">
+        <span class="material-symbols-outlined text-[18px]">notifications</span>
+        <span class="absolute top-1 right-1 w-2 h-2 bg-[#FFBF00] rounded-full"></span>
+      </button>
+
+      <!-- User Avatar -->
+      <div class="flex items-center pl-1 cursor-pointer" onclick="switchView('settings')" title="User Profile & Settings">
+        <div class="w-7 h-7 rounded bg-surface-container-high border border-surface-variant flex items-center justify-center font-mono text-[11px] text-[#88C0A4] font-semibold relative">
+          LJ
+          <span class="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-[#88C0A4] ring-2 ring-surface"></span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- 3. VIEWS CONTAINER (Scrollable Area) -->
+  <main class="flex-1 overflow-y-auto px-3 sm:px-6 py-4 sm:py-6 pb-28 md:pb-20 relative">
     <!-- ==================== VIEW 1: TODAY'S FOCUS (DEFAULT) ==================== -->
     <div id="view-today" class="view-page max-w-4xl mx-auto space-y-4 sm:space-y-5">
       <!-- Header Information Bar -->
@@ -789,11 +878,10 @@
         </div>
       </div>
     </div>
-
   </main>
 
-  <!-- ==================== FLOATING COMMAND BAR ==================== -->
-  <div class="fixed bottom-16 md:bottom-6 left-0 right-0 flex justify-center px-3 sm:px-4 pointer-events-none z-30">
+  <!-- ==================== 4. FLOATING COMMAND BAR ==================== -->
+  <div class="fixed bottom-16 md:bottom-6 left-0 md:left-64 right-0 flex justify-center px-3 sm:px-4 pointer-events-none z-30">
     <div class="w-full max-w-2xl bg-surface-container-high/95 backdrop-blur-md border border-surface-variant rounded p-1.5 sm:p-2 flex items-center gap-2 pointer-events-auto shadow-2xl">
       <!-- Quick Command Input -->
       <input id="quick-input" onkeydown="if(event.key==='Enter') quickAddTask()" class="flex-1 bg-transparent text-on-surface text-xs border-none focus:ring-0 focus:outline-none placeholder-on-surface-variant/60 pl-2" placeholder="Quickly add a task or prompt voice assistant (Press Enter)..." type="text"/>
@@ -813,8 +901,8 @@
     </div>
   </div>
 
-  <!-- ==================== MOBILE BOTTOM NAVIGATION DOCK ==================== -->
-  <nav class="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-surface border-t border-surface-variant flex items-center justify-around h-14 px-2 safe-area-pb">
+  <!-- ==================== 5. MOBILE BOTTOM NAVIGATION BAR (VISIBLE ON MOBILE ONLY, HIDDEN ON DESKTOP) ==================== -->
+  <nav class="flex md:hidden fixed bottom-0 left-0 right-0 z-40 bg-surface border-t border-surface-variant items-center justify-around h-14 px-2 safe-area-pb">
     <button onclick="switchView('today')" id="mob-nav-today" class="mob-link flex flex-col items-center justify-center flex-1 py-1 text-[#88C0A4] cursor-pointer">
       <span class="material-symbols-outlined text-[20px]">calendar_today</span>
       <span class="text-[10px] font-medium mt-0.5">Today</span>
@@ -845,7 +933,7 @@
 
 </div>
 
-<!-- ==================== INTERACTIVE TASK CREATION SLIDE-OVER DRAWER ==================== -->
+<!-- ==================== 6. INTERACTIVE TASK CREATION SLIDE-OVER DRAWER ==================== -->
 <div id="task-modal-backdrop" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden opacity-0 transition-opacity duration-200" onclick="if(event.target===this) closeTaskModal()">
   <div class="fixed inset-y-0 right-0 max-w-full flex">
     <div id="task-modal-panel" class="w-screen max-w-md bg-surface border-l border-surface-variant flex flex-col shadow-2xl transform translate-x-full transition-transform duration-200 ease-in-out">
@@ -961,7 +1049,7 @@
   </div>
 </div>
 
-<!-- ==================== VOICE OVERLAY MODAL ==================== -->
+<!-- ==================== 7. VOICE OVERLAY MODAL ==================== -->
 <div id="voice-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4" onclick="if(event.target===this) hideVoiceModal()">
   <div class="w-full max-w-sm sm:max-w-md bg-surface-container-high border border-surface-variant rounded-lg p-5 sm:p-6 space-y-4 shadow-2xl">
     <div class="flex items-center justify-between">
@@ -994,31 +1082,31 @@
   </div>
 </div>
 
-<!-- ==================== JAVASCRIPT CONTROLLERS ==================== -->
+<!-- ==================== 8. JAVASCRIPT CONTROLLERS ==================== -->
 <script>
   let currentPriority = 'urgent';
   let currentWorkspace = 'Personal';
   let activeTaskCount = 9;
 
-  // View Navigation Switcher
+  // View Navigation Switcher (Updates Desktop Sidebar & Mobile Bottom Dock)
   function switchView(viewId) {
+    // 1. Switch active page
     document.querySelectorAll('.view-page').forEach(page => page.classList.add('hidden'));
-
     const activePage = document.getElementById('view-' + viewId);
     if (activePage) activePage.classList.remove('hidden');
 
-    // Update desktop header tabs
-    document.querySelectorAll('.head-link').forEach(h => {
-      h.classList.remove('text-[#88C0A4]', 'border-b-2', 'border-[#88C0A4]', 'font-medium');
-      h.classList.add('text-on-surface-variant');
+    // 2. Update desktop sidebar links
+    document.querySelectorAll('.nav-link').forEach(link => {
+      link.classList.remove('bg-surface-container', 'text-[#88C0A4]', 'border-l-2', 'border-[#88C0A4]');
+      link.classList.add('text-on-surface-variant');
     });
-    const currentHead = document.getElementById('head-' + viewId);
-    if (currentHead) {
-      currentHead.classList.remove('text-on-surface-variant');
-      currentHead.classList.add('text-[#88C0A4]', 'border-b-2', 'border-[#88C0A4]', 'font-medium');
+    const currentNav = document.getElementById('nav-' + viewId);
+    if (currentNav) {
+      currentNav.classList.remove('text-on-surface-variant');
+      currentNav.classList.add('bg-surface-container', 'text-[#88C0A4]', 'border-l-2', 'border-[#88C0A4]');
     }
 
-    // Update mobile bottom dock
+    // 3. Update mobile bottom dock links
     document.querySelectorAll('.mob-link').forEach(m => {
       m.classList.remove('text-[#88C0A4]');
       m.classList.add('text-on-surface-variant');
@@ -1029,7 +1117,7 @@
       currentMob.classList.add('text-[#88C0A4]');
     }
 
-    // Update mobile header title
+    // 4. Update mobile header title indicator
     const titleMap = {
       'today': 'Today',
       'inbox': 'Inbox',
