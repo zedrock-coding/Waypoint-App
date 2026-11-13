@@ -2,7 +2,7 @@
 <html class="dark" lang="en">
 <head>
 <meta charset="utf-8"/>
-<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
 <title>Waypoint — Smart Task Workspace</title>
 <!-- Google Fonts: Geist & JetBrains Mono -->
 <link href="https://fonts.googleapis.com" rel="preconnect"/>
@@ -57,8 +57,8 @@
 <style>
     /* Technical baseline reset and custom scrollbars */
     ::-webkit-scrollbar {
-      width: 5px;
-      height: 5px;
+      width: 4px;
+      height: 4px;
     }
     ::-webkit-scrollbar-track {
       background: #191c1f;
@@ -70,27 +70,43 @@
     ::-webkit-scrollbar-thumb:hover {
       background: #404943;
     }
+    /* Touch target comfort */
+    @media (max-width: 768px) {
+      button, a, input {
+        min-height: 38px;
+      }
+    }
 </style>
 </head>
 <body class="bg-background text-on-surface antialiased flex h-screen overflow-hidden select-none font-sans text-sm">
 
-<!-- 1. LEFT SIDEBAR NAVIGATION -->
-<aside class="fixed left-0 top-0 bottom-0 z-40 w-64 bg-surface-container-low border-r border-surface-variant flex flex-col justify-between select-none">
+<!-- MOBILE SIDEBAR BACKDROP OVERLAY -->
+<div id="mobile-backdrop" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-40 hidden md:hidden transition-opacity" onclick="toggleMobileSidebar()"></div>
+
+<!-- 1. SIDEBAR NAVIGATION (DRAWER ON MOBILE, FIXED RAIL ON DESKTOP) -->
+<aside id="sidebar-drawer" class="fixed left-0 top-0 bottom-0 z-50 w-72 md:w-64 bg-surface-container-low border-r border-surface-variant flex flex-col justify-between select-none transform -translate-x-full md:translate-x-0 transition-transform duration-200 ease-in-out">
   <!-- Header / Brand Anchor -->
   <div class="p-4">
-    <div class="flex items-center gap-3 mb-4 cursor-pointer" onclick="switchView('today')">
-      <div aria-label="Waypoint Monogram" class="w-8 h-8 rounded bg-surface-container flex items-center justify-center border border-surface-variant text-primary flex-shrink-0">
-        <svg class="w-4 h-4 fill-current text-[#88C0A4]" viewBox="0 0 24 24">
-          <path d="M12 2L2 12l10 10 10-10L12 2zm0 4.5l5.5 5.5-5.5 5.5-5.5-5.5L12 6.5z"></path>
-        </svg>
+    <div class="flex items-center justify-between mb-4">
+      <div class="flex items-center gap-3 cursor-pointer" onclick="switchView('today'); closeMobileSidebar();">
+        <div aria-label="Waypoint Monogram" class="w-8 h-8 rounded bg-surface-container flex items-center justify-center border border-surface-variant text-primary flex-shrink-0">
+          <svg class="w-4 h-4 fill-current text-[#88C0A4]" viewBox="0 0 24 24">
+            <path d="M12 2L2 12l10 10 10-10L12 2zm0 4.5l5.5 5.5-5.5 5.5-5.5-5.5L12 6.5z"></path>
+          </svg>
+        </div>
+        <div>
+          <h1 class="text-base font-semibold text-on-surface tracking-tight">Waypoint</h1>
+          <p class="font-mono text-on-surface-variant text-[11px] leading-tight">Personal Workspace</p>
+        </div>
       </div>
-      <div>
-        <h1 class="text-base font-semibold text-on-surface tracking-tight">Waypoint</h1>
-        <p class="font-mono text-on-surface-variant text-[11px] leading-tight">Personal Workspace</p>
-      </div>
+      <!-- Close drawer on mobile -->
+      <button onclick="toggleMobileSidebar()" class="md:hidden text-on-surface-variant hover:text-on-surface p-1">
+        <span class="material-symbols-outlined text-[20px]">close</span>
+      </button>
     </div>
+
     <!-- Quick Add Button -->
-    <button onclick="focusQuickInput()" class="w-full flex items-center justify-between px-3 py-2 bg-[#88C0A4] text-[#1E2124] rounded font-semibold hover:bg-[#9ECBB5] transition-colors duration-150 border-none outline-none">
+    <button onclick="focusQuickInput(); closeMobileSidebar();" class="w-full flex items-center justify-between px-3 py-2 bg-[#88C0A4] text-[#1E2124] rounded font-semibold hover:bg-[#9ECBB5] transition-colors duration-150 border-none outline-none">
       <span class="flex items-center gap-2">
         <span class="material-symbols-outlined text-[16px]">add</span>
         New Task
@@ -105,25 +121,25 @@
       Views
     </div>
     <!-- Tab: Today (Active default) -->
-    <button id="nav-today" onclick="switchView('today')" class="nav-link w-full flex items-center gap-2.5 px-3 py-2 bg-surface-container text-[#88C0A4] border-l-2 border-[#88C0A4] rounded-r text-left transition-colors">
+    <button id="nav-today" onclick="switchView('today'); closeMobileSidebar();" class="nav-link w-full flex items-center gap-2.5 px-3 py-2.5 bg-surface-container text-[#88C0A4] border-l-2 border-[#88C0A4] rounded-r text-left transition-colors">
       <span class="material-symbols-outlined text-[18px]">calendar_today</span>
       <span class="flex-1 font-medium">Today</span>
       <span class="font-mono text-[10px] bg-[#88C0A4]/20 text-[#88C0A4] px-1.5 py-0.5 rounded font-semibold">9</span>
     </button>
     <!-- Tab: Inbox -->
-    <button id="nav-inbox" onclick="switchView('inbox')" class="nav-link w-full flex items-center gap-2.5 px-3 py-2 text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface rounded text-left transition-colors">
+    <button id="nav-inbox" onclick="switchView('inbox'); closeMobileSidebar();" class="nav-link w-full flex items-center gap-2.5 px-3 py-2.5 text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface rounded text-left transition-colors">
       <span class="material-symbols-outlined text-[18px]">inbox</span>
       <span class="flex-1">Inbox</span>
       <span class="font-mono text-[10px] bg-surface-container-high text-on-surface-variant px-1.5 py-0.5 rounded border border-surface-variant">10</span>
     </button>
     <!-- Tab: Recurring -->
-    <button id="nav-recurring" onclick="switchView('recurring')" class="nav-link w-full flex items-center gap-2.5 px-3 py-2 text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface rounded text-left transition-colors">
+    <button id="nav-recurring" onclick="switchView('recurring'); closeMobileSidebar();" class="nav-link w-full flex items-center gap-2.5 px-3 py-2.5 text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface rounded text-left transition-colors">
       <span class="material-symbols-outlined text-[18px]">repeat</span>
       <span class="flex-1">Recurring</span>
       <span class="font-mono text-[10px] text-on-surface-variant">6</span>
     </button>
     <!-- Tab: Calendar -->
-    <button id="nav-calendar" onclick="switchView('calendar')" class="nav-link w-full flex items-center gap-2.5 px-3 py-2 text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface rounded text-left transition-colors">
+    <button id="nav-calendar" onclick="switchView('calendar'); closeMobileSidebar();" class="nav-link w-full flex items-center gap-2.5 px-3 py-2.5 text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface rounded text-left transition-colors">
       <span class="material-symbols-outlined text-[18px]">event</span>
       <span class="flex-1">Schedule</span>
       <span class="font-mono text-[10px] text-on-surface-variant">Today</span>
@@ -134,28 +150,28 @@
       Groups &amp; Workspaces
     </div>
     <div class="px-1 space-y-0.5">
-      <a class="flex items-center justify-between text-on-surface-variant hover:text-on-surface text-[12px] transition-colors py-1.5 px-2 rounded hover:bg-surface-container" href="#" onclick="switchView('today')">
+      <a class="flex items-center justify-between text-on-surface-variant hover:text-on-surface text-[12px] transition-colors py-2 px-2 rounded hover:bg-surface-container" href="#" onclick="switchView('today'); closeMobileSidebar();">
         <span class="flex items-center gap-2 truncate">
           <span class="w-1.5 h-1.5 rounded-full bg-[#88C0A4]"></span>
           WES Foundation
         </span>
         <span class="font-mono text-[10px] text-on-surface-variant/60">5</span>
       </a>
-      <a class="flex items-center justify-between text-on-surface-variant hover:text-on-surface text-[12px] transition-colors py-1.5 px-2 rounded hover:bg-surface-container" href="#" onclick="switchView('today')">
+      <a class="flex items-center justify-between text-on-surface-variant hover:text-on-surface text-[12px] transition-colors py-2 px-2 rounded hover:bg-surface-container" href="#" onclick="switchView('today'); closeMobileSidebar();">
         <span class="flex items-center gap-2 truncate">
           <span class="w-1.5 h-1.5 rounded-full bg-[#FFBF00]"></span>
           Engineering &amp; Code
         </span>
         <span class="font-mono text-[10px] text-on-surface-variant/60">8</span>
       </a>
-      <a class="flex items-center justify-between text-on-surface-variant hover:text-on-surface text-[12px] transition-colors py-1.5 px-2 rounded hover:bg-surface-container" href="#" onclick="switchView('today')">
+      <a class="flex items-center justify-between text-on-surface-variant hover:text-on-surface text-[12px] transition-colors py-2 px-2 rounded hover:bg-surface-container" href="#" onclick="switchView('today'); closeMobileSidebar();">
         <span class="flex items-center gap-2 truncate">
           <span class="w-1.5 h-1.5 rounded-full bg-[#78909C]"></span>
           Personal &amp; Study
         </span>
         <span class="font-mono text-[10px] text-on-surface-variant/60">6</span>
       </a>
-      <a class="flex items-center justify-between text-on-surface-variant hover:text-on-surface text-[12px] transition-colors py-1.5 px-2 rounded hover:bg-surface-container" href="#" onclick="switchView('today')">
+      <a class="flex items-center justify-between text-on-surface-variant hover:text-on-surface text-[12px] transition-colors py-2 px-2 rounded hover:bg-surface-container" href="#" onclick="switchView('today'); closeMobileSidebar();">
         <span class="flex items-center gap-2 truncate">
           <span class="w-1.5 h-1.5 rounded-full bg-[#FF5252]"></span>
           Eureka! Showcase
@@ -175,7 +191,7 @@
       <span class="font-mono text-[9px] text-on-surface-variant">Cloud Active</span>
     </div>
     <div class="flex items-center justify-between pt-1">
-      <button id="nav-settings" onclick="switchView('settings')" class="nav-link flex items-center gap-1.5 text-on-surface-variant hover:text-on-surface text-xs">
+      <button id="nav-settings" onclick="switchView('settings'); closeMobileSidebar();" class="nav-link flex items-center gap-1.5 text-on-surface-variant hover:text-on-surface text-xs">
         <span class="material-symbols-outlined text-[16px]">tune</span>
         Settings
       </button>
@@ -185,12 +201,24 @@
 </aside>
 
 <!-- 2. MAIN APPLICATION WORKSPACE SHELL -->
-<div class="ml-64 flex-1 flex flex-col h-screen overflow-hidden bg-background">
-  <!-- Top Navigation Bar -->
-  <header class="sticky top-0 z-30 flex items-center justify-between px-6 w-full h-14 bg-surface border-b border-surface-variant flex-shrink-0">
-    <!-- Omni Search -->
-    <div class="flex items-center gap-3 w-80 md:w-96">
-      <div class="relative w-full">
+<div class="ml-0 md:ml-64 flex-1 flex flex-col h-screen overflow-hidden bg-background">
+  <!-- Top Navigation Bar (Responsive) -->
+  <header class="sticky top-0 z-30 flex items-center justify-between px-3 sm:px-6 w-full h-14 bg-surface border-b border-surface-variant flex-shrink-0">
+    <!-- Left: Hamburger (Mobile) + Omni Search (Desktop) -->
+    <div class="flex items-center gap-2 sm:gap-3">
+      <!-- Mobile Drawer Button -->
+      <button onclick="toggleMobileSidebar()" class="md:hidden p-2 text-on-surface-variant hover:text-on-surface rounded flex items-center justify-center" aria-label="Open Navigation">
+        <span class="material-symbols-outlined text-[22px]">menu</span>
+      </button>
+
+      <!-- Mobile Active Title -->
+      <div class="md:hidden flex items-center gap-1.5">
+        <div class="w-2 h-2 rounded-full bg-[#88C0A4]"></div>
+        <span id="mobile-header-title" class="text-sm font-semibold text-on-surface">Today</span>
+      </div>
+
+      <!-- Desktop Search Bar -->
+      <div class="hidden md:flex relative w-80 lg:w-96">
         <span class="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-on-surface-variant">
           <span class="material-symbols-outlined text-[16px]">search</span>
         </span>
@@ -201,7 +229,7 @@
       </div>
     </div>
 
-    <!-- Center Navigation Tabs -->
+    <!-- Center Navigation Tabs (Hidden on mobile) -->
     <nav class="hidden md:flex items-center gap-6">
       <button onclick="switchView('today')" id="head-today" class="head-link text-[#88C0A4] border-b-2 border-[#88C0A4] pb-1 text-xs font-medium">Today (9)</button>
       <button onclick="switchView('inbox')" id="head-inbox" class="head-link text-on-surface-variant hover:text-on-surface pb-1 text-xs transition-colors">Inbox (10)</button>
@@ -210,15 +238,15 @@
     </nav>
 
     <!-- Right Trailing Controls -->
-    <div class="flex items-center gap-3">
+    <div class="flex items-center gap-1.5 sm:gap-3">
       <!-- AI Voice Assistant Button -->
-      <button onclick="showVoiceModal()" class="flex items-center gap-1.5 px-3 py-1 bg-surface-container text-[#88C0A4] border border-surface-variant hover:border-[#88C0A4] rounded text-xs transition-colors" title="AI Voice Assistant">
+      <button onclick="showVoiceModal()" class="flex items-center gap-1.5 px-2.5 sm:px-3 py-1 bg-surface-container text-[#88C0A4] border border-surface-variant hover:border-[#88C0A4] rounded text-xs transition-colors" title="AI Voice Assistant">
         <span class="material-symbols-outlined text-[16px] text-[#88C0A4]">mic</span>
-        <span class="font-mono text-[11px] font-medium">Voice</span>
+        <span class="hidden sm:inline font-mono text-[11px] font-medium">Voice</span>
       </button>
 
       <!-- Sync Status & Notification Icons -->
-      <div class="flex items-center gap-1 border-l border-surface-variant pl-3">
+      <div class="flex items-center gap-1 border-l border-surface-variant pl-2 sm:pl-3">
         <button class="relative p-1.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container rounded transition-colors" title="Notifications">
           <span class="material-symbols-outlined text-[18px]">notifications</span>
           <span class="absolute top-1 right-1 w-2 h-2 bg-[#FFBF00] rounded-full"></span>
@@ -226,7 +254,7 @@
       </div>
 
       <!-- User Avatar -->
-      <div class="flex items-center gap-2 pl-2 cursor-pointer" onclick="switchView('settings')">
+      <div class="flex items-center gap-2 pl-1 sm:pl-2 cursor-pointer" onclick="switchView('settings')">
         <div class="w-7 h-7 rounded bg-surface-container-high border border-surface-variant flex items-center justify-center font-mono text-[11px] text-[#88C0A4] font-semibold relative">
           LJ
           <span class="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-[#88C0A4] ring-2 ring-surface"></span>
@@ -235,70 +263,68 @@
     </div>
   </header>
 
-  <!-- 3. VIEWS CONTAINER -->
-  <main class="flex-1 overflow-y-auto px-6 py-6 pb-28 relative">
+  <!-- 3. VIEWS CONTAINER (Scrollable Area) -->
+  <main class="flex-1 overflow-y-auto px-3 sm:px-6 py-4 sm:py-6 pb-36 md:pb-28 relative">
 
     <!-- ==================== VIEW 1: TODAY'S FOCUS (DEFAULT) ==================== -->
-    <div id="view-today" class="view-page max-w-4xl mx-auto space-y-5">
+    <div id="view-today" class="view-page max-w-4xl mx-auto space-y-4 sm:space-y-5">
       <!-- Header Information Bar -->
-      <div class="flex flex-col md:flex-row md:items-end justify-between gap-3 border-b border-surface-variant pb-4">
+      <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-3 border-b border-surface-variant pb-3 sm:pb-4">
         <div>
           <div class="flex items-center gap-2 mb-1">
             <span class="font-mono text-[#88C0A4] text-[11px] uppercase tracking-wider font-semibold">Today's Focus</span>
             <span class="text-surface-variant">•</span>
-            <span class="font-mono text-[11px] text-on-surface-variant">Friday, November 13</span>
+            <span class="font-mono text-[11px] text-on-surface-variant">Friday, Nov 13</span>
           </div>
-          <h2 class="text-2xl font-semibold text-on-surface tracking-tight">Active Worklist</h2>
-          <p class="text-xs text-on-surface-variant flex items-center gap-2 mt-1">
+          <h2 class="text-xl sm:text-2xl font-semibold text-on-surface tracking-tight">Active Worklist</h2>
+          <p class="text-xs text-on-surface-variant flex items-center gap-2 mt-0.5">
             <span>9 active tasks</span>
             <span class="text-outline-variant">•</span>
             <span class="text-[#FF5252] font-medium">2 urgent</span>
-            <span class="text-outline-variant">•</span>
-            <span class="text-[#FFBF00] font-medium">3 high priority</span>
           </p>
         </div>
 
-        <!-- Filter Chips Bar -->
-        <div class="flex items-center gap-1.5 overflow-x-auto pb-1">
-          <button class="px-3 py-1 bg-surface-container-high text-[#88C0A4] border border-[#88C0A4]/50 text-xs rounded flex items-center gap-1.5">
+        <!-- Filter Chips Bar (Touch scrollable) -->
+        <div class="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+          <button class="px-2.5 sm:px-3 py-1 bg-surface-container-high text-[#88C0A4] border border-[#88C0A4]/50 text-xs rounded flex items-center gap-1.5 flex-shrink-0">
             <span>All Active</span>
             <span class="font-mono text-[10px] bg-[#88C0A4]/20 text-[#88C0A4] px-1 rounded font-semibold">9</span>
           </button>
-          <button onclick="switchView('recurring')" class="px-3 py-1 bg-surface-container text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high border border-surface-variant text-xs rounded flex items-center gap-1.5 transition-colors">
+          <button onclick="switchView('recurring')" class="px-2.5 sm:px-3 py-1 bg-surface-container text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high border border-surface-variant text-xs rounded flex items-center gap-1.5 transition-colors flex-shrink-0">
             <span>Recurring</span>
             <span class="font-mono text-[10px] bg-surface-variant text-on-surface-variant px-1 rounded">3</span>
           </button>
-          <button class="px-3 py-1 bg-surface-container text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high border border-surface-variant text-xs rounded flex items-center gap-1.5 transition-colors">
+          <button class="px-2.5 sm:px-3 py-1 bg-surface-container text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high border border-surface-variant text-xs rounded flex items-center gap-1.5 transition-colors flex-shrink-0">
             <span>High Priority</span>
             <span class="font-mono text-[10px] bg-surface-variant text-on-surface-variant px-1 rounded">3</span>
           </button>
-          <button onclick="document.getElementById('completed-section').scrollIntoView({behavior: 'smooth'})" class="px-3 py-1 bg-surface-container text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high border border-surface-variant text-xs rounded transition-colors">
+          <button onclick="document.getElementById('completed-section').scrollIntoView({behavior: 'smooth'})" class="px-2.5 sm:px-3 py-1 bg-surface-container text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high border border-surface-variant text-xs rounded transition-colors flex-shrink-0">
             Completed (3)
           </button>
         </div>
       </div>
 
       <!-- Task Cards Stack -->
-      <div class="space-y-3">
+      <div class="space-y-2.5 sm:space-y-3">
         <!-- Task 1: Urgent Regression Hotfix -->
         <div class="group relative bg-surface-container-high border border-surface-variant rounded hover:border-[#88C0A4] transition-colors duration-150 overflow-hidden">
           <div class="absolute left-0 top-0 bottom-0 w-1 bg-[#FF5252]"></div>
-          <div class="p-4 pl-5 flex flex-col md:flex-row md:items-center justify-between gap-3">
+          <div class="p-3.5 sm:p-4 pl-4 sm:pl-5 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3">
             <div class="flex items-start gap-3 flex-1">
               <button onclick="toggleCardDone(this)" class="mt-0.5 w-4 h-4 rounded-[3px] border border-surface-variant bg-surface-container hover:border-[#88C0A4] flex items-center justify-center flex-shrink-0 transition-colors"></button>
               <div class="space-y-1">
                 <div class="flex items-center gap-2 flex-wrap">
-                  <span class="text-sm font-medium text-on-surface group-hover:text-[#88C0A4] transition-colors">
+                  <span class="text-xs sm:text-sm font-medium text-on-surface group-hover:text-[#88C0A4] transition-colors">
                     Deploy hotfix for authentication session regression
                   </span>
                   <span class="font-mono text-[10px] bg-[#FF5252]/15 text-[#FF5252] border border-[#FF5252]/30 px-1.5 py-0.5 rounded font-semibold">
                     URGENT
                   </span>
                   <span class="font-mono text-[10px] bg-surface-container text-[#88C0A4] border border-surface-variant px-1.5 py-0.5 rounded flex items-center gap-1">
-                    <span>⟳</span> Weekly on Mon
+                    <span>⟳</span> Mon
                   </span>
                 </div>
-                <div class="flex items-center gap-4 text-on-surface-variant text-xs pt-0.5">
+                <div class="flex items-center gap-3 sm:gap-4 text-on-surface-variant text-xs pt-0.5 flex-wrap">
                   <span class="font-mono text-[11px] text-on-surface-variant flex items-center gap-1">
                     <span class="material-symbols-outlined text-[13px]">schedule</span>
                     Today, 18:00
@@ -311,7 +337,7 @@
                 </div>
               </div>
             </div>
-            <div class="flex items-center gap-1.5 self-end md:self-center opacity-80 md:opacity-0 group-hover:opacity-100 transition-opacity">
+            <div class="flex items-center gap-1.5 self-end sm:self-center opacity-90 sm:opacity-0 group-hover:opacity-100 transition-opacity">
               <button class="p-1.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container rounded border border-surface-variant" title="Reschedule">
                 <span class="material-symbols-outlined text-[15px]">event_repeat</span>
               </button>
@@ -325,19 +351,19 @@
         <!-- Task 2: Urgent Campus Permit Call -->
         <div class="group relative bg-surface-container-high border border-surface-variant rounded hover:border-[#88C0A4] transition-colors duration-150 overflow-hidden">
           <div class="absolute left-0 top-0 bottom-0 w-1 bg-[#FF5252]"></div>
-          <div class="p-4 pl-5 flex flex-col md:flex-row md:items-center justify-between gap-3">
+          <div class="p-3.5 sm:p-4 pl-4 sm:pl-5 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3">
             <div class="flex items-start gap-3 flex-1">
               <button onclick="toggleCardDone(this)" class="mt-0.5 w-4 h-4 rounded-[3px] border border-surface-variant bg-surface-container hover:border-[#88C0A4] flex items-center justify-center flex-shrink-0 transition-colors"></button>
               <div class="space-y-1">
                 <div class="flex items-center gap-2 flex-wrap">
-                  <span class="text-sm font-medium text-on-surface group-hover:text-[#88C0A4] transition-colors">
-                    Confirm robotics lab room reservation &amp; security badge approvals
+                  <span class="text-xs sm:text-sm font-medium text-on-surface group-hover:text-[#88C0A4] transition-colors">
+                    Confirm robotics lab room reservation &amp; security approvals
                   </span>
                   <span class="font-mono text-[10px] bg-[#FF5252]/15 text-[#FF5252] border border-[#FF5252]/30 px-1.5 py-0.5 rounded font-semibold">
                     URGENT
                   </span>
                 </div>
-                <div class="flex items-center gap-4 text-on-surface-variant text-xs pt-0.5">
+                <div class="flex items-center gap-3 sm:gap-4 text-on-surface-variant text-xs pt-0.5 flex-wrap">
                   <span class="font-mono text-[11px] text-[#FF5252] flex items-center gap-1">
                     <span class="material-symbols-outlined text-[13px]">alarm</span>
                     Deadline 16:30
@@ -350,7 +376,7 @@
                 </div>
               </div>
             </div>
-            <div class="flex items-center gap-1.5 self-end md:self-center opacity-80 md:opacity-0 group-hover:opacity-100 transition-opacity">
+            <div class="flex items-center gap-1.5 self-end sm:self-center opacity-90 sm:opacity-0 group-hover:opacity-100 transition-opacity">
               <button class="p-1.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container rounded border border-surface-variant">
                 <span class="material-symbols-outlined text-[15px]">edit</span>
               </button>
@@ -361,12 +387,12 @@
         <!-- Task 3: High Priority WES Workshop Syllabus -->
         <div class="group relative bg-surface-container-high border border-surface-variant rounded hover:border-[#88C0A4] transition-colors duration-150 overflow-hidden">
           <div class="absolute left-0 top-0 bottom-0 w-1 bg-[#FFBF00]"></div>
-          <div class="p-4 pl-5 flex flex-col md:flex-row md:items-center justify-between gap-3">
+          <div class="p-3.5 sm:p-4 pl-4 sm:pl-5 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3">
             <div class="flex items-start gap-3 flex-1">
               <button onclick="toggleCardDone(this)" class="mt-0.5 w-4 h-4 rounded-[3px] border border-surface-variant bg-surface-container hover:border-[#88C0A4] flex items-center justify-center flex-shrink-0 transition-colors"></button>
               <div class="space-y-1.5 flex-1 max-w-xl">
                 <div class="flex items-center gap-2 flex-wrap">
-                  <span class="text-sm font-medium text-on-surface group-hover:text-[#88C0A4] transition-colors">
+                  <span class="text-xs sm:text-sm font-medium text-on-surface group-hover:text-[#88C0A4] transition-colors">
                     Coordinate WES Foundation student workshop syllabus
                   </span>
                   <span class="font-mono text-[10px] bg-[#FFBF00]/15 text-[#FFBF00] border border-[#FFBF00]/30 px-1.5 py-0.5 rounded font-semibold">
@@ -376,19 +402,18 @@
                     WES Cell
                   </span>
                 </div>
-                <!-- Progress Meter -->
-                <div class="flex items-center gap-3">
-                  <div class="w-32 h-1.5 bg-surface-container rounded overflow-hidden">
+                <div class="flex items-center gap-3 flex-wrap">
+                  <div class="w-28 sm:w-32 h-1.5 bg-surface-container rounded overflow-hidden">
                     <div class="w-1/2 h-full bg-[#88C0A4] rounded"></div>
                   </div>
-                  <span class="font-mono text-[11px] text-on-surface-variant">2/4 subtasks done</span>
+                  <span class="font-mono text-[11px] text-on-surface-variant">2/4 subtasks</span>
                   <span class="font-mono text-[11px] text-on-surface-variant">Due 20:30</span>
                 </div>
               </div>
             </div>
-            <div class="flex items-center gap-2 self-end md:self-center">
+            <div class="flex items-center gap-2 self-end sm:self-center">
               <span class="font-mono text-[10px] text-on-surface-variant bg-surface-container px-2 py-1 rounded border border-surface-variant">
-                COMMUNITY: WES
+                WES
               </span>
             </div>
           </div>
@@ -397,13 +422,13 @@
         <!-- Task 4: High Priority Pitch Deck (With Subtasks) -->
         <div class="group relative bg-surface-container-high border border-surface-variant rounded hover:border-[#88C0A4] transition-colors duration-150 overflow-hidden">
           <div class="absolute left-0 top-0 bottom-0 w-1 bg-[#FFBF00]"></div>
-          <div class="p-4 pl-5 space-y-3">
+          <div class="p-3.5 sm:p-4 pl-4 sm:pl-5 space-y-2.5 sm:space-y-3">
             <div class="flex items-start justify-between gap-3">
               <div class="flex items-start gap-3">
                 <button onclick="toggleCardDone(this)" class="mt-0.5 w-4 h-4 rounded-[3px] border border-surface-variant bg-surface-container hover:border-[#88C0A4] flex items-center justify-center flex-shrink-0 transition-colors"></button>
                 <div>
                   <div class="flex items-center gap-2 flex-wrap">
-                    <h3 class="text-sm font-medium text-on-surface group-hover:text-[#88C0A4] transition-colors">
+                    <h3 class="text-xs sm:text-sm font-medium text-on-surface group-hover:text-[#88C0A4] transition-colors">
                       Review final quarterly deliverables &amp; pitch slides
                     </h3>
                     <span class="font-mono text-[10px] bg-[#FFBF00]/15 text-[#FFBF00] border border-[#FFBF00]/30 px-1.5 py-0.5 rounded font-semibold">
@@ -418,37 +443,34 @@
                   </p>
                 </div>
               </div>
-              <div class="font-mono text-[10px] text-on-surface-variant bg-surface-container px-2 py-1 rounded border border-surface-variant">
-                DUE TODAY, 17:00
+              <div class="hidden sm:block font-mono text-[10px] text-on-surface-variant bg-surface-container px-2 py-1 rounded border border-surface-variant whitespace-nowrap">
+                DUE 17:00
               </div>
             </div>
 
             <!-- Subtask Checklist -->
-            <div class="ml-7 pl-3 border-l border-surface-variant space-y-1.5 py-1">
-              <div class="flex items-center gap-2.5 text-on-surface-variant text-xs">
-                <div class="w-3.5 h-3.5 rounded-[2px] bg-[#88C0A4] text-[#1E2124] flex items-center justify-center flex-shrink-0 font-bold">✓</div>
-                <span class="line-through text-on-surface-variant/70">Finalize unit economics and operating margin slide</span>
-                <span class="font-mono text-[10px] text-on-surface-variant/50 ml-auto">DONE</span>
+            <div class="ml-6 sm:ml-7 pl-2.5 sm:pl-3 border-l border-surface-variant space-y-1.5 py-1">
+              <div class="flex items-center gap-2 text-on-surface-variant text-xs">
+                <div class="w-3.5 h-3.5 rounded-[2px] bg-[#88C0A4] text-[#1E2124] flex items-center justify-center flex-shrink-0 font-bold text-[10px]">✓</div>
+                <span class="line-through text-on-surface-variant/70 text-[11px] sm:text-xs">Finalize unit economics and operating margin slide</span>
               </div>
-              <div class="flex items-center gap-2.5 text-on-surface-variant text-xs">
-                <div class="w-3.5 h-3.5 rounded-[2px] bg-[#88C0A4] text-[#1E2124] flex items-center justify-center flex-shrink-0 font-bold">✓</div>
-                <span class="line-through text-on-surface-variant/70">Export high-resolution PDF deck for presentation clicker</span>
-                <span class="font-mono text-[10px] text-on-surface-variant/50 ml-auto">DONE</span>
+              <div class="flex items-center gap-2 text-on-surface-variant text-xs">
+                <div class="w-3.5 h-3.5 rounded-[2px] bg-[#88C0A4] text-[#1E2124] flex items-center justify-center flex-shrink-0 font-bold text-[10px]">✓</div>
+                <span class="line-through text-on-surface-variant/70 text-[11px] sm:text-xs">Export high-resolution PDF deck for presentation clicker</span>
               </div>
-              <div class="flex items-center gap-2.5 text-on-surface text-xs">
+              <div class="flex items-center gap-2 text-on-surface text-xs">
                 <div class="w-3.5 h-3.5 rounded-[2px] border border-surface-variant bg-surface-container flex-shrink-0"></div>
-                <span>Send draft link to faculty advisor for feedback</span>
-                <span class="font-mono text-[10px] text-[#FFBF00] bg-[#FFBF00]/10 px-1 rounded ml-auto">PENDING</span>
+                <span class="text-[11px] sm:text-xs">Send draft link to faculty advisor for feedback</span>
+                <span class="font-mono text-[9px] text-[#FFBF00] bg-[#FFBF00]/10 px-1 rounded ml-auto">PENDING</span>
               </div>
             </div>
 
             <div class="flex items-center justify-between pt-1 border-t border-surface-variant/60 text-xs text-on-surface-variant">
-              <div class="flex items-center gap-3">
-                <span class="font-mono text-[11px] text-on-surface-variant hover:text-[#88C0A4] cursor-pointer">#pitch</span>
-                <span class="font-mono text-[11px] text-on-surface-variant hover:text-[#88C0A4] cursor-pointer">#showcase</span>
-                <span class="font-mono text-[11px] text-on-surface-variant hover:text-[#88C0A4] cursor-pointer">#eureka</span>
+              <div class="flex items-center gap-2 sm:gap-3 flex-wrap">
+                <span class="font-mono text-[10px] sm:text-[11px] text-on-surface-variant hover:text-[#88C0A4] cursor-pointer">#pitch</span>
+                <span class="font-mono text-[10px] sm:text-[11px] text-on-surface-variant hover:text-[#88C0A4] cursor-pointer">#eureka</span>
               </div>
-              <span class="font-mono text-[10px]">Updated 10m ago</span>
+              <span class="font-mono text-[10px]">Due 17:00</span>
             </div>
           </div>
         </div>
@@ -456,12 +478,12 @@
         <!-- Task 5: High Priority Code Review -->
         <div class="group relative bg-surface-container-high border border-surface-variant rounded hover:border-[#88C0A4] transition-colors duration-150 overflow-hidden">
           <div class="absolute left-0 top-0 bottom-0 w-1 bg-[#FFBF00]"></div>
-          <div class="p-4 pl-5 flex flex-col md:flex-row md:items-center justify-between gap-3">
+          <div class="p-3.5 sm:p-4 pl-4 sm:pl-5 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3">
             <div class="flex items-start gap-3 flex-1">
               <button onclick="toggleCardDone(this)" class="mt-0.5 w-4 h-4 rounded-[3px] border border-surface-variant bg-surface-container hover:border-[#88C0A4] flex items-center justify-center flex-shrink-0 transition-colors"></button>
               <div class="space-y-1">
                 <div class="flex items-center gap-2 flex-wrap">
-                  <span class="text-sm font-medium text-on-surface group-hover:text-[#88C0A4] transition-colors">
+                  <span class="text-xs sm:text-sm font-medium text-on-surface group-hover:text-[#88C0A4] transition-colors">
                     Review pull request: offline audio voice feedback integration
                   </span>
                   <span class="font-mono text-[10px] bg-[#FFBF00]/15 text-[#FFBF00] border border-[#FFBF00]/30 px-1.5 py-0.5 rounded font-semibold">
@@ -471,7 +493,7 @@
                     #PR-42
                   </span>
                 </div>
-                <div class="flex items-center gap-4 text-on-surface-variant text-xs pt-0.5">
+                <div class="flex items-center gap-3 sm:gap-4 text-on-surface-variant text-xs pt-0.5">
                   <span class="font-mono text-[11px] text-on-surface-variant flex items-center gap-1">
                     <span class="material-symbols-outlined text-[13px]">schedule</span>
                     Today, 19:00
@@ -483,7 +505,7 @@
                 </div>
               </div>
             </div>
-            <div class="flex items-center gap-1.5 self-end md:self-center opacity-80 md:opacity-0 group-hover:opacity-100 transition-opacity">
+            <div class="flex items-center gap-1.5 self-end sm:self-center opacity-90 sm:opacity-0 group-hover:opacity-100 transition-opacity">
               <button class="p-1.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container rounded border border-surface-variant">
                 <span class="material-symbols-outlined text-[15px]">edit</span>
               </button>
@@ -491,96 +513,25 @@
           </div>
         </div>
 
-        <!-- Task 6: Medium Priority Budget Draft -->
-        <div class="group relative bg-surface-container-high border border-surface-variant rounded hover:border-[#88C0A4] transition-colors duration-150 overflow-hidden">
-          <div class="absolute left-0 top-0 bottom-0 w-1 bg-[#88C0A4]"></div>
-          <div class="p-4 pl-5 flex flex-col md:flex-row md:items-center justify-between gap-3">
-            <div class="flex items-start gap-3 flex-1">
-              <button onclick="toggleCardDone(this)" class="mt-0.5 w-4 h-4 rounded-[3px] border border-surface-variant bg-surface-container hover:border-[#88C0A4] flex items-center justify-center flex-shrink-0 transition-colors"></button>
-              <div class="space-y-1">
-                <div class="flex items-center gap-2 flex-wrap">
-                  <span class="text-sm font-medium text-on-surface group-hover:text-[#88C0A4] transition-colors">
-                    Draft budget allocation spreadsheet for winter student workshop
-                  </span>
-                  <span class="font-mono text-[10px] bg-[#88C0A4]/15 text-[#88C0A4] border border-[#88C0A4]/30 px-1.5 py-0.5 rounded font-semibold">
-                    MEDIUM
-                  </span>
-                </div>
-                <div class="flex items-center gap-4 text-on-surface-variant text-xs pt-0.5">
-                  <span class="font-mono text-[11px] text-on-surface-variant flex items-center gap-1">
-                    <span class="material-symbols-outlined text-[13px]">schedule</span>
-                    Today, 21:00
-                  </span>
-                  <span class="flex items-center gap-1 text-[11px]">
-                    <span class="w-1.5 h-1.5 rounded-full bg-[#88C0A4]"></span>
-                    WES Foundation
-                  </span>
-                  <span class="font-mono text-[10px] text-on-surface-variant">Estimated 45 min</span>
-                </div>
-              </div>
-            </div>
-            <div class="flex items-center gap-1.5 self-end md:self-center opacity-80 md:opacity-0 group-hover:opacity-100 transition-opacity">
-              <button class="p-1.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container rounded border border-surface-variant">
-                <span class="material-symbols-outlined text-[15px]">edit</span>
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Task 7: Medium Priority Faculty Follow-Up -->
-        <div class="group relative bg-surface-container-high border border-surface-variant rounded hover:border-[#88C0A4] transition-colors duration-150 overflow-hidden">
-          <div class="absolute left-0 top-0 bottom-0 w-1 bg-[#88C0A4]"></div>
-          <div class="p-4 pl-5 flex flex-col md:flex-row md:items-center justify-between gap-3">
-            <div class="flex items-start gap-3 flex-1">
-              <button onclick="toggleCardDone(this)" class="mt-0.5 w-4 h-4 rounded-[3px] border border-surface-variant bg-surface-container hover:border-[#88C0A4] flex items-center justify-center flex-shrink-0 transition-colors"></button>
-              <div class="space-y-1">
-                <div class="flex items-center gap-2 flex-wrap">
-                  <span class="text-sm font-medium text-on-surface group-hover:text-[#88C0A4] transition-colors">
-                    Call department coordinator regarding elective course credits
-                  </span>
-                  <span class="font-mono text-[10px] bg-[#88C0A4]/15 text-[#88C0A4] border border-[#88C0A4]/30 px-1.5 py-0.5 rounded font-semibold">
-                    MEDIUM
-                  </span>
-                </div>
-                <div class="flex items-center gap-4 text-on-surface-variant text-xs pt-0.5">
-                  <span class="font-mono text-[11px] text-on-surface-variant flex items-center gap-1">
-                    <span class="material-symbols-outlined text-[13px]">call</span>
-                    Today, 17:30
-                  </span>
-                  <span class="flex items-center gap-1 text-[11px]">
-                    <span class="w-1.5 h-1.5 rounded-full bg-[#78909C]"></span>
-                    University
-                  </span>
-                </div>
-              </div>
-            </div>
-            <div class="flex items-center gap-1.5 self-end md:self-center opacity-80 md:opacity-0 group-hover:opacity-100 transition-opacity">
-              <button class="p-1.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container rounded border border-surface-variant">
-                <span class="material-symbols-outlined text-[15px]">edit</span>
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Task 8: Routine Study Prep -->
+        <!-- Task 6: Routine Study Prep -->
         <div class="group relative bg-surface-container-high border border-surface-variant rounded hover:border-[#88C0A4] transition-colors duration-150 overflow-hidden">
           <div class="absolute left-0 top-0 bottom-0 w-1 bg-[#78909C]"></div>
-          <div class="p-4 pl-5 flex flex-col md:flex-row md:items-center justify-between gap-3">
+          <div class="p-3.5 sm:p-4 pl-4 sm:pl-5 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3">
             <div class="flex items-start gap-3 flex-1">
               <button onclick="toggleCardDone(this)" class="mt-0.5 w-4 h-4 rounded-[3px] border border-surface-variant bg-surface-container hover:border-[#88C0A4] flex items-center justify-center flex-shrink-0 transition-colors"></button>
               <div class="space-y-1">
                 <div class="flex items-center gap-2 flex-wrap">
-                  <span class="text-sm font-medium text-on-surface group-hover:text-[#88C0A4] transition-colors">
+                  <span class="text-xs sm:text-sm font-medium text-on-surface group-hover:text-[#88C0A4] transition-colors">
                     Read chapter 4 on state machines in distributed systems
                   </span>
                   <span class="font-mono text-[10px] bg-surface-container text-[#78909C] border border-surface-variant px-1.5 py-0.5 rounded font-semibold">
                     ROUTINE
                   </span>
                   <span class="font-mono text-[10px] bg-surface-container text-[#88C0A4] border border-surface-variant px-1.5 py-0.5 rounded flex items-center gap-1">
-                    <span>⟳</span> Every Weekday
+                    <span>⟳</span> Daily
                   </span>
                 </div>
-                <div class="flex items-center gap-4 text-on-surface-variant text-xs pt-0.5">
+                <div class="flex items-center gap-3 sm:gap-4 text-on-surface-variant text-xs pt-0.5">
                   <span class="font-mono text-[11px] text-on-surface-variant flex items-center gap-1">
                     <span class="material-symbols-outlined text-[13px]">book</span>
                     Tonight, 22:00
@@ -592,39 +543,7 @@
                 </div>
               </div>
             </div>
-            <div class="flex items-center gap-1.5 self-end md:self-center opacity-80 md:opacity-0 group-hover:opacity-100 transition-opacity">
-              <button class="p-1.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container rounded border border-surface-variant">
-                <span class="material-symbols-outlined text-[15px]">edit</span>
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Task 9: Low Priority Supply Order -->
-        <div class="group relative bg-surface-container-high border border-surface-variant rounded hover:border-[#88C0A4] transition-colors duration-150 overflow-hidden">
-          <div class="absolute left-0 top-0 bottom-0 w-1 bg-[#78909C]"></div>
-          <div class="p-4 pl-5 flex flex-col md:flex-row md:items-center justify-between gap-3">
-            <div class="flex items-start gap-3 flex-1">
-              <button onclick="toggleCardDone(this)" class="mt-0.5 w-4 h-4 rounded-[3px] border border-surface-variant bg-surface-container hover:border-[#88C0A4] flex items-center justify-center flex-shrink-0 transition-colors"></button>
-              <div class="space-y-1">
-                <div class="flex items-center gap-2 flex-wrap">
-                  <span class="text-sm font-medium text-on-surface group-hover:text-[#88C0A4] transition-colors">
-                    Order 64GB USB recovery flash drives for robotics lab
-                  </span>
-                  <span class="font-mono text-[10px] bg-surface-container text-[#78909C] border border-surface-variant px-1.5 py-0.5 rounded font-semibold">
-                    LOW
-                  </span>
-                </div>
-                <div class="flex items-center gap-4 text-on-surface-variant text-xs pt-0.5">
-                  <span class="font-mono text-[11px] text-on-surface-variant flex items-center gap-1">
-                    <span class="material-symbols-outlined text-[13px]">shopping_cart</span>
-                    Flexible due date
-                  </span>
-                  <span class="font-mono text-[11px] text-on-surface-variant/70">#supplies</span>
-                </div>
-              </div>
-            </div>
-            <div class="flex items-center gap-1.5 self-end md:self-center opacity-80 md:opacity-0 group-hover:opacity-100 transition-opacity">
+            <div class="flex items-center gap-1.5 self-end sm:self-center opacity-90 sm:opacity-0 group-hover:opacity-100 transition-opacity">
               <button class="p-1.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container rounded border border-surface-variant">
                 <span class="material-symbols-outlined text-[15px]">edit</span>
               </button>
@@ -636,54 +555,47 @@
 
       <!-- Completed Section (Collapsible) -->
       <div id="completed-section" class="pt-4 border-t border-surface-variant/60">
-        <div class="flex items-center justify-between mb-3">
+        <div class="flex items-center justify-between mb-2 sm:mb-3">
           <span class="font-mono text-xs text-on-surface-variant flex items-center gap-2">
             <span class="material-symbols-outlined text-[16px] text-[#88C0A4]">check_circle</span>
             Completed Today (3 tasks)
           </span>
-          <span class="font-mono text-[10px] text-on-surface-variant/60">Nice work!</span>
+          <span class="font-mono text-[10px] text-on-surface-variant/60">All set!</span>
         </div>
-        <div class="space-y-2 opacity-75">
-          <div class="p-3 bg-surface-container-high/40 border border-surface-variant/40 rounded flex items-center gap-3">
+        <div class="space-y-1.5 sm:space-y-2 opacity-75">
+          <div class="p-2.5 sm:p-3 bg-surface-container-high/40 border border-surface-variant/40 rounded flex items-center gap-2.5 sm:gap-3">
             <div class="w-4 h-4 rounded-[3px] bg-[#88C0A4] text-[#1E2124] flex items-center justify-center flex-shrink-0 text-xs font-bold">✓</div>
-            <span class="line-through text-xs text-on-surface-variant/70 flex-1">
+            <span class="line-through text-xs text-on-surface-variant/70 flex-1 truncate">
               Submit weekly assignment for Software Architecture &amp; Design
             </span>
             <span class="font-mono text-[10px] text-on-surface-variant/50">11:30 AM</span>
           </div>
-          <div class="p-3 bg-surface-container-high/40 border border-surface-variant/40 rounded flex items-center gap-3">
+          <div class="p-2.5 sm:p-3 bg-surface-container-high/40 border border-surface-variant/40 rounded flex items-center gap-2.5 sm:gap-3">
             <div class="w-4 h-4 rounded-[3px] bg-[#88C0A4] text-[#1E2124] flex items-center justify-center flex-shrink-0 text-xs font-bold">✓</div>
-            <span class="line-through text-xs text-on-surface-variant/70 flex-1">
+            <span class="line-through text-xs text-on-surface-variant/70 flex-1 truncate">
               Send meeting summary notes to WES Foundation chapter leads
             </span>
             <span class="font-mono text-[10px] text-on-surface-variant/50">09:45 AM</span>
-          </div>
-          <div class="p-3 bg-surface-container-high/40 border border-surface-variant/40 rounded flex items-center gap-3">
-            <div class="w-4 h-4 rounded-[3px] bg-[#88C0A4] text-[#1E2124] flex items-center justify-center flex-shrink-0 text-xs font-bold">✓</div>
-            <span class="line-through text-xs text-on-surface-variant/70 flex-1">
-              Morning voice dispatch &amp; daily goal review
-            </span>
-            <span class="font-mono text-[10px] text-on-surface-variant/50">08:30 AM</span>
           </div>
         </div>
       </div>
     </div>
 
     <!-- ==================== VIEW 2: INBOX ==================== -->
-    <div id="view-inbox" class="view-page hidden max-w-4xl mx-auto space-y-5">
-      <div class="flex flex-col md:flex-row md:items-end justify-between gap-3 border-b border-surface-variant pb-4">
+    <div id="view-inbox" class="view-page hidden max-w-4xl mx-auto space-y-4 sm:space-y-5">
+      <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-3 border-b border-surface-variant pb-3 sm:pb-4">
         <div>
           <div class="flex items-center gap-2 mb-1">
             <span class="font-mono text-[#88C0A4] text-[11px] uppercase tracking-wider font-semibold">Triage &amp; Quick Capture</span>
             <span class="text-surface-variant">•</span>
             <span class="font-mono text-[11px] text-on-surface-variant">10 unsorted items</span>
           </div>
-          <h2 class="text-2xl font-semibold text-on-surface tracking-tight">Inbox Queue</h2>
-          <p class="text-xs text-on-surface-variant mt-1">
-            Capture thoughts quickly. Schedule, assign, or convert them to projects when ready.
+          <h2 class="text-xl sm:text-2xl font-semibold text-on-surface tracking-tight">Inbox Queue</h2>
+          <p class="text-xs text-on-surface-variant mt-0.5">
+            Capture thoughts quickly. Schedule, assign, or convert when ready.
           </p>
         </div>
-        <button onclick="focusQuickInput()" class="px-3 py-1.5 bg-[#88C0A4] text-[#1E2124] rounded text-xs font-semibold hover:bg-[#9ECBB5] flex items-center gap-1.5">
+        <button onclick="focusQuickInput()" class="px-3 py-1.5 bg-[#88C0A4] text-[#1E2124] rounded text-xs font-semibold hover:bg-[#9ECBB5] flex items-center gap-1.5 self-start sm:self-auto">
           <span class="material-symbols-outlined text-[16px]">add</span>
           Quick Add
         </button>
@@ -691,19 +603,18 @@
 
       <!-- Inbox List -->
       <div class="space-y-2">
-        <!-- Item 1 -->
-        <div class="p-3.5 bg-surface-container-high border border-surface-variant rounded hover:border-[#88C0A4] transition-colors flex items-center justify-between gap-4">
-          <div class="flex items-center gap-3 flex-1">
-            <div class="w-2 h-2 rounded-full bg-[#88C0A4]"></div>
-            <div>
-              <p class="text-sm font-medium text-on-surface">Draft sponsorship email for regional student engineering hackathon</p>
-              <p class="text-xs text-on-surface-variant font-mono mt-0.5">Captured via Voice • 15 minutes ago</p>
+        <div class="p-3 sm:p-3.5 bg-surface-container-high border border-surface-variant rounded hover:border-[#88C0A4] transition-colors flex items-center justify-between gap-3">
+          <div class="flex items-center gap-2.5 sm:gap-3 flex-1 min-w-0">
+            <div class="w-2 h-2 rounded-full bg-[#88C0A4] flex-shrink-0"></div>
+            <div class="truncate">
+              <p class="text-xs sm:text-sm font-medium text-on-surface truncate">Draft partnership proposal for regional hackathon</p>
+              <p class="text-[11px] text-on-surface-variant font-mono mt-0.5">Voice Capture • 15m ago</p>
             </div>
           </div>
-          <div class="flex items-center gap-2">
-            <button class="px-2.5 py-1 bg-surface-container border border-surface-variant hover:border-[#88C0A4] text-xs rounded text-on-surface flex items-center gap-1">
-              <span class="material-symbols-outlined text-[14px]">calendar_today</span>
-              Schedule
+          <div class="flex items-center gap-1.5 flex-shrink-0">
+            <button class="px-2 py-1 bg-surface-container border border-surface-variant hover:border-[#88C0A4] text-xs rounded text-on-surface flex items-center gap-1">
+              <span class="material-symbols-outlined text-[13px]">calendar_today</span>
+              <span class="hidden sm:inline">Schedule</span>
             </button>
             <button class="p-1 text-on-surface-variant hover:text-[#88C0A4] rounded" title="Archive">
               <span class="material-symbols-outlined text-[16px]">archive</span>
@@ -711,141 +622,58 @@
           </div>
         </div>
 
-        <!-- Item 2 -->
-        <div class="p-3.5 bg-surface-container-high border border-surface-variant rounded hover:border-[#88C0A4] transition-colors flex items-center justify-between gap-4">
-          <div class="flex items-center gap-3 flex-1">
-            <div class="w-2 h-2 rounded-full bg-[#FFBF00]"></div>
-            <div>
-              <p class="text-sm font-medium text-on-surface">Order USB-C microphone adapter for audio latency testing</p>
-              <p class="text-xs text-on-surface-variant font-mono mt-0.5">Quick Note • 1 hour ago</p>
+        <div class="p-3 sm:p-3.5 bg-surface-container-high border border-surface-variant rounded hover:border-[#88C0A4] transition-colors flex items-center justify-between gap-3">
+          <div class="flex items-center gap-2.5 sm:gap-3 flex-1 min-w-0">
+            <div class="w-2 h-2 rounded-full bg-[#FFBF00] flex-shrink-0"></div>
+            <div class="truncate">
+              <p class="text-xs sm:text-sm font-medium text-on-surface truncate">Order USB-C microphone adapter for audio latency testing</p>
+              <p class="text-[11px] text-on-surface-variant font-mono mt-0.5">Quick Note • 1h ago</p>
             </div>
           </div>
-          <div class="flex items-center gap-2">
-            <button class="px-2.5 py-1 bg-surface-container border border-surface-variant hover:border-[#88C0A4] text-xs rounded text-on-surface flex items-center gap-1">
-              <span class="material-symbols-outlined text-[14px]">calendar_today</span>
-              Schedule
+          <div class="flex items-center gap-1.5 flex-shrink-0">
+            <button class="px-2 py-1 bg-surface-container border border-surface-variant hover:border-[#88C0A4] text-xs rounded text-on-surface flex items-center gap-1">
+              <span class="material-symbols-outlined text-[13px]">calendar_today</span>
+              <span class="hidden sm:inline">Schedule</span>
             </button>
-            <button class="p-1 text-on-surface-variant hover:text-[#88C0A4] rounded" title="Archive">
+            <button class="p-1 text-on-surface-variant hover:text-[#88C0A4] rounded">
               <span class="material-symbols-outlined text-[16px]">archive</span>
             </button>
           </div>
         </div>
 
-        <!-- Item 3 -->
-        <div class="p-3.5 bg-surface-container-high border border-surface-variant rounded hover:border-[#88C0A4] transition-colors flex items-center justify-between gap-4">
-          <div class="flex items-center gap-3 flex-1">
-            <div class="w-2 h-2 rounded-full bg-on-surface-variant/50"></div>
-            <div>
-              <p class="text-sm font-medium text-on-surface">Follow up with treasurer regarding semester expense report</p>
-              <p class="text-xs text-on-surface-variant font-mono mt-0.5">WES Cell • 3 hours ago</p>
+        <div class="p-3 sm:p-3.5 bg-surface-container-high border border-surface-variant rounded hover:border-[#88C0A4] transition-colors flex items-center justify-between gap-3">
+          <div class="flex items-center gap-2.5 sm:gap-3 flex-1 min-w-0">
+            <div class="w-2 h-2 rounded-full bg-on-surface-variant/50 flex-shrink-0"></div>
+            <div class="truncate">
+              <p class="text-xs sm:text-sm font-medium text-on-surface truncate">Follow up with treasurer regarding semester expense report</p>
+              <p class="text-[11px] text-on-surface-variant font-mono mt-0.5">WES Cell • 3h ago</p>
             </div>
           </div>
-          <div class="flex items-center gap-2">
-            <button class="px-2.5 py-1 bg-surface-container border border-surface-variant hover:border-[#88C0A4] text-xs rounded text-on-surface flex items-center gap-1">
-              <span class="material-symbols-outlined text-[14px]">calendar_today</span>
-              Schedule
+          <div class="flex items-center gap-1.5 flex-shrink-0">
+            <button class="px-2 py-1 bg-surface-container border border-surface-variant hover:border-[#88C0A4] text-xs rounded text-on-surface flex items-center gap-1">
+              <span class="material-symbols-outlined text-[13px]">calendar_today</span>
+              <span class="hidden sm:inline">Schedule</span>
             </button>
-            <button class="p-1 text-on-surface-variant hover:text-[#88C0A4] rounded" title="Archive">
+            <button class="p-1 text-on-surface-variant hover:text-[#88C0A4] rounded">
               <span class="material-symbols-outlined text-[16px]">archive</span>
             </button>
           </div>
         </div>
 
-        <!-- Item 4 -->
-        <div class="p-3.5 bg-surface-container-high border border-surface-variant rounded hover:border-[#88C0A4] transition-colors flex items-center justify-between gap-4">
-          <div class="flex items-center gap-3 flex-1">
-            <div class="w-2 h-2 rounded-full bg-on-surface-variant/50"></div>
-            <div>
-              <p class="text-sm font-medium text-on-surface">Review orientation schedule for student mentorship volunteers</p>
-              <p class="text-xs text-on-surface-variant font-mono mt-0.5">Shared Document • Yesterday</p>
+        <div class="p-3 sm:p-3.5 bg-surface-container-high border border-surface-variant rounded hover:border-[#88C0A4] transition-colors flex items-center justify-between gap-3">
+          <div class="flex items-center gap-2.5 sm:gap-3 flex-1 min-w-0">
+            <div class="w-2 h-2 rounded-full bg-on-surface-variant/50 flex-shrink-0"></div>
+            <div class="truncate">
+              <p class="text-xs sm:text-sm font-medium text-on-surface truncate">Review orientation schedule for student mentorship volunteers</p>
+              <p class="text-[11px] text-on-surface-variant font-mono mt-0.5">Shared Doc • Yesterday</p>
             </div>
           </div>
-          <div class="flex items-center gap-2">
-            <button class="px-2.5 py-1 bg-surface-container border border-surface-variant hover:border-[#88C0A4] text-xs rounded text-on-surface flex items-center gap-1">
-              <span class="material-symbols-outlined text-[14px]">calendar_today</span>
-              Schedule
+          <div class="flex items-center gap-1.5 flex-shrink-0">
+            <button class="px-2 py-1 bg-surface-container border border-surface-variant hover:border-[#88C0A4] text-xs rounded text-on-surface flex items-center gap-1">
+              <span class="material-symbols-outlined text-[13px]">calendar_today</span>
+              <span class="hidden sm:inline">Schedule</span>
             </button>
-            <button class="p-1 text-on-surface-variant hover:text-[#88C0A4] rounded" title="Archive">
-              <span class="material-symbols-outlined text-[16px]">archive</span>
-            </button>
-          </div>
-        </div>
-
-        <!-- Item 5 -->
-        <div class="p-3.5 bg-surface-container-high border border-surface-variant rounded hover:border-[#88C0A4] transition-colors flex items-center justify-between gap-4">
-          <div class="flex items-center gap-3 flex-1">
-            <div class="w-2 h-2 rounded-full bg-on-surface-variant/50"></div>
-            <div>
-              <p class="text-sm font-medium text-on-surface">Renew domain name for student cell web showcase</p>
-              <p class="text-xs text-on-surface-variant font-mono mt-0.5">Email Forward • Yesterday</p>
-            </div>
-          </div>
-          <div class="flex items-center gap-2">
-            <button class="px-2.5 py-1 bg-surface-container border border-surface-variant hover:border-[#88C0A4] text-xs rounded text-on-surface flex items-center gap-1">
-              <span class="material-symbols-outlined text-[14px]">calendar_today</span>
-              Schedule
-            </button>
-            <button class="p-1 text-on-surface-variant hover:text-[#88C0A4] rounded" title="Archive">
-              <span class="material-symbols-outlined text-[16px]">archive</span>
-            </button>
-          </div>
-        </div>
-
-        <!-- Item 6 -->
-        <div class="p-3.5 bg-surface-container-high border border-surface-variant rounded hover:border-[#88C0A4] transition-colors flex items-center justify-between gap-4">
-          <div class="flex items-center gap-3 flex-1">
-            <div class="w-2 h-2 rounded-full bg-on-surface-variant/50"></div>
-            <div>
-              <p class="text-sm font-medium text-on-surface">Backup local database snapshots to encrypted cloud storage</p>
-              <p class="text-xs text-on-surface-variant font-mono mt-0.5">System Reminder • 2 days ago</p>
-            </div>
-          </div>
-          <div class="flex items-center gap-2">
-            <button class="px-2.5 py-1 bg-surface-container border border-surface-variant hover:border-[#88C0A4] text-xs rounded text-on-surface flex items-center gap-1">
-              <span class="material-symbols-outlined text-[14px]">calendar_today</span>
-              Schedule
-            </button>
-            <button class="p-1 text-on-surface-variant hover:text-[#88C0A4] rounded" title="Archive">
-              <span class="material-symbols-outlined text-[16px]">archive</span>
-            </button>
-          </div>
-        </div>
-
-        <!-- Item 7 -->
-        <div class="p-3.5 bg-surface-container-high border border-surface-variant rounded hover:border-[#88C0A4] transition-colors flex items-center justify-between gap-4">
-          <div class="flex items-center gap-3 flex-1">
-            <div class="w-2 h-2 rounded-full bg-on-surface-variant/50"></div>
-            <div>
-              <p class="text-sm font-medium text-on-surface">Print posters for campus innovation seminar</p>
-              <p class="text-xs text-on-surface-variant font-mono mt-0.5">Quick Clip • Nov 10</p>
-            </div>
-          </div>
-          <div class="flex items-center gap-2">
-            <button class="px-2.5 py-1 bg-surface-container border border-surface-variant hover:border-[#88C0A4] text-xs rounded text-on-surface flex items-center gap-1">
-              <span class="material-symbols-outlined text-[14px]">calendar_today</span>
-              Schedule
-            </button>
-            <button class="p-1 text-on-surface-variant hover:text-[#88C0A4] rounded" title="Archive">
-              <span class="material-symbols-outlined text-[16px]">archive</span>
-            </button>
-          </div>
-        </div>
-
-        <!-- Item 8 -->
-        <div class="p-3.5 bg-surface-container-high border border-surface-variant rounded hover:border-[#88C0A4] transition-colors flex items-center justify-between gap-4">
-          <div class="flex items-center gap-3 flex-1">
-            <div class="w-2 h-2 rounded-full bg-on-surface-variant/50"></div>
-            <div>
-              <p class="text-sm font-medium text-on-surface">Test multi-turn voice disambiguation on Android phone build</p>
-              <p class="text-xs text-on-surface-variant font-mono mt-0.5">Voice Note • Nov 09</p>
-            </div>
-          </div>
-          <div class="flex items-center gap-2">
-            <button class="px-2.5 py-1 bg-surface-container border border-surface-variant hover:border-[#88C0A4] text-xs rounded text-on-surface flex items-center gap-1">
-              <span class="material-symbols-outlined text-[14px]">calendar_today</span>
-              Schedule
-            </button>
-            <button class="p-1 text-on-surface-variant hover:text-[#88C0A4] rounded" title="Archive">
+            <button class="p-1 text-on-surface-variant hover:text-[#88C0A4] rounded">
               <span class="material-symbols-outlined text-[16px]">archive</span>
             </button>
           </div>
@@ -854,193 +682,106 @@
     </div>
 
     <!-- ==================== VIEW 3: RECURRING TASKS ==================== -->
-    <div id="view-recurring" class="view-page hidden max-w-4xl mx-auto space-y-5">
-      <div class="flex flex-col md:flex-row md:items-end justify-between gap-3 border-b border-surface-variant pb-4">
+    <div id="view-recurring" class="view-page hidden max-w-4xl mx-auto space-y-4 sm:space-y-5">
+      <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-3 border-b border-surface-variant pb-3 sm:pb-4">
         <div>
           <div class="flex items-center gap-2 mb-1">
             <span class="font-mono text-[#88C0A4] text-[11px] uppercase tracking-wider font-semibold">Repeating Schedules</span>
             <span class="text-surface-variant">•</span>
             <span class="font-mono text-[11px] text-on-surface-variant">6 active rules</span>
           </div>
-          <h2 class="text-2xl font-semibold text-on-surface tracking-tight">Recurring Tasks</h2>
-          <p class="text-xs text-on-surface-variant mt-1">
-            Tasks that automatically generate the next instance when marked complete.
+          <h2 class="text-xl sm:text-2xl font-semibold text-on-surface tracking-tight">Recurring Tasks</h2>
+          <p class="text-xs text-on-surface-variant mt-0.5">
+            Tasks that automatically spawn the next instance when completed.
           </p>
         </div>
-        <button class="px-3 py-1.5 bg-[#88C0A4] text-[#1E2124] rounded text-xs font-semibold hover:bg-[#9ECBB5] flex items-center gap-1.5">
+        <button class="px-3 py-1.5 bg-[#88C0A4] text-[#1E2124] rounded text-xs font-semibold hover:bg-[#9ECBB5] flex items-center gap-1.5 self-start sm:self-auto">
           <span class="material-symbols-outlined text-[16px]">add</span>
-          Add Recurrence Rule
+          Add Rule
         </button>
       </div>
 
-      <div class="space-y-3">
-        <!-- Rule 1: Weekly Sprint Sync -->
-        <div class="p-4 bg-surface-container-high border border-surface-variant rounded hover:border-[#88C0A4] transition-colors space-y-3">
-          <div class="flex items-start justify-between gap-4">
+      <div class="space-y-2.5 sm:space-y-3">
+        <!-- Rule 1 -->
+        <div class="p-3.5 sm:p-4 bg-surface-container-high border border-surface-variant rounded hover:border-[#88C0A4] transition-colors space-y-2.5">
+          <div class="flex items-start justify-between gap-3">
             <div class="space-y-1">
-              <div class="flex items-center gap-2">
-                <span class="text-sm font-semibold text-on-surface">Weekly team sprint sync &amp; deliverable check</span>
-                <span class="font-mono text-[10px] bg-[#88C0A4]/15 text-[#88C0A4] border border-[#88C0A4]/30 px-1.5 py-0.5 rounded font-semibold">
-                  EVERY MONDAY
+              <div class="flex items-center gap-2 flex-wrap">
+                <span class="text-xs sm:text-sm font-semibold text-on-surface">Weekly team sprint sync &amp; deliverable check</span>
+                <span class="font-mono text-[9px] sm:text-[10px] bg-[#88C0A4]/15 text-[#88C0A4] border border-[#88C0A4]/30 px-1.5 py-0.5 rounded font-semibold">
+                  EVERY MON
                 </span>
               </div>
               <p class="text-xs text-on-surface-variant">Review backlog milestones, triage blockers, and assign weekly targets.</p>
             </div>
-            <div class="flex items-center gap-2">
-              <span class="text-xs font-mono text-[#88C0A4]">Active</span>
-              <div class="w-8 h-4 bg-[#88C0A4] rounded-full relative cursor-pointer">
-                <div class="w-3 h-3 bg-[#1E2124] rounded-full absolute right-0.5 top-0.5"></div>
-              </div>
+            <div class="w-8 h-4 bg-[#88C0A4] rounded-full relative cursor-pointer flex-shrink-0">
+              <div class="w-3 h-3 bg-[#1E2124] rounded-full absolute right-0.5 top-0.5"></div>
             </div>
           </div>
-          <div class="flex items-center justify-between text-xs text-on-surface-variant pt-2 border-t border-surface-variant/60 font-mono text-[11px]">
-            <span>Next occurrence: Mon, Nov 16 at 10:00</span>
-            <span>Workspace: Engineering</span>
+          <div class="flex items-center justify-between text-xs text-on-surface-variant pt-2 border-t border-surface-variant/60 font-mono text-[10px] sm:text-[11px]">
+            <span>Next: Mon, Nov 16 at 10:00</span>
+            <span>Engineering</span>
           </div>
         </div>
 
-        <!-- Rule 2: Monthly Financial Reconciliation -->
-        <div class="p-4 bg-surface-container-high border border-surface-variant rounded hover:border-[#88C0A4] transition-colors space-y-3">
-          <div class="flex items-start justify-between gap-4">
+        <!-- Rule 2 -->
+        <div class="p-3.5 sm:p-4 bg-surface-container-high border border-surface-variant rounded hover:border-[#88C0A4] transition-colors space-y-2.5">
+          <div class="flex items-start justify-between gap-3">
             <div class="space-y-1">
-              <div class="flex items-center gap-2">
-                <span class="text-sm font-semibold text-on-surface">Submit monthly chapter expense report</span>
-                <span class="font-mono text-[10px] bg-[#FFBF00]/15 text-[#FFBF00] border border-[#FFBF00]/30 px-1.5 py-0.5 rounded font-semibold">
+              <div class="flex items-center gap-2 flex-wrap">
+                <span class="text-xs sm:text-sm font-semibold text-on-surface">Submit monthly chapter expense report</span>
+                <span class="font-mono text-[9px] sm:text-[10px] bg-[#FFBF00]/15 text-[#FFBF00] border border-[#FFBF00]/30 px-1.5 py-0.5 rounded font-semibold">
                   MONTHLY (1ST)
                 </span>
               </div>
               <p class="text-xs text-on-surface-variant">Reconcile coupon ledger, compile receipts, and share with WES office.</p>
             </div>
-            <div class="flex items-center gap-2">
-              <span class="text-xs font-mono text-[#88C0A4]">Active</span>
-              <div class="w-8 h-4 bg-[#88C0A4] rounded-full relative cursor-pointer">
-                <div class="w-3 h-3 bg-[#1E2124] rounded-full absolute right-0.5 top-0.5"></div>
-              </div>
+            <div class="w-8 h-4 bg-[#88C0A4] rounded-full relative cursor-pointer flex-shrink-0">
+              <div class="w-3 h-3 bg-[#1E2124] rounded-full absolute right-0.5 top-0.5"></div>
             </div>
           </div>
-          <div class="flex items-center justify-between text-xs text-on-surface-variant pt-2 border-t border-surface-variant/60 font-mono text-[11px]">
-            <span>Next occurrence: Tue, Dec 1 at 18:00</span>
-            <span>Workspace: WES Foundation</span>
+          <div class="flex items-center justify-between text-xs text-on-surface-variant pt-2 border-t border-surface-variant/60 font-mono text-[10px] sm:text-[11px]">
+            <span>Next: Tue, Dec 1 at 18:00</span>
+            <span>WES Foundation</span>
           </div>
         </div>
 
-        <!-- Rule 3: Daily Morning Review -->
-        <div class="p-4 bg-surface-container-high border border-surface-variant rounded hover:border-[#88C0A4] transition-colors space-y-3">
-          <div class="flex items-start justify-between gap-4">
+        <!-- Rule 3 -->
+        <div class="p-3.5 sm:p-4 bg-surface-container-high border border-surface-variant rounded hover:border-[#88C0A4] transition-colors space-y-2.5">
+          <div class="flex items-start justify-between gap-3">
             <div class="space-y-1">
-              <div class="flex items-center gap-2">
-                <span class="text-sm font-semibold text-on-surface">Daily morning dispatch review</span>
-                <span class="font-mono text-[10px] bg-surface-container text-[#88C0A4] border border-surface-variant px-1.5 py-0.5 rounded font-semibold">
+              <div class="flex items-center gap-2 flex-wrap">
+                <span class="text-xs sm:text-sm font-semibold text-on-surface">Daily morning dispatch review</span>
+                <span class="font-mono text-[9px] sm:text-[10px] bg-surface-container text-[#88C0A4] border border-surface-variant px-1.5 py-0.5 rounded font-semibold">
                   EVERY WEEKDAY
                 </span>
               </div>
               <p class="text-xs text-on-surface-variant">Check upcoming deadlines, high-priority issues, and voice reminders.</p>
             </div>
-            <div class="flex items-center gap-2">
-              <span class="text-xs font-mono text-[#88C0A4]">Active</span>
-              <div class="w-8 h-4 bg-[#88C0A4] rounded-full relative cursor-pointer">
-                <div class="w-3 h-3 bg-[#1E2124] rounded-full absolute right-0.5 top-0.5"></div>
-              </div>
+            <div class="w-8 h-4 bg-[#88C0A4] rounded-full relative cursor-pointer flex-shrink-0">
+              <div class="w-3 h-3 bg-[#1E2124] rounded-full absolute right-0.5 top-0.5"></div>
             </div>
           </div>
-          <div class="flex items-center justify-between text-xs text-on-surface-variant pt-2 border-t border-surface-variant/60 font-mono text-[11px]">
-            <span>Next occurrence: Mon, Nov 16 at 08:30</span>
-            <span>Workspace: Personal</span>
-          </div>
-        </div>
-
-        <!-- Rule 4: Bi-Weekly Mentor Check-In -->
-        <div class="p-4 bg-surface-container-high border border-surface-variant rounded hover:border-[#88C0A4] transition-colors space-y-3">
-          <div class="flex items-start justify-between gap-4">
-            <div class="space-y-1">
-              <div class="flex items-center gap-2">
-                <span class="text-sm font-semibold text-on-surface">Bi-weekly faculty advisor progress sync</span>
-                <span class="font-mono text-[10px] bg-surface-container text-[#88C0A4] border border-surface-variant px-1.5 py-0.5 rounded font-semibold">
-                  EVERY 2 WEEKS
-                </span>
-              </div>
-              <p class="text-xs text-on-surface-variant">Review research milestones and present working demo build.</p>
-            </div>
-            <div class="flex items-center gap-2">
-              <span class="text-xs font-mono text-[#88C0A4]">Active</span>
-              <div class="w-8 h-4 bg-[#88C0A4] rounded-full relative cursor-pointer">
-                <div class="w-3 h-3 bg-[#1E2124] rounded-full absolute right-0.5 top-0.5"></div>
-              </div>
-            </div>
-          </div>
-          <div class="flex items-center justify-between text-xs text-on-surface-variant pt-2 border-t border-surface-variant/60 font-mono text-[11px]">
-            <span>Next occurrence: Thu, Nov 26 at 15:00</span>
-            <span>Workspace: University</span>
-          </div>
-        </div>
-
-        <!-- Rule 5: Weekly Exercise & Physical Well-being -->
-        <div class="p-4 bg-surface-container-high border border-surface-variant rounded hover:border-[#88C0A4] transition-colors space-y-3">
-          <div class="flex items-start justify-between gap-4">
-            <div class="space-y-1">
-              <div class="flex items-center gap-2">
-                <span class="text-sm font-semibold text-on-surface">Weekend 5K run &amp; mobility training</span>
-                <span class="font-mono text-[10px] bg-surface-container text-[#78909C] border border-surface-variant px-1.5 py-0.5 rounded font-semibold">
-                  EVERY SATURDAY
-                </span>
-              </div>
-              <p class="text-xs text-on-surface-variant">Track split times and review recovery stats.</p>
-            </div>
-            <div class="flex items-center gap-2">
-              <span class="text-xs font-mono text-[#88C0A4]">Active</span>
-              <div class="w-8 h-4 bg-[#88C0A4] rounded-full relative cursor-pointer">
-                <div class="w-3 h-3 bg-[#1E2124] rounded-full absolute right-0.5 top-0.5"></div>
-              </div>
-            </div>
-          </div>
-          <div class="flex items-center justify-between text-xs text-on-surface-variant pt-2 border-t border-surface-variant/60 font-mono text-[11px]">
-            <span>Next occurrence: Sat, Nov 14 at 07:00</span>
-            <span>Workspace: Personal</span>
-          </div>
-        </div>
-
-        <!-- Rule 6: Quarterly Server Review -->
-        <div class="p-4 bg-surface-container-high border border-surface-variant rounded hover:border-[#88C0A4] transition-colors space-y-3">
-          <div class="flex items-start justify-between gap-4">
-            <div class="space-y-1">
-              <div class="flex items-center gap-2">
-                <span class="text-sm font-semibold text-on-surface">Quarterly security credential &amp; API token rotation</span>
-                <span class="font-mono text-[10px] bg-[#FFBF00]/15 text-[#FFBF00] border border-[#FFBF00]/30 px-1.5 py-0.5 rounded font-semibold">
-                  EVERY 3 MONTHS
-                </span>
-              </div>
-              <p class="text-xs text-on-surface-variant">Audit Supabase tokens, edge secrets, and GitHub deployment keys.</p>
-            </div>
-            <div class="flex items-center gap-2">
-              <span class="text-xs font-mono text-[#88C0A4]">Active</span>
-              <div class="w-8 h-4 bg-[#88C0A4] rounded-full relative cursor-pointer">
-                <div class="w-3 h-3 bg-[#1E2124] rounded-full absolute right-0.5 top-0.5"></div>
-              </div>
-            </div>
-          </div>
-          <div class="flex items-center justify-between text-xs text-on-surface-variant pt-2 border-t border-surface-variant/60 font-mono text-[11px]">
-            <span>Next occurrence: Jan 15, 2027</span>
-            <span>Workspace: Engineering</span>
+          <div class="flex items-center justify-between text-xs text-on-surface-variant pt-2 border-t border-surface-variant/60 font-mono text-[10px] sm:text-[11px]">
+            <span>Next: Mon, Nov 16 at 08:30</span>
+            <span>Personal</span>
           </div>
         </div>
       </div>
     </div>
 
     <!-- ==================== VIEW 4: SCHEDULE / CALENDAR ==================== -->
-    <div id="view-calendar" class="view-page hidden max-w-4xl mx-auto space-y-5">
-      <div class="flex flex-col md:flex-row md:items-end justify-between gap-3 border-b border-surface-variant pb-4">
+    <div id="view-calendar" class="view-page hidden max-w-4xl mx-auto space-y-4 sm:space-y-5">
+      <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-3 border-b border-surface-variant pb-3 sm:pb-4">
         <div>
           <div class="flex items-center gap-2 mb-1">
             <span class="font-mono text-[#88C0A4] text-[11px] uppercase tracking-wider font-semibold">Timeline &amp; Calendar</span>
             <span class="text-surface-variant">•</span>
-            <span class="font-mono text-[11px] text-on-surface-variant">Friday, Nov 13, 2026</span>
+            <span class="font-mono text-[11px] text-on-surface-variant">Friday, Nov 13</span>
           </div>
-          <h2 class="text-2xl font-semibold text-on-surface tracking-tight">Today's Schedule</h2>
-          <p class="text-xs text-on-surface-variant mt-1">
-            Time-blocked view of tasks, meetings, and scheduled milestones.
-          </p>
+          <h2 class="text-xl sm:text-2xl font-semibold text-on-surface tracking-tight">Today's Schedule</h2>
         </div>
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-1.5 self-start sm:self-auto">
           <button class="px-2.5 py-1 bg-surface-container border border-surface-variant text-xs rounded hover:border-[#88C0A4]">Day</button>
           <button class="px-2.5 py-1 bg-surface-container-high text-[#88C0A4] border border-[#88C0A4]/40 text-xs rounded font-medium">Week</button>
           <button class="px-2.5 py-1 bg-surface-container border border-surface-variant text-xs rounded hover:border-[#88C0A4]">Month</button>
@@ -1049,175 +790,98 @@
 
       <!-- Schedule Timeline Slots -->
       <div class="space-y-2">
-        <!-- 08:30 -->
-        <div class="flex items-start gap-4 p-3 bg-surface-container-high/60 border border-surface-variant/60 rounded">
-          <div class="w-16 font-mono text-xs text-[#88C0A4] pt-0.5">08:30 AM</div>
-          <div class="flex-1">
-            <p class="text-xs font-semibold text-on-surface">Daily planning &amp; morning audio review</p>
-            <p class="text-[11px] text-on-surface-variant">Completed • 25 min • Personal</p>
+        <div class="flex items-start gap-3 p-3 bg-surface-container-high/60 border border-surface-variant/60 rounded">
+          <div class="w-14 sm:w-16 font-mono text-[11px] sm:text-xs text-[#88C0A4] pt-0.5">08:30 AM</div>
+          <div class="flex-1 min-w-0">
+            <p class="text-xs font-semibold text-on-surface truncate">Daily planning &amp; morning audio review</p>
+            <p class="text-[11px] text-on-surface-variant">Completed • 25 min</p>
           </div>
-          <span class="font-mono text-[10px] text-[#88C0A4] bg-[#88C0A4]/10 px-2 py-0.5 rounded">DONE</span>
+          <span class="font-mono text-[9px] text-[#88C0A4] bg-[#88C0A4]/10 px-1.5 py-0.5 rounded">DONE</span>
         </div>
 
-        <!-- 10:00 -->
-        <div class="flex items-start gap-4 p-3 bg-surface-container-high/60 border border-surface-variant/60 rounded">
-          <div class="w-16 font-mono text-xs text-[#88C0A4] pt-0.5">10:00 AM</div>
-          <div class="flex-1">
-            <p class="text-xs font-semibold text-on-surface">Software Architecture lecture &amp; assignment check</p>
-            <p class="text-[11px] text-on-surface-variant">Completed • 1 hour 30 min • Hall B4</p>
+        <div class="flex items-start gap-3 p-3 bg-surface-container-high border border-surface-variant rounded">
+          <div class="w-14 sm:w-16 font-mono text-[11px] sm:text-xs text-[#FFBF00] pt-0.5">02:00 PM</div>
+          <div class="flex-1 min-w-0">
+            <p class="text-xs font-semibold text-on-surface truncate">Prepare presentation deck for Eureka! competition</p>
+            <p class="text-[11px] text-on-surface-variant">Slide rehearsal &amp; pitch</p>
           </div>
-          <span class="font-mono text-[10px] text-[#88C0A4] bg-[#88C0A4]/10 px-2 py-0.5 rounded">DONE</span>
+          <span class="font-mono text-[9px] text-[#FFBF00] bg-[#FFBF00]/10 px-1.5 py-0.5 rounded">NOW</span>
         </div>
 
-        <!-- 12:30 -->
-        <div class="flex items-start gap-4 p-3 bg-surface-container-high/60 border border-surface-variant/60 rounded">
-          <div class="w-16 font-mono text-xs text-[#88C0A4] pt-0.5">12:30 PM</div>
-          <div class="flex-1">
-            <p class="text-xs font-semibold text-on-surface">WES Foundation curriculum review sync</p>
-            <p class="text-[11px] text-on-surface-variant">Completed • 45 min • Chapter Room</p>
+        <div class="flex items-start gap-3 p-3 bg-surface-container-high border border-surface-variant rounded">
+          <div class="w-14 sm:w-16 font-mono text-[11px] sm:text-xs text-[#FF5252] pt-0.5">04:30 PM</div>
+          <div class="flex-1 min-w-0">
+            <p class="text-xs font-semibold text-on-surface truncate">Confirm robotics lab room reservation &amp; approvals</p>
+            <p class="text-[11px] text-on-surface-variant">Urgent milestone</p>
           </div>
-          <span class="font-mono text-[10px] text-[#88C0A4] bg-[#88C0A4]/10 px-2 py-0.5 rounded">DONE</span>
+          <span class="font-mono text-[9px] text-[#FF5252] bg-[#FF5252]/10 px-1.5 py-0.5 rounded">UPCOMING</span>
         </div>
 
-        <!-- 14:00 -->
-        <div class="flex items-start gap-4 p-3 bg-surface-container-high border border-surface-variant rounded">
-          <div class="w-16 font-mono text-xs text-[#FFBF00] pt-0.5">02:00 PM</div>
-          <div class="flex-1">
-            <p class="text-xs font-semibold text-on-surface">Prepare presentation deck for Eureka! competition</p>
-            <p class="text-[11px] text-on-surface-variant">In progress • 1 hr 30 min • Slide rehearsal</p>
+        <div class="flex items-start gap-3 p-3 bg-surface-container-high border border-surface-variant rounded">
+          <div class="w-14 sm:w-16 font-mono text-[11px] sm:text-xs text-[#FF5252] pt-0.5">06:00 PM</div>
+          <div class="flex-1 min-w-0">
+            <p class="text-xs font-semibold text-on-surface truncate">Deploy hotfix for authentication session regression</p>
+            <p class="text-[11px] text-on-surface-variant">Release build v0.5.2</p>
           </div>
-          <span class="font-mono text-[10px] text-[#FFBF00] bg-[#FFBF00]/10 px-2 py-0.5 rounded">NOW</span>
-        </div>
-
-        <!-- 16:30 -->
-        <div class="flex items-start gap-4 p-3 bg-surface-container-high border border-surface-variant rounded">
-          <div class="w-16 font-mono text-xs text-[#FF5252] pt-0.5">04:30 PM</div>
-          <div class="flex-1">
-            <p class="text-xs font-semibold text-on-surface">Confirm robotics lab room reservation &amp; security approvals</p>
-            <p class="text-[11px] text-on-surface-variant">Scheduled • Urgent milestone deadline</p>
-          </div>
-          <span class="font-mono text-[10px] text-[#FF5252] bg-[#FF5252]/10 px-2 py-0.5 rounded">UPCOMING</span>
-        </div>
-
-        <!-- 17:30 -->
-        <div class="flex items-start gap-4 p-3 bg-surface-container-high border border-surface-variant rounded">
-          <div class="w-16 font-mono text-xs text-on-surface-variant pt-0.5">05:30 PM</div>
-          <div class="flex-1">
-            <p class="text-xs font-semibold text-on-surface">Call department coordinator regarding elective course credits</p>
-            <p class="text-[11px] text-on-surface-variant">Scheduled • 15 min phone call</p>
-          </div>
-          <span class="font-mono text-[10px] text-on-surface-variant bg-surface-container px-2 py-0.5 rounded">SCHEDULED</span>
-        </div>
-
-        <!-- 18:00 -->
-        <div class="flex items-start gap-4 p-3 bg-surface-container-high border border-surface-variant rounded">
-          <div class="w-16 font-mono text-xs text-[#FF5252] pt-0.5">06:00 PM</div>
-          <div class="flex-1">
-            <p class="text-xs font-semibold text-on-surface">Deploy hotfix for authentication session regression</p>
-            <p class="text-[11px] text-on-surface-variant">Scheduled • Release candidate tag v0.5.2</p>
-          </div>
-          <span class="font-mono text-[10px] text-[#FF5252] bg-[#FF5252]/10 px-2 py-0.5 rounded">CRITICAL</span>
-        </div>
-
-        <!-- 20:30 -->
-        <div class="flex items-start gap-4 p-3 bg-surface-container-high border border-surface-variant rounded">
-          <div class="w-16 font-mono text-xs text-on-surface-variant pt-0.5">08:30 PM</div>
-          <div class="flex-1">
-            <p class="text-xs font-semibold text-on-surface">Coordinate WES Foundation student workshop syllabus</p>
-            <p class="text-[11px] text-on-surface-variant">Scheduled • Subtask checklist review</p>
-          </div>
-          <span class="font-mono text-[10px] text-on-surface-variant bg-surface-container px-2 py-0.5 rounded">SCHEDULED</span>
-        </div>
-
-        <!-- 22:00 -->
-        <div class="flex items-start gap-4 p-3 bg-surface-container-high/60 border border-surface-variant/60 rounded">
-          <div class="w-16 font-mono text-xs text-on-surface-variant pt-0.5">10:00 PM</div>
-          <div class="flex-1">
-            <p class="text-xs font-semibold text-on-surface">Evening wrap-up &amp; tomorrow's priorities</p>
-            <p class="text-[11px] text-on-surface-variant">Personal routine • 15 min</p>
-          </div>
-          <span class="font-mono text-[10px] text-on-surface-variant bg-surface-container px-2 py-0.5 rounded">SCHEDULED</span>
+          <span class="font-mono text-[9px] text-[#FF5252] bg-[#FF5252]/10 px-1.5 py-0.5 rounded">CRITICAL</span>
         </div>
       </div>
     </div>
 
     <!-- ==================== VIEW 5: SETTINGS & PREFERENCES ==================== -->
-    <div id="view-settings" class="view-page hidden max-w-4xl mx-auto space-y-5">
-      <div class="border-b border-surface-variant pb-4">
-        <h2 class="text-2xl font-semibold text-on-surface tracking-tight">Settings &amp; Preferences</h2>
-        <p class="text-xs text-on-surface-variant mt-1">
+    <div id="view-settings" class="view-page hidden max-w-4xl mx-auto space-y-4 sm:space-y-5">
+      <div class="border-b border-surface-variant pb-3 sm:pb-4">
+        <h2 class="text-xl sm:text-2xl font-semibold text-on-surface tracking-tight">Settings &amp; Preferences</h2>
+        <p class="text-xs text-on-surface-variant mt-0.5">
           Customize audio interaction, appearance, and synchronization options.
         </p>
       </div>
 
-      <div class="space-y-4">
-        <!-- Voice Assistant Section -->
-        <div class="p-4 bg-surface-container-high border border-surface-variant rounded space-y-3">
+      <div class="space-y-3 sm:space-y-4">
+        <div class="p-3.5 sm:p-4 bg-surface-container-high border border-surface-variant rounded space-y-2.5">
           <div class="flex items-center gap-2">
             <span class="material-symbols-outlined text-[18px] text-[#88C0A4]">mic</span>
-            <h3 class="text-sm font-semibold text-on-surface">AI Voice Assistant</h3>
+            <h3 class="text-xs sm:text-sm font-semibold text-on-surface">AI Voice Assistant</h3>
           </div>
           <p class="text-xs text-on-surface-variant">
             Waypoint extracts tasks, dates, and subtasks directly from spoken dictation.
           </p>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
-            <div class="p-3 bg-surface-container rounded border border-surface-variant/60 flex items-center justify-between">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+            <div class="p-2.5 sm:p-3 bg-surface-container rounded border border-surface-variant/60 flex items-center justify-between">
               <div>
                 <p class="text-xs font-medium text-on-surface">Voice Confirmation</p>
-                <p class="text-[11px] text-on-surface-variant">Speak back verified details before saving</p>
+                <p class="text-[11px] text-on-surface-variant">Speak back verified details</p>
               </div>
-              <div class="w-8 h-4 bg-[#88C0A4] rounded-full relative cursor-pointer">
+              <div class="w-8 h-4 bg-[#88C0A4] rounded-full relative cursor-pointer flex-shrink-0">
                 <div class="w-3 h-3 bg-[#1E2124] rounded-full absolute right-0.5 top-0.5"></div>
               </div>
             </div>
-            <div class="p-3 bg-surface-container rounded border border-surface-variant/60 flex items-center justify-between">
+            <div class="p-2.5 sm:p-3 bg-surface-container rounded border border-surface-variant/60 flex items-center justify-between">
               <div>
                 <p class="text-xs font-medium text-on-surface">Voice Speed</p>
-                <p class="text-[11px] text-on-surface-variant font-mono">1.05x (Optimal clarity)</p>
+                <p class="text-[11px] text-on-surface-variant font-mono">1.05x (Optimal)</p>
               </div>
               <span class="font-mono text-xs text-[#88C0A4]">Fast</span>
             </div>
           </div>
         </div>
 
-        <!-- Appearance & Theme -->
-        <div class="p-4 bg-surface-container-high border border-surface-variant rounded space-y-3">
-          <div class="flex items-center gap-2">
-            <span class="material-symbols-outlined text-[18px] text-[#88C0A4]">palette</span>
-            <h3 class="text-sm font-semibold text-on-surface">Theme &amp; Accent</h3>
-          </div>
-          <div class="flex items-center gap-4 pt-1">
-            <div class="flex items-center gap-2 cursor-pointer">
-              <div class="w-4 h-4 rounded-full bg-[#111417] border-2 border-[#88C0A4]"></div>
-              <span class="text-xs text-on-surface">Obsidian Dark (Active)</span>
-            </div>
-            <div class="flex items-center gap-2 opacity-50 cursor-not-allowed">
-              <div class="w-4 h-4 rounded-full bg-[#F8FAFC] border border-surface-variant"></div>
-              <span class="text-xs text-on-surface-variant">Light Mode (Coming soon)</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Offline & Cloud Sync -->
-        <div class="p-4 bg-surface-container-high border border-surface-variant rounded space-y-3">
+        <div class="p-3.5 sm:p-4 bg-surface-container-high border border-surface-variant rounded space-y-2.5">
           <div class="flex items-center gap-2">
             <span class="material-symbols-outlined text-[18px] text-[#88C0A4]">cloud_done</span>
-            <h3 class="text-sm font-semibold text-on-surface">Account &amp; Device Backup</h3>
+            <h3 class="text-xs sm:text-sm font-semibold text-on-surface">Account &amp; Device Backup</h3>
           </div>
-          <p class="text-xs text-on-surface-variant">
-            Your data is stored safely on this device and mirrors to your cloud workspace when online.
-          </p>
-          <div class="p-3 bg-surface-container rounded border border-surface-variant flex items-center justify-between">
-            <div class="flex items-center gap-3">
-              <div class="w-8 h-8 rounded bg-surface-container-high border border-surface-variant flex items-center justify-center font-mono text-xs text-[#88C0A4]">
+          <div class="p-2.5 sm:p-3 bg-surface-container rounded border border-surface-variant flex items-center justify-between">
+            <div class="flex items-center gap-3 truncate">
+              <div class="w-8 h-8 rounded bg-surface-container-high border border-surface-variant flex items-center justify-center font-mono text-xs text-[#88C0A4] flex-shrink-0">
                 LJ
               </div>
-              <div>
+              <div class="truncate">
                 <p class="text-xs font-semibold text-on-surface">Lakshya Jadhav</p>
-                <p class="text-[11px] text-on-surface-variant font-mono">user@waypoint.app • Pro Plan</p>
+                <p class="text-[11px] text-on-surface-variant font-mono truncate">user@waypoint.app • Pro Plan</p>
               </div>
             </div>
-            <span class="font-mono text-[11px] text-[#88C0A4] bg-[#88C0A4]/10 px-2 py-1 rounded">CONNECTED</span>
+            <span class="font-mono text-[10px] text-[#88C0A4] bg-[#88C0A4]/10 px-2 py-1 rounded flex-shrink-0">CONNECTED</span>
           </div>
         </div>
       </div>
@@ -1225,15 +889,15 @@
 
   </main>
 
-  <!-- 4. FLOATING BOTTOM COMMAND BAR (UNIFIED TYPING & VOICE UI) -->
-  <div class="fixed bottom-5 left-64 right-0 flex justify-center px-4 pointer-events-none z-50">
-    <div class="w-full max-w-2xl bg-surface-container-high/95 backdrop-blur-md border border-surface-variant rounded p-2 flex items-center gap-2.5 pointer-events-auto shadow-2xl">
+  <!-- 4. FLOATING BOTTOM COMMAND BAR (RESPONSIVE DOCKED ON PHONE, CENTERED ON DESKTOP) -->
+  <div class="fixed bottom-14 md:bottom-5 left-0 md:left-64 right-0 flex justify-center px-3 sm:px-4 pointer-events-none z-30">
+    <div class="w-full max-w-2xl bg-surface-container-high/95 backdrop-blur-md border border-surface-variant rounded p-1.5 sm:p-2 flex items-center gap-2 pointer-events-auto shadow-2xl">
       <!-- Command Input Field -->
-      <input id="quick-input" onkeydown="if(event.key==='Enter') quickAddTask()" class="flex-1 bg-transparent text-on-surface text-xs border-none focus:ring-0 focus:outline-none placeholder-on-surface-variant/60 pl-2" placeholder="Type a task command or tap mic to speak..." type="text"/>
+      <input id="quick-input" onkeydown="if(event.key==='Enter') quickAddTask()" class="flex-1 bg-transparent text-on-surface text-xs border-none focus:ring-0 focus:outline-none placeholder-on-surface-variant/60 pl-2" placeholder="Type a task command or tap mic..." type="text"/>
 
       <!-- Right Action Cluster -->
       <div class="flex items-center gap-1">
-        <!-- AI Voice Assistant Trigger (Matches Header Icon) -->
+        <!-- AI Voice Assistant Trigger -->
         <button onclick="showVoiceModal()" class="p-1.5 text-[#88C0A4] hover:bg-surface-container rounded transition-colors flex items-center justify-center" title="AI Voice Assistant">
           <span class="material-symbols-outlined text-[18px]">mic</span>
         </button>
@@ -1245,22 +909,47 @@
       </div>
     </div>
   </div>
+
+  <!-- 5. MOBILE BOTTOM NAVIGATION BAR (PHONE SCREENS ONLY) -->
+  <nav class="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-surface border-t border-surface-variant flex items-center justify-around h-14 px-2 safe-area-pb">
+    <button onclick="switchView('today')" id="mob-nav-today" class="mob-link flex flex-col items-center justify-center flex-1 py-1 text-[#88C0A4]">
+      <span class="material-symbols-outlined text-[20px]">calendar_today</span>
+      <span class="text-[10px] font-medium mt-0.5">Today</span>
+    </button>
+    <button onclick="switchView('inbox')" id="mob-nav-inbox" class="mob-link flex flex-col items-center justify-center flex-1 py-1 text-on-surface-variant">
+      <span class="material-symbols-outlined text-[20px]">inbox</span>
+      <span class="text-[10px] font-medium mt-0.5">Inbox</span>
+    </button>
+    <button onclick="switchView('recurring')" id="mob-nav-recurring" class="mob-link flex flex-col items-center justify-center flex-1 py-1 text-on-surface-variant">
+      <span class="material-symbols-outlined text-[20px]">repeat</span>
+      <span class="text-[10px] font-medium mt-0.5">Repeat</span>
+    </button>
+    <button onclick="switchView('calendar')" id="mob-nav-calendar" class="mob-link flex flex-col items-center justify-center flex-1 py-1 text-on-surface-variant">
+      <span class="material-symbols-outlined text-[20px]">event</span>
+      <span class="text-[10px] font-medium mt-0.5">Schedule</span>
+    </button>
+    <button onclick="switchView('settings')" id="mob-nav-settings" class="mob-link flex flex-col items-center justify-center flex-1 py-1 text-on-surface-variant">
+      <span class="material-symbols-outlined text-[20px]">tune</span>
+      <span class="text-[10px] font-medium mt-0.5">Settings</span>
+    </button>
+  </nav>
+
 </div>
 
 <!-- Simple Voice Overlay Modal Simulation -->
-<div id="voice-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4" onclick="if(event.target===this) hideVoiceModal()">
-  <div class="w-full max-w-md bg-surface-container-high border border-surface-variant rounded-lg p-6 space-y-4 shadow-2xl">
+<div id="voice-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4" onclick="if(event.target===this) hideVoiceModal()">
+  <div class="w-full max-w-sm sm:max-w-md bg-surface-container-high border border-surface-variant rounded-lg p-5 sm:p-6 space-y-4 shadow-2xl">
     <div class="flex items-center justify-between">
       <div class="flex items-center gap-2">
         <span class="material-symbols-outlined text-[#88C0A4] text-[20px]">mic</span>
         <h3 class="text-sm font-semibold text-on-surface">Voice Command</h3>
       </div>
-      <button onclick="hideVoiceModal()" class="text-on-surface-variant hover:text-on-surface">
+      <button onclick="hideVoiceModal()" class="text-on-surface-variant hover:text-on-surface p-1">
         <span class="material-symbols-outlined text-[18px]">close</span>
       </button>
     </div>
     <!-- Waveform Simulation -->
-    <div class="h-20 bg-surface-container rounded flex items-center justify-center gap-1 px-4">
+    <div class="h-16 sm:h-20 bg-surface-container rounded flex items-center justify-center gap-1 px-4">
       <div class="w-1 bg-[#88C0A4] h-6 rounded animate-pulse"></div>
       <div class="w-1 bg-[#88C0A4] h-12 rounded animate-pulse" style="animation-delay: 100ms"></div>
       <div class="w-1 bg-[#88C0A4] h-16 rounded animate-pulse" style="animation-delay: 200ms"></div>
@@ -1268,7 +957,7 @@
       <div class="w-1 bg-[#88C0A4] h-14 rounded animate-pulse" style="animation-delay: 150ms"></div>
       <div class="w-1 bg-[#88C0A4] h-5 rounded animate-pulse" style="animation-delay: 250ms"></div>
     </div>
-    <p class="text-xs text-center text-on-surface-variant font-mono">Listening... Speak a task, milestone, or date</p>
+    <p class="text-xs text-center text-on-surface-variant font-mono">Listening... Speak a task, date, or milestone</p>
     <div class="flex justify-center gap-2 pt-2">
       <button onclick="hideVoiceModal()" class="px-4 py-1.5 bg-[#88C0A4] text-[#1E2124] rounded text-xs font-semibold hover:bg-[#9ECBB5]">
         Done
@@ -1280,7 +969,7 @@
   </div>
 </div>
 
-<!-- Minimalist Navigation JS -->
+<!-- Minimalist Responsive Navigation JS -->
 <script>
   function switchView(viewId) {
     // 1. Hide all pages
@@ -1290,20 +979,18 @@
     const activePage = document.getElementById('view-' + viewId);
     if (activePage) activePage.classList.remove('hidden');
 
-    // 3. Reset all sidebar links
+    // 3. Reset all desktop sidebar links
     document.querySelectorAll('.nav-link').forEach(link => {
       link.classList.remove('bg-surface-container', 'text-[#88C0A4]', 'border-l-2', 'border-[#88C0A4]');
       link.classList.add('text-on-surface-variant');
     });
-
-    // 4. Activate current sidebar link
     const currentNav = document.getElementById('nav-' + viewId);
     if (currentNav) {
       currentNav.classList.remove('text-on-surface-variant');
       currentNav.classList.add('bg-surface-container', 'text-[#88C0A4]', 'border-l-2', 'border-[#88C0A4]');
     }
 
-    // 5. Update header navigation state
+    // 4. Update desktop header tabs
     document.querySelectorAll('.head-link').forEach(h => {
       h.classList.remove('text-[#88C0A4]', 'border-b-2', 'border-[#88C0A4]', 'font-medium');
       h.classList.add('text-on-surface-variant');
@@ -1312,6 +999,54 @@
     if (currentHead) {
       currentHead.classList.remove('text-on-surface-variant');
       currentHead.classList.add('text-[#88C0A4]', 'border-b-2', 'border-[#88C0A4]', 'font-medium');
+    }
+
+    // 5. Update mobile bottom navigation bar
+    document.querySelectorAll('.mob-link').forEach(m => {
+      m.classList.remove('text-[#88C0A4]');
+      m.classList.add('text-on-surface-variant');
+    });
+    const currentMob = document.getElementById('mob-nav-' + viewId);
+    if (currentMob) {
+      currentMob.classList.remove('text-on-surface-variant');
+      currentMob.classList.add('text-[#88C0A4]');
+    }
+
+    // 6. Update mobile top header title
+    const titleMap = {
+      'today': 'Today',
+      'inbox': 'Inbox',
+      'recurring': 'Recurring',
+      'calendar': 'Schedule',
+      'settings': 'Settings'
+    };
+    const mobTitle = document.getElementById('mobile-header-title');
+    if (mobTitle && titleMap[viewId]) {
+      mobTitle.textContent = titleMap[viewId];
+    }
+  }
+
+  function toggleMobileSidebar() {
+    const drawer = document.getElementById('sidebar-drawer');
+    const backdrop = document.getElementById('mobile-backdrop');
+    if (drawer && backdrop) {
+      const isClosed = drawer.classList.contains('-translate-x-full');
+      if (isClosed) {
+        drawer.classList.remove('-translate-x-full');
+        backdrop.classList.remove('hidden');
+      } else {
+        drawer.classList.add('-translate-x-full');
+        backdrop.classList.add('hidden');
+      }
+    }
+  }
+
+  function closeMobileSidebar() {
+    const drawer = document.getElementById('sidebar-drawer');
+    const backdrop = document.getElementById('mobile-backdrop');
+    if (drawer && backdrop) {
+      drawer.classList.add('-translate-x-full');
+      backdrop.classList.add('hidden');
     }
   }
 
@@ -1341,7 +1076,7 @@
     const input = document.getElementById('quick-input');
     const val = input.value.trim();
     if (!val) return;
-    alert('Task added to Today: ' + val);
+    alert('Task added: ' + val);
     input.value = '';
   }
 </script>
