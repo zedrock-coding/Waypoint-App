@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-enum WaypointNavView { today, inbox, recurring, schedule, settings, communities }
+enum WaypointNavView { today, inbox, recurring, schedule, settings, communities, account }
 
 class NavigationProvider with ChangeNotifier {
   String? _selectedCommunityId;
@@ -28,6 +28,8 @@ class NavigationProvider with ChangeNotifier {
     } else if (view == WaypointNavView.communities) {
       _currentRoute = '/communities';
       _selectedIndex = 1;
+    } else if (view == WaypointNavView.account) {
+      _currentRoute = '/account';
     }
     notifyListeners();
   }
@@ -61,6 +63,8 @@ class NavigationProvider with ChangeNotifier {
       _currentView = WaypointNavView.settings;
     } else if (route == '/categories' || route == '/communities') {
       _currentView = WaypointNavView.communities;
+    } else if (route == '/account') {
+      _currentView = WaypointNavView.account;
     }
     notifyListeners();
   }

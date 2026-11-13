@@ -34,6 +34,7 @@ import 'views/recurring_view.dart';
 import 'views/schedule_view.dart';
 import 'views/settings_view.dart';
 import 'views/communities_overview_view.dart';
+import 'views/account_view.dart';
 
 import 'auth_screen.dart';
 import 'settings_page.dart';
@@ -447,6 +448,12 @@ class _MyHomePageState extends State<MyHomePage> {
         case WaypointNavView.communities:
           title = 'Workspaces';
           body = CommunitiesOverviewView(
+            onBackToToday: () => navProvider.setView(WaypointNavView.today),
+          );
+          break;
+        case WaypointNavView.account:
+          title = 'Account';
+          body = AccountView(
             onBackToToday: () => navProvider.setView(WaypointNavView.today),
           );
           break;

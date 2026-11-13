@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../models/unified_task.dart';
 import '../providers/task_provider.dart';
 import '../services/ai_service.dart';
+import '../services/supabase_service.dart';
 import '../theme/app_theme.dart';
 
 void showTaskCreationDrawer(BuildContext context, {UnifiedTask? taskToEdit}) {
@@ -52,6 +53,8 @@ class _TaskCreationDrawerState extends State<TaskCreationDrawer> {
   TimeOfDay _selectedTime = const TimeOfDay(hour: 18, minute: 0);
   String _selectedRecurrence = 'none';
   String _selectedWorkspace = 'Personal';
+  String? _selectedCommunityId;
+  List<Map<String, dynamic>> _communities = [];
 
   bool _isGeneratingSubtasks = false;
   bool _titleError = false;
@@ -59,6 +62,7 @@ class _TaskCreationDrawerState extends State<TaskCreationDrawer> {
   @override
   void initState() {
     super.initState();
+    _loadCommunities();
     if (widget.taskToEdit != null) {
       final t = widget.taskToEdit!;
       _titleController.text = t.title;
@@ -73,9 +77,25 @@ class _TaskCreationDrawerState extends State<TaskCreationDrawer> {
       for (final s in t.subtasks) {
         _subtaskControllers.add(TextEditingController(text: s['title']?.toString() ?? ''));
       }
-    } else {
-      _subtaskControllers.add(TextEditingController(text: 'Review architecture & data contracts'));
     }
+  }
+
+  Future<void> _loadCommunities() async {
+    try {
+      final list = await SupabaseService().fetchUserCommunities();
+      if (mounted) {
+        setState(() {
+          _communities = list;
+          if (widget.taskToEdit != null && widget.taskToEdit!.communityId != null) {
+            final match = list.where((c) => c['id'] == widget.taskToEdit!.communityId).firstOrNull;
+            if (match != null) {
+              _selectedWorkspace = match['name']?.toString() ?? 'Personal';
+              _selectedCommunityId = match['id']?.toString();
+            }
+          }
+        });
+      }
+    } catch (_) {}
   }
 
   @override
@@ -215,6 +235,7 @@ class _TaskCreationDrawerState extends State<TaskCreationDrawer> {
         title: title,
         description: _descController.text.trim(),
         dueAt: dueDateTime,
+        categoryIds: [_selectedWorkspace.toLowerCase()],
         priority: _selectedPriority,
         subtasks: subtasksList,
         isRecurring: isRecurring,
@@ -222,9 +243,16 @@ class _TaskCreationDrawerState extends State<TaskCreationDrawer> {
       );
     } else {
       // Add new task
+      String? commId = _selectedWorkspace == 'Personal' ? null : _selectedCommunityId;
+      if (commId == null && _selectedWorkspace != 'Personal') {
+        final match = _communities.where((c) => (c['name'] ?? '') == _selectedWorkspace).firstOrNull;
+        commId = match?['id']?.toString();
+      }
+
       await taskProvider.addTask(
         title: title,
         description: _descController.text.trim(),
+        communityId: commId,
         dueAt: dueDateTime,
         priority: _selectedPriority,
         categoryIds: [_selectedWorkspace.toLowerCase()],
@@ -558,9 +586,21 @@ class _TaskCreationDrawerState extends State<TaskCreationDrawer> {
                     runSpacing: 8,
                     children: [
                       _buildWorkspaceChip('Personal', AppTheme.mint),
-                      _buildWorkspaceChip('Engineering', AppTheme.priorityHigh),
-                      _buildWorkspaceChip('WES Foundation', AppTheme.mint),
-                      _buildWorkspaceChip('Eureka! Showcase', AppTheme.priorityUrgent),
+                      ..._communities.asMap().entries.map((entry) {
+                        final idx = entry.key;
+                        final c = entry.value;
+                        final name = c['name']?.toString() ?? 'Workspace';
+                        final id = c['id']?.toString();
+                        const colors = [
+                          AppTheme.priorityHigh,
+                          AppTheme.priorityMedium,
+                          AppTheme.priorityLow,
+                          AppTheme.priorityUrgent,
+                          AppTheme.mint,
+                        ];
+                        final color = colors[idx % colors.length];
+                        return _buildWorkspaceChip(name, color, communityId: id);
+                      }),
                     ],
                   ),
 
@@ -804,10 +844,13 @@ class _TaskCreationDrawerState extends State<TaskCreationDrawer> {
     );
   }
 
-  Widget _buildWorkspaceChip(String label, Color dotColor) {
+  Widget _buildWorkspaceChip(String label, Color dotColor, {String? communityId}) {
     final isSelected = _selectedWorkspace == label;
     return InkWell(
-      onTap: () => setState(() => _selectedWorkspace = label),
+      onTap: () => setState(() {
+        _selectedWorkspace = label;
+        _selectedCommunityId = communityId;
+      }),
       borderRadius: BorderRadius.circular(4),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),

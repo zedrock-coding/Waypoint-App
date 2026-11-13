@@ -1,8 +1,26 @@
 param (
-    [Parameter(Mandatory = $true, HelpMessage = "Enter Supabase service_role key or secret key")]
     [string]$ApiKey,
     [switch]$Open
 )
+
+$scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+$keyFile = Join-Path $scriptDir "key.txt"
+$outFile = Join-Path $scriptDir "feedback_data.js"
+$htmlFile = Join-Path $scriptDir "admin.html"
+
+if (-not $ApiKey) {
+    if (Test-Path $keyFile) {
+        $ApiKey = (Get-Content $keyFile -Raw).Trim()
+    } elseif ($env:SUPABASE_SERVICE_ROLE_KEY) {
+        $ApiKey = $env:SUPABASE_SERVICE_ROLE_KEY.Trim()
+    }
+}
+
+if (-not $ApiKey) {
+    Write-Host "Missing API key." -ForegroundColor Red
+    Write-Host "Pass -ApiKey, or save key in tools/admin/key.txt." -ForegroundColor Yellow
+    exit 1
+}
 
 $url = "https://eknzdxexfcfdmqvbyvxt.supabase.co/rest/v1/feedback?select=*&order=created_at.desc"
 $headers = @{
@@ -10,12 +28,8 @@ $headers = @{
     "Authorization" = "Bearer " + $ApiKey.Trim()
 }
 
-$scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$outFile = Join-Path $scriptDir "feedback_data.js"
-$htmlFile = Join-Path $scriptDir "admin.html"
-
 try {
-    $response = Invoke-RestMethod -Uri $url -Headers $headers -Method Get
+    $response = Invoke-RestMethod -Uri $url -Headers $headers -Method Get -UserAgent "WaypointAdmin/1.0"
     
     # Handle single object or array correctly
     $items = @($response)

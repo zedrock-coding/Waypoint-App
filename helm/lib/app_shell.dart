@@ -10,6 +10,8 @@ import 'widgets/notification_feed.dart';
 import 'widgets/user_avatar.dart';
 import 'widgets/waypoint_logo.dart';
 import 'services/navigation_provider.dart';
+import 'services/sync_service.dart';
+import 'services/supabase_service.dart';
 import 'providers/task_provider.dart';
 import 'theme/app_theme.dart';
 
@@ -33,9 +35,99 @@ class AppShell extends StatefulWidget {
   State<AppShell> createState() => _AppShellState();
 }
 
-class _AppShellState extends State<AppShell> {
+class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin {
   bool _showDesktopNotifications = false;
   final LayerLink _notificationLayerLink = LayerLink();
+  bool _isSyncing = false;
+  late final AnimationController _syncSpinController;
+  List<Map<String, dynamic>> _communities = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _syncSpinController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    );
+    _loadCommunities();
+  }
+
+  @override
+  void dispose() {
+    _syncSpinController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadCommunities() async {
+    try {
+      final comms = await SupabaseService().fetchUserCommunities();
+      if (mounted) {
+        setState(() => _communities = comms);
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _triggerManualSync(BuildContext context, TaskProvider taskProvider) async {
+    if (_isSyncing) return;
+    setState(() => _isSyncing = true);
+    _syncSpinController.repeat();
+    try {
+      final flushed = await SyncService().processSyncQueue(force: true);
+      await taskProvider.loadRemoteTasks();
+      await _loadCommunities();
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              flushed > 0
+                  ? 'Synced $flushed pending change${flushed == 1 ? '' : 's'}'
+                  : 'All changes synced with cloud',
+              style: AppTheme.monoStyle(fontSize: 12, color: AppTheme.onSurface),
+            ),
+            backgroundColor: AppTheme.surfaceContainerHigh,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Sync failed: $e', style: AppTheme.monoStyle(fontSize: 12, color: AppTheme.priorityUrgent)),
+            backgroundColor: AppTheme.surfaceContainerHigh,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSyncing = false);
+        _syncSpinController.stop();
+        _syncSpinController.reset();
+      }
+    }
+  }
+
+  String _getUserDisplayName() {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) return 'User';
+    final metadata = user.userMetadata;
+    final fullName = metadata?['full_name']?.toString().trim();
+    if (fullName != null && fullName.isNotEmpty) {
+      return fullName;
+    }
+    final email = user.email;
+    if (email != null && email.isNotEmpty) {
+      final prefix = email.split('@').first.trim();
+      if (prefix.isNotEmpty) return prefix;
+    }
+    return 'User';
+  }
+
+  String? _getUserAvatarUrl() {
+    final user = Supabase.instance.client.auth.currentUser;
+    return user?.userMetadata?['avatar_url']?.toString();
+  }
 
   void _showAIVoiceOverlay(BuildContext context, bool isDesktop) {
     if (!isDesktop) {
@@ -115,7 +207,7 @@ class _AppShellState extends State<AppShell> {
                     Column(
                       children: [
                         // Top Header Bar
-                        _buildHeader(context, navProvider, isDesktop),
+                        _buildHeader(context, navProvider, taskProvider, isDesktop),
 
                         // Main Content View
                         Expanded(
@@ -377,45 +469,42 @@ class _AppShellState extends State<AppShell> {
                   ),
                 ),
 
-                _buildWorkspaceNavItem(
-                  name: 'WES Foundation',
-                  dotColor: AppTheme.mint,
-                  count: '5',
-                  onTap: () {
-                    navProvider.selectCommunity(null, name: 'WES Foundation');
-                    navProvider.setView(WaypointNavView.today);
-                  },
-                ),
-
-                _buildWorkspaceNavItem(
-                  name: 'Engineering & Code',
-                  dotColor: AppTheme.priorityHigh,
-                  count: '8',
-                  onTap: () {
-                    navProvider.selectCommunity(null, name: 'Engineering & Code');
-                    navProvider.setView(WaypointNavView.today);
-                  },
-                ),
-
-                _buildWorkspaceNavItem(
-                  name: 'Personal & Study',
-                  dotColor: AppTheme.priorityLow,
-                  count: '6',
-                  onTap: () {
-                    navProvider.selectCommunity(null, name: 'Personal & Study');
-                    navProvider.setView(WaypointNavView.today);
-                  },
-                ),
-
-                _buildWorkspaceNavItem(
-                  name: 'Eureka! Showcase',
-                  dotColor: AppTheme.priorityUrgent,
-                  count: '3',
-                  onTap: () {
-                    navProvider.selectCommunity(null, name: 'Eureka! Showcase');
-                    navProvider.setView(WaypointNavView.today);
-                  },
-                ),
+                if (_communities.isEmpty)
+                  ListTile(
+                    dense: true,
+                    visualDensity: const VisualDensity(horizontal: -2, vertical: -3),
+                    onTap: () => navProvider.setView(WaypointNavView.communities),
+                    leading: const Icon(Icons.add_circle_outline_rounded, size: 16, color: AppTheme.mint),
+                    title: const Text(
+                      '+ Add or Join Workspace',
+                      style: TextStyle(fontSize: 12, color: AppTheme.mint, fontWeight: FontWeight.w500),
+                    ),
+                  )
+                else
+                  ..._communities.asMap().entries.map((entry) {
+                    final idx = entry.key;
+                    final comm = entry.value;
+                    final name = comm['name']?.toString() ?? 'Workspace';
+                    final id = comm['id']?.toString();
+                    const colors = [
+                      AppTheme.mint,
+                      AppTheme.priorityHigh,
+                      AppTheme.priorityLow,
+                      AppTheme.priorityUrgent,
+                      AppTheme.priorityMedium,
+                    ];
+                    final dotColor = colors[idx % colors.length];
+                    final isSelected = navProvider.selectedCommunityId == id;
+                    return _buildWorkspaceNavItem(
+                      name: name,
+                      dotColor: dotColor,
+                      isSelected: isSelected,
+                      onTap: () {
+                        navProvider.selectCommunity(id, name: name);
+                        navProvider.setView(WaypointNavView.today);
+                      },
+                    );
+                  }),
               ],
             ),
           ),
@@ -429,45 +518,63 @@ class _AppShellState extends State<AppShell> {
             ),
             child: Column(
               children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: AppTheme.surfaceContainer,
-                    borderRadius: BorderRadius.circular(4),
-                    border: Border.all(color: AppTheme.surfaceVariant),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        children: [
-                          Container(
-                            width: 6,
-                            height: 6,
-                            decoration: const BoxDecoration(
-                              color: AppTheme.mint,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            'ALL CHANGES SAVED',
-                            style: AppTheme.monoStyle(
-                              fontSize: 9.5,
-                              fontWeight: FontWeight.w600,
-                              color: AppTheme.mint,
-                            ),
-                          ),
-                        ],
-                      ),
-                      Text(
-                        'Cloud Active',
-                        style: AppTheme.monoStyle(
-                          fontSize: 9,
-                          color: AppTheme.onSurfaceVariant,
+                InkWell(
+                  onTap: () {
+                    _triggerManualSync(context, taskProvider);
+                    _showSyncDiagnosticsModal(context, taskProvider);
+                  },
+                  borderRadius: BorderRadius.circular(4),
+                  child: ValueListenableBuilder<int>(
+                    valueListenable: SyncService().pendingChanges,
+                    builder: (context, pendingCount, _) {
+                      final hasPending = pendingCount > 0;
+                      final statusColor = hasPending ? AppTheme.priorityMedium : AppTheme.mint;
+                      final statusText = _isSyncing
+                          ? 'SYNCING...'
+                          : (hasPending ? '$pendingCount PENDING' : 'ALL CHANGES SAVED');
+
+                      return Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: AppTheme.surfaceContainer,
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(color: AppTheme.surfaceVariant),
                         ),
-                      ),
-                    ],
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  width: 6,
+                                  height: 6,
+                                  decoration: BoxDecoration(
+                                    color: statusColor,
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  statusText,
+                                  style: AppTheme.monoStyle(
+                                    fontSize: 9.5,
+                                    fontWeight: FontWeight.w600,
+                                    color: statusColor,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            Text(
+                              'Cloud Active',
+                              style: AppTheme.monoStyle(
+                                fontSize: 9,
+                                color: AppTheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -563,35 +670,135 @@ class _AppShellState extends State<AppShell> {
   Widget _buildWorkspaceNavItem({
     required String name,
     required Color dotColor,
-    required String count,
+    String? count,
+    bool isSelected = false,
     required VoidCallback onTap,
   }) {
-    return ListTile(
-      dense: true,
-      visualDensity: const VisualDensity(horizontal: -2, vertical: -3),
-      onTap: onTap,
-      leading: Container(
-        width: 6,
-        height: 6,
-        decoration: BoxDecoration(color: dotColor, shape: BoxShape.circle),
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 1),
+      decoration: BoxDecoration(
+        color: isSelected ? AppTheme.surfaceContainer : Colors.transparent,
+        borderRadius: BorderRadius.circular(4),
+        border: isSelected ? const Border(left: BorderSide(color: AppTheme.mint, width: 2)) : null,
       ),
-      title: Text(
-        name,
-        style: const TextStyle(fontSize: 12, color: AppTheme.onSurfaceVariant),
-        overflow: TextOverflow.ellipsis,
-      ),
-      trailing: Text(
-        count,
-        style: AppTheme.monoStyle(
-          fontSize: 10,
-          color: AppTheme.onSurfaceVariant.withValues(alpha: 0.6),
+      child: ListTile(
+        dense: true,
+        visualDensity: const VisualDensity(horizontal: -2, vertical: -3),
+        onTap: onTap,
+        leading: Container(
+          width: 6,
+          height: 6,
+          decoration: BoxDecoration(color: dotColor, shape: BoxShape.circle),
         ),
+        title: Text(
+          name,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+            color: isSelected ? AppTheme.mint : AppTheme.onSurfaceVariant,
+          ),
+          overflow: TextOverflow.ellipsis,
+        ),
+        trailing: count != null
+            ? Text(
+                count,
+                style: AppTheme.monoStyle(
+                  fontSize: 10,
+                  color: AppTheme.onSurfaceVariant.withValues(alpha: 0.6),
+                ),
+              )
+            : null,
       ),
     );
   }
 
+  void _showSyncDiagnosticsModal(BuildContext context, TaskProvider taskProvider) {
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setModalState) {
+          final pending = SyncService().pendingCount;
+          return AlertDialog(
+            backgroundColor: AppTheme.surfaceContainerHigh,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(6),
+              side: const BorderSide(color: AppTheme.surfaceVariant),
+            ),
+            titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 20),
+            actionsPadding: const EdgeInsets.all(16),
+            title: Row(
+              children: [
+                const Icon(Icons.sync_rounded, color: AppTheme.mint, size: 20),
+                const SizedBox(width: 8),
+                Text(
+                  'Sync Diagnostics',
+                  style: AppTheme.monoStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppTheme.onSurface),
+                ),
+              ],
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildDiagRow('Network / Cloud', 'Cloud Active', AppTheme.mint),
+                const SizedBox(height: 8),
+                _buildDiagRow('Pending Changes', '$pending', pending > 0 ? AppTheme.priorityMedium : AppTheme.mint),
+                const SizedBox(height: 8),
+                _buildDiagRow('Local Tasks Mirror', '${taskProvider.allActiveTasks.length} active', AppTheme.onSurfaceVariant),
+                const SizedBox(height: 8),
+                _buildDiagRow('Sync Strategy', 'Local-First (LWW)', AppTheme.onSurfaceVariant),
+                const Divider(color: AppTheme.surfaceVariant, height: 20),
+                Text(
+                  'Local mutations are queued in Hive and sent to Supabase automatically.',
+                  style: AppTheme.monoStyle(fontSize: 10, color: AppTheme.onSurfaceVariant.withValues(alpha: 0.7)),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: Text('Close', style: AppTheme.monoStyle(fontSize: 12, color: AppTheme.onSurfaceVariant)),
+              ),
+              ElevatedButton.icon(
+                onPressed: () async {
+                  await _triggerManualSync(context, taskProvider);
+                  if (ctx.mounted) setModalState(() {});
+                },
+                icon: const Icon(Icons.refresh_rounded, size: 14, color: AppTheme.onMint),
+                label: const Text('Flush Queue Now', style: TextStyle(fontSize: 12, color: AppTheme.onMint)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.mint,
+                  foregroundColor: AppTheme.onMint,
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildDiagRow(String label, String value, Color valueColor) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(label, style: const TextStyle(fontSize: 12, color: AppTheme.onSurfaceVariant)),
+        Text(value, style: AppTheme.monoStyle(fontSize: 12, fontWeight: FontWeight.w600, color: valueColor)),
+      ],
+    );
+  }
+
   // --- 2. TOP HEADER ---
-  Widget _buildHeader(BuildContext context, NavigationProvider navProvider, bool isDesktop) {
+  Widget _buildHeader(
+    BuildContext context,
+    NavigationProvider navProvider,
+    TaskProvider taskProvider,
+    bool isDesktop,
+  ) {
     return Container(
       height: 56,
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -758,6 +965,42 @@ class _AppShellState extends State<AppShell> {
 
               const SizedBox(width: 8),
 
+              // Interactive Sync Button (Desktop and Mobile)
+              ValueListenableBuilder<int>(
+                valueListenable: SyncService().pendingChanges,
+                builder: (context, pendingCount, _) {
+                  Widget iconWidget;
+                  if (_isSyncing) {
+                    iconWidget = RotationTransition(
+                      turns: _syncSpinController,
+                      child: const Icon(Icons.sync_rounded, size: 18, color: AppTheme.mint),
+                    );
+                  } else if (pendingCount > 0) {
+                    iconWidget = Badge(
+                      label: Text('$pendingCount', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
+                      backgroundColor: AppTheme.priorityMedium,
+                      textColor: Colors.black87,
+                      child: const Icon(Icons.sync_rounded, size: 18, color: AppTheme.priorityMedium),
+                    );
+                  } else {
+                    iconWidget = const Icon(Icons.sync_rounded, size: 18, color: AppTheme.onSurfaceVariant);
+                  }
+
+                  return IconButton(
+                    icon: iconWidget,
+                    tooltip: _isSyncing
+                        ? 'Syncing changes...'
+                        : (pendingCount > 0
+                            ? '$pendingCount pending change${pendingCount == 1 ? '' : 's'} (click to sync)'
+                            : 'Sync with cloud'),
+                    hoverColor: AppTheme.surfaceContainer,
+                    onPressed: _isSyncing ? null : () => _triggerManualSync(context, taskProvider),
+                  );
+                },
+              ),
+
+              const SizedBox(width: 4),
+
               // Notifications Bell with LayerLink Target
               CompositedTransformTarget(
                 link: _notificationLayerLink,
@@ -788,39 +1031,21 @@ class _AppShellState extends State<AppShell> {
 
               const SizedBox(width: 4),
 
-              // User Avatar with menu
-              PopupMenuButton<String>(
-                offset: const Offset(0, 40),
-                color: AppTheme.surfaceContainerHigh,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(4),
-                  side: const BorderSide(color: AppTheme.surfaceVariant),
+              // Dynamic User Profile Avatar (Desktop and Mobile)
+              InkWell(
+                onTap: () => navProvider.setView(WaypointNavView.account),
+                borderRadius: BorderRadius.circular(16),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                  child: Tooltip(
+                    message: 'Account (${_getUserDisplayName()})',
+                    child: UserAvatar(
+                      fullName: _getUserDisplayName(),
+                      avatarUrl: _getUserAvatarUrl(),
+                      radius: 14,
+                    ),
+                  ),
                 ),
-                child: const UserAvatar(fullName: 'Lakshya Jadhav', radius: 14),
-                onSelected: (val) {
-                  if (val == 'settings') {
-                    navProvider.setView(WaypointNavView.settings);
-                  } else if (val == 'communities') {
-                    navProvider.setView(WaypointNavView.communities);
-                  } else if (val == 'logout') {
-                    Supabase.instance.client.auth.signOut();
-                  }
-                },
-                itemBuilder: (ctx) => [
-                  PopupMenuItem(
-                    value: 'settings',
-                    child: Text('Settings & Preferences', style: AppTheme.monoStyle(fontSize: 12, color: AppTheme.onSurface)),
-                  ),
-                  PopupMenuItem(
-                    value: 'communities',
-                    child: Text('Manage Workspaces', style: AppTheme.monoStyle(fontSize: 12, color: AppTheme.onSurface)),
-                  ),
-                  const PopupMenuDivider(),
-                  PopupMenuItem(
-                    value: 'logout',
-                    child: Text('Log Out', style: AppTheme.monoStyle(fontSize: 12, color: AppTheme.priorityUrgent)),
-                  ),
-                ],
               ),
             ],
           ),
@@ -945,6 +1170,8 @@ class _AppShellState extends State<AppShell> {
         return 'Settings';
       case WaypointNavView.communities:
         return 'Workspaces';
+      case WaypointNavView.account:
+        return 'Account';
     }
   }
 }

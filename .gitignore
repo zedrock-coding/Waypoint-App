@@ -13,3 +13,5 @@ supabase/functions/.env.local
 *.log
 supabase/.temp/
 tools/admin/feedback_data.js
+tools/admin/key.txt
+tools/admin/.env

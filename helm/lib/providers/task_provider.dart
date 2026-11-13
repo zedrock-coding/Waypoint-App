@@ -106,6 +106,34 @@ class TaskProvider with ChangeNotifier {
     }
   }
 
+  /// Manually pull remote tasks from Supabase and refresh local cache.
+  Future<void> loadRemoteTasks() async {
+    final userId = _supabase.auth.currentUser?.id;
+    if (userId != null) {
+      try {
+        final remoteRows = await _supabase.from('tasks').select();
+        final sync = SyncService();
+        for (var d in remoteRows) {
+          final id = d['id'].toString();
+          final existing = _taskBox.get(id);
+          if (d['community_id'] != null && existing == null) continue;
+          final remote = _taskFromRow(d);
+          if (!shouldApplyRemoteUpdate(
+            localUpdatedAt: existing?.updatedAt,
+            remoteUpdatedAt: remote.updatedAt,
+            hasPendingWrite: sync.hasPending(id),
+          )) {
+            continue;
+          }
+          await _taskBox.put(id, remote);
+        }
+      } catch (e) {
+        debugPrint('loadRemoteTasks error: $e');
+      }
+    }
+    await _refreshPersonalTasks();
+  }
+
   void _setupSupabaseSync() {
     final userId = _supabase.auth.currentUser?.id;
     if (userId == null) return;
