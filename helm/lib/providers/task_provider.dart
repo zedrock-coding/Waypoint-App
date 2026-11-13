@@ -173,16 +173,19 @@ class TaskProvider with ChangeNotifier {
       // Deletes on another device never arrive as an event, so diff the
       // snapshot against the local mirror. Rows created offline and rows
       // with an unflushed write are excluded by the helper.
-      final stale = localRowsMissingRemotely(
-        localRows: _taskBox.values,
-        remoteIds: remoteIds,
-        hasPendingWrite: (task) => sync.hasPending(task.id!),
-      );
-      if (stale.isNotEmpty) {
-        debugPrint(
-          'TaskProvider: removing ${stale.length} task(s) deleted on another device',
+      // Guard: only diff when remoteIds is non-empty to prevent clearing on empty/offline snapshot.
+      if (remoteIds.isNotEmpty) {
+        final stale = localRowsMissingRemotely(
+          localRows: _taskBox.values,
+          remoteIds: remoteIds,
+          hasPendingWrite: (task) => sync.hasPending(task.id!),
         );
-        await _taskBox.deleteAll(stale);
+        if (stale.isNotEmpty) {
+          debugPrint(
+            'TaskProvider: removing ${stale.length} task(s) deleted on another device',
+          );
+          await _taskBox.deleteAll(stale);
+        }
       }
     });
   }
@@ -194,7 +197,7 @@ class TaskProvider with ChangeNotifier {
   /// subscription for the rest of the session.
   hive_model.Task _taskFromRow(Map<String, dynamic> d) {
     final createdAt = DateTime.tryParse(d['created_at']?.toString() ?? '');
-    final dueAt = DateTime.tryParse(d['due_at']?.toString() ?? '');
+    final dueAt = DateTime.tryParse(d['due_at']?.toString() ?? d['due_date']?.toString() ?? '');
     final updatedAt = DateTime.tryParse(d['updated_at']?.toString() ?? '');
 
     final rawCategories = d['category_ids'];
@@ -319,6 +322,9 @@ class TaskProvider with ChangeNotifier {
       try {
         if (action == SyncActionType.delete) {
           await _supabase.from(table).delete().eq('id', id);
+        } else if (action == SyncActionType.update) {
+          final patch = Map<String, dynamic>.from(payload)..remove('id');
+          await _supabase.from(table).update(patch).eq('id', id);
         } else {
           await _supabase.from(table).upsert(payload);
         }
@@ -432,6 +438,7 @@ class TaskProvider with ChangeNotifier {
         payload: taskData,
       );
     }
+    await _refreshPersonalTasks();
     return id;
   }
 
@@ -598,6 +605,7 @@ class TaskProvider with ChangeNotifier {
         payload: updates,
       );
     }
+    await _refreshPersonalTasks();
     notifyListeners();
   }
 
@@ -783,9 +791,8 @@ class TaskProvider with ChangeNotifier {
   // --- CALENDAR FEATURE ---
 
   List<UnifiedTask> get allTasksWithDueDates {
-    // Aggregates both Personal and Community tasks that have a deadline
+    // Aggregates both Personal and Community tasks that have a deadline or schedule date
     final List<UnifiedTask> tasks = _taskBox.values
-        .where((t) => t.dueAt != null)
         .map((t) => UnifiedTask.fromHive(t))
         .toList();
 
@@ -805,7 +812,7 @@ class TaskProvider with ChangeNotifier {
     if (active.isEmpty) return [];
 
     final dueTodayOrOverdue = active.where((t) {
-      final due = t.dueDate ?? t.dateTime;
+      final due = (t.dueDate ?? t.dateTime).toLocal();
       final dueDateOnly = DateTime(due.year, due.month, due.day);
       return dueDateOnly.isAtSameMomentAs(today) || dueDateOnly.isBefore(today);
     }).toList();
@@ -839,11 +846,20 @@ class TaskProvider with ChangeNotifier {
   List<UnifiedTask> get completedTasksToday {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    return _personalTasks.where((t) {
+    final all = _taskBox.values.map((t) => UnifiedTask.fromHive(t)).toList();
+    return all.where((t) {
       if (!t.isCompleted && t.status != Status.done) return false;
-      final updated = DateTime(t.updatedAt.year, t.updatedAt.month, t.updatedAt.day);
-      return updated.isAtSameMomentAs(today);
+      final updatedLocal = t.updatedAt.toLocal();
+      final updated = DateTime(updatedLocal.year, updatedLocal.month, updatedLocal.day);
+      final dueLocal = (t.dueDate ?? t.dateTime).toLocal();
+      final dueDateOnly = DateTime(dueLocal.year, dueLocal.month, dueLocal.day);
+      return updated.isAtSameMomentAs(today) || dueDateOnly.isAtSameMomentAs(today);
     }).toList();
+  }
+
+  List<UnifiedTask> get allCompletedTasks {
+    final all = _taskBox.values.map((t) => UnifiedTask.fromHive(t)).toList();
+    return all.where((t) => t.isCompleted || t.status == Status.done).toList();
   }
 
   Future<void> updateTaskStatus(UnifiedTask task, Status newStatus) async {
@@ -922,6 +938,7 @@ class TaskProvider with ChangeNotifier {
         payload: updates,
       );
     }
+    await _refreshPersonalTasks();
     notifyListeners();
   }
 

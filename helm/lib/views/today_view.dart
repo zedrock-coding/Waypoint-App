@@ -36,6 +36,8 @@ class _TodayViewState extends State<TodayView> {
       filteredTasks = activeTasks.where((t) => t.isRecurring || t.recurrenceRule != null).toList();
     } else if (_currentFilter == TodayFilter.highPriority) {
       filteredTasks = activeTasks.where((t) => t.priority == Priority.high).toList();
+    } else if (_currentFilter == TodayFilter.completed) {
+      filteredTasks = completedTasks.isNotEmpty ? completedTasks : taskProvider.allCompletedTasks;
     }
 
     final todayFormatted = DateFormat('EEEE, MMM d').format(DateTime.now());
@@ -171,7 +173,7 @@ class _TodayViewState extends State<TodayView> {
             ],
 
             // 3. Completed Section
-            if (completedTasks.isNotEmpty) ...[
+            if (completedTasks.isNotEmpty && _currentFilter != TodayFilter.completed) ...[
               const SizedBox(height: 20),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),

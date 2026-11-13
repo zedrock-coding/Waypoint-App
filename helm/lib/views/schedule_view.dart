@@ -28,8 +28,8 @@ class _ScheduleViewState extends State<ScheduleView> {
 
   List<UnifiedTask> _getEventsForDay(DateTime day, List<UnifiedTask> allTasks) {
     return allTasks.where((task) {
-      final due = task.dueDate ?? task.dateTime;
-      return isSameDay(due.toLocal(), day);
+      final due = (task.dueDate ?? task.dateTime).toLocal();
+      return isSameDay(due, day);
     }).toList();
   }
 
