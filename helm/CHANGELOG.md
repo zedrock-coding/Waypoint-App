@@ -4,6 +4,33 @@ All notable changes to the **Helm** / **Waypoint** project will be documented in
 
 ---
 
+## [0.6.0] - 2026-11-14
+
+### 🚀 Added
+- **Obsidian Precision Design System & Typography**:
+  - Dark Obsidian color tokens (`#111417` base/surface, `#191C1F` surfaceContainerLow, `#1D2023` surfaceContainer, `#272A2D` surfaceContainerHigh, `#323538` border/surfaceVariant, `#88C0A4` mint primary).
+  - High-readability font pairing: **Geist** for body text and UI labels, **JetBrains Mono** for metadata, timestamps, priority pills, and monospace task codes (`#TASK-XXXX`).
+  - Precision 4px card corner radii with crisp 1px borders.
+- **Adaptive Responsive Shell**:
+  - Desktop viewports (width ≥ 768px): persistent 256px left sidebar with brand header, "+ New Task" shortcut (`⌘N`), views navigation, workspaces list, and sync footer. Bottom navigation dock completely omitted.
+  - Mobile viewports (width < 768px): compact 56px bottom navigation dock with central `+` CTA and quick tabs. Left sidebar completely omitted.
+  - Header actions: Omni search (`⌘K`), quick `+ Add Task` (`⌘N`), AI Voice trigger (`mic`), notification bell, and user avatar.
+- **Slide-Over Task Creation Drawer with AI Subtask Decomposition**:
+  - Ergonomic slide-over drawer on desktop (`width: 480px`), animated bottom sheet on mobile.
+  - Full AI feature preservation: **"✨ AI Decompose"** button invoking `AiService.generateSubtasks()` to synthesize milestone checklists.
+  - Priority selector pills (Urgent, High, Med), interactive Date/Time pickers, recurrence cadence dropdown, workspace selectors, and dynamic checklist items.
+- **Curated Filtered Views & Communities Hub**:
+  - `TodayView`: Today's Focus header, live task metrics, filter chips (All Active, Recurring, High Priority, Completed), and collapsible completed tasks section.
+  - `InboxView`: Delegated tasks across shared workspaces.
+  - `RecurringView`: Automated recurring tasks configured to roll over on completion.
+  - `ScheduleView`: Interactive `TableCalendar` with Obsidian tokens and day task list.
+  - `CommunitiesOverviewView`: Dedicated workspace overview with "+ Create Community" and "Join via Code" dialogs.
+  - `SettingsView`: Voice assistant, theme, and notification preferences.
+- **Waypoint Diamond Monogram Vector Logo**:
+  - Precision vector `CustomPainter` rendering Waypoint diamond monogram with crisp anti-aliasing across sidebar, header, and dialogs.
+
+---
+
 ## [0.5.1] - 2026-11-10
 
 ### 🚀 Added

@@ -1,10 +1,10 @@
-# Waypoint 0.5.1 - Production Release 🚀
+# Waypoint 0.6.0 - Production Release 🚀
 
-**Waypoint 0.5.1** is an AI-orchestrated task management workspace. Evolved from Helm into a comprehensive, AI-powered team orchestration system. Optimized for **Android**, **Windows**, and **Web**, Waypoint provides a professional, reactive experience for real-time team collaboration and personal productivity.
+**Waypoint 0.6.0** is an AI-orchestrated task management workspace. Evolved from Helm into a comprehensive, AI-powered team orchestration system. Optimized for **Android**, **Windows**, and **Web**, Waypoint provides a professional, reactive experience for real-time team collaboration and personal productivity.
 
-![Aesthetic](https://img.shields.io/badge/Aesthetic-Slate%20%26%20Mint-88C0A4)
+![Aesthetic](https://img.shields.io/badge/Aesthetic-Obsidian%20%26%20Mint-88C0A4)
 ![Platform](https://img.shields.io/badge/Platform-Android%20%7C%20Windows%20%7C%20Web-blue)
-![Version](https://img.shields.io/badge/Version-0.5.1-green)
+![Version](https://img.shields.io/badge/Version-0.6.0-green)
 ![License](https://img.shields.io/badge/License-Source--Available-orange)
 
 ---
@@ -15,11 +15,37 @@ Get the latest build for your platform directly from the [Waypoint Releases](htt
 
 | Platform | Type | Direct Download Link |
 | :--- | :--- | :--- |
-| **Android** | APK (`v0.5.1`) | [📲 Download Android APK](https://github.com/zedrock-coding/Waypoint-App/releases/latest/download/waypoint-v0.5.1.apk) |
-| **Windows** | Executable (`v0.5.1`) | [💻 Download Windows App](https://github.com/zedrock-coding/Waypoint-App/releases/latest/download/Waypoint-v0.5.1-Setup.exe) |
+| **Android** | APK (`v0.6.0`) | [📲 Download Android APK](https://github.com/zedrock-coding/Waypoint-App/releases/latest/download/waypoint-v0.6.0.apk) |
+| **Windows** | Executable (`v0.6.0`) | [💻 Download Windows App](https://github.com/zedrock-coding/Waypoint-App/releases/latest/download/Waypoint-v0.6.0-Setup.exe) |
 | **Web** | Live Production PWA | [🌐 Launch Web App](https://helm-omega-blue.vercel.app) |
 
 *Alternative release mirrors: [Helm GitHub Releases](https://github.com/zedrock-coding/Helm/releases/latest)*
+
+---
+
+## 🌟 What's New in 0.6.0
+
+### 🎨 Obsidian Precision UI Overhaul & Typography
+*   **Obsidian Dark Palette**: Modernized UI aesthetic with `#111417` base/surface, `#191C1F` low surface, `#1D2023` standard surface, `#272A2D` elevated surface, and `#88C0A4` mint accent.
+*   **Geist & JetBrains Mono Fonts**: Typography powered by `google_fonts` pairing Geist for readable body and JetBrains Mono for monospace timestamps, task tags (`#TASK-XXXX`), and priority indicators.
+*   **Waypoint Diamond Vector Monogram**: Custom vector-painted geometric diamond emblem integrated throughout the navigation shell.
+
+### 📱 Adaptive Responsive Navigation Architecture
+*   **Desktop Shell (≥768px)**: Persistent 256px left sidebar with brand identity, keyboard shortcuts (`⌘N` Add Task, `⌘K` Search), views switcher, workspace directory, and sync badge. Bottom dock is omitted.
+*   **Mobile Shell (<768px)**: Compact 56px bottom navigation bar with central `+` quick-action button and one-tap view switches. Sidebar is omitted.
+*   **Omni Action Header**: Search input with keyboard triggering, instant Add Task CTA, AI Voice assistant button, notifications center, and user profile avatar.
+
+### 📝 Slide-Over Task Creation Drawer with AI Decompose
+*   **Slide-Over Presentation**: Smooth right slide-over drawer on desktop (`480px`) and responsive bottom sheet on mobile.
+*   **AI Milestone Synthesis**: Preserved **"✨ AI Decompose"** feature utilizing `AiService.generateSubtasks()` to convert complex prompts into step-by-step checklists.
+*   **Granular Scheduling**: Priority pills, calendar date & time pickers, recurring cadence rules (Daily, Weekly, Bi-Weekly, Monthly), and dynamic checklist management.
+
+### 🗂️ Curated Filtered Views & Communities Hub
+*   **Today's Focus**: Filterable feed (All Active, Recurring, High Priority, Completed) with progress counters and collapsible completed section.
+*   **Inbox**: Shared team feed displaying tasks assigned by others across communities.
+*   **Recurring**: Dedicated management of repeating cadence routines.
+*   **Schedule Calendar**: Integrated `TableCalendar` with Obsidian styling and day-by-day task lists.
+*   **Communities Hub**: Overview of team workspaces with one-tap Create and Join via Code dialogs.
 
 ---
 

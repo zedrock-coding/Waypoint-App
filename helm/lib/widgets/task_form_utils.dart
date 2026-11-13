@@ -1,32 +1,12 @@
 import 'package:flutter/material.dart';
-import '../add_event_page.dart';
 import '../models/unified_task.dart';
+import 'task_creation_drawer.dart';
 
-void showAddTaskForm(BuildContext context, {UnifiedTask? taskToEdit, String? initialCommunityId, String? category}) {
-  final double width = MediaQuery.of(context).size.width;
-
-  if (width < 800) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => AddEventPage(
-          taskToEdit: taskToEdit,
-          initialCommunityId: initialCommunityId, 
-          initialCategory: category,
-        ),
-      ),
-    );
-  } else {
-    showDialog(
-      context: context,
-      builder: (context) => Center(
-        child: AddEventPage(
-          taskToEdit: taskToEdit,
-          initialCommunityId: initialCommunityId, 
-          initialCategory: category,
-          isDialog: true,
-        ),
-      ),
-    );
-  }
+void showAddTaskForm(
+  BuildContext context, {
+  UnifiedTask? taskToEdit,
+  String? initialCommunityId,
+  String? category,
+}) {
+  showTaskCreationDrawer(context, taskToEdit: taskToEdit);
 }

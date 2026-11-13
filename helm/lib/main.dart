@@ -23,12 +23,17 @@ import 'widgets/task_item_card.dart';
 import 'widgets/task_card_skeleton.dart';
 import 'widgets/app_snackbar.dart';
 import 'widgets/empty_states.dart';
-import 'widgets/velocity_dashboard.dart';
 import 'widgets/task_form_utils.dart';
-import 'widgets/category_chip_bar.dart';
 import 'widgets/legal_dialog.dart';
 import 'widgets/command_bar.dart';
 import 'calendar_page.dart';
+
+import 'views/today_view.dart';
+import 'views/inbox_view.dart';
+import 'views/recurring_view.dart';
+import 'views/schedule_view.dart';
+import 'views/settings_view.dart';
+import 'views/communities_overview_view.dart';
 
 import 'auth_screen.dart';
 import 'settings_page.dart';
@@ -38,7 +43,6 @@ import 'about_page.dart';
 import 'task_detail_page.dart';
 import 'onboarding_page.dart';
 import 'account_settings_page.dart';
-import 'community_list_view.dart';
 import 'community_manage_page.dart';
 import 'app_shell.dart';
 import 'notification_service.dart';
@@ -345,42 +349,107 @@ class _MyHomePageState extends State<MyHomePage> {
     _detailScope = scope;
     
     final double width = MediaQuery.of(context).size.width;
-    final bool isDesktop = width > 900;
+    final bool isDesktop = width >= 768;
 
     Widget body;
     String title = 'Waypoint';
     List<Widget> appBarActions = [];
 
-    if (navProvider.selectedIndex == 0) {
-      title = 'Personal Tasks';
-      body = _buildPersonalTasksView(isDesktop, taskProvider);
+    if (navProvider.selectedCommunityId != null) {
+      title = navProvider.selectedCommunityName ?? 'Community Workspace';
+      appBarActions = [
+        IconButton(
+          icon: const Icon(Icons.group_outlined),
+          onPressed: () {
+            Navigator.pushNamed(
+              context, 
+              '/manage-community',
+              arguments: {
+                'id': navProvider.selectedCommunityId,
+                'name': navProvider.selectedCommunityName ?? 'Community', 
+              },
+            );
+          },
+          tooltip: 'Manage Members',
+        ),
+        IconButton(
+          icon: const Icon(Icons.close),
+          onPressed: () => navProvider.selectCommunity(null),
+        ),
+      ];
+      body = _buildSupabaseTaskStream(navProvider.selectedCommunityId!, taskProvider, isDesktop);
     } else {
-      if (navProvider.selectedCommunityId != null) {
-        title = 'Community Workspace';
-        appBarActions = [
-          IconButton(
-            icon: const Icon(Icons.group_outlined),
-            onPressed: () {
-              Navigator.pushNamed(
-                context, 
-                '/manage-community',
-                arguments: {
-                  'id': navProvider.selectedCommunityId,
-                  'name': navProvider.selectedCommunityName ?? 'Community', 
-                },
-              );
+      switch (navProvider.currentView) {
+        case WaypointNavView.today:
+          title = 'Today';
+          body = TodayView(
+            onTaskTap: (task) {
+              if (isDesktop) {
+                setState(() => _selectedTaskId = task.id);
+              } else {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => TaskDetailScreen(task: task)),
+                );
+              }
             },
-            tooltip: 'Manage Members',
-          ),
-          IconButton(
-            icon: const Icon(Icons.close),
-            onPressed: () => navProvider.selectCommunity(null),
-          ),
-        ];
-        body = _buildSupabaseTaskStream(navProvider.selectedCommunityId!, taskProvider, isDesktop);
-      } else {
-        title = 'Communities';
-        body = const CommunityListView();
+          );
+          break;
+        case WaypointNavView.inbox:
+          title = 'Inbox';
+          body = InboxView(
+            onTaskTap: (task) {
+              if (isDesktop) {
+                setState(() => _selectedTaskId = task.id);
+              } else {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => TaskDetailScreen(task: task)),
+                );
+              }
+            },
+          );
+          break;
+        case WaypointNavView.recurring:
+          title = 'Recurring';
+          body = RecurringView(
+            onTaskTap: (task) {
+              if (isDesktop) {
+                setState(() => _selectedTaskId = task.id);
+              } else {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => TaskDetailScreen(task: task)),
+                );
+              }
+            },
+          );
+          break;
+        case WaypointNavView.schedule:
+          title = 'Schedule';
+          body = ScheduleView(
+            onTaskTap: (task) {
+              if (isDesktop) {
+                setState(() => _selectedTaskId = task.id);
+              } else {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => TaskDetailScreen(task: task)),
+                );
+              }
+            },
+          );
+          break;
+        case WaypointNavView.settings:
+          title = 'Settings';
+          body = const SettingsView();
+          break;
+        case WaypointNavView.communities:
+          title = 'Workspaces';
+          body = CommunitiesOverviewView(
+            onBackToToday: () => navProvider.setView(WaypointNavView.today),
+          );
+          break;
       }
     }
 
@@ -455,67 +524,6 @@ class _MyHomePageState extends State<MyHomePage> {
     return panel(findTaskById(taskProvider.personalTasks, id));
   }
 
-  Widget _buildPersonalTasksView(bool isDesktop, TaskProvider taskProvider) {
-    final tasks = taskProvider.personalTasks;
-    return Column(
-      children: [
-        _buildVelocityDashboard(),
-        CategoryChipBar(
-          selectedCategoryId: taskProvider.selectedCategoryId,
-          onSelected: (id) => taskProvider.selectCategory(id),
-        ),
-        Expanded(
-          child: tasks.isEmpty 
-          ? const DashboardEmptyState()
-          : ReorderableListView.builder(
-            padding: const EdgeInsets.only(bottom: 100),
-            itemCount: tasks.length,
-            onReorder: (oldIndex, newIndex) {
-              taskProvider.reorderTasks(oldIndex, newIndex);
-            },
-            onReorderStart: (_) => HapticFeedback.mediumImpact(),
-            proxyDecorator: (child, index, animation) => WobbleDecorator(child: child),
-            buildDefaultDragHandles: false,
-            itemBuilder: (context, index) {
-              final unifiedTask = tasks[index];
-              return TaskItemCard(
-                key: ValueKey('p_task_${unifiedTask.id}'),
-                task: unifiedTask,
-                index: index,
-                onTap: () {
-                  if (isDesktop) {
-                    setState(() => _selectedTaskId = unifiedTask.id);
-                  } else {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => TaskDetailScreen(task: unifiedTask),
-                      ),
-                    );
-                  }
-                },
-                onToggle: () => taskProvider.toggleTask(unifiedTask),
-                onDismiss: (direction) async {
-                  final taskToDelete = unifiedTask;
-                  await taskProvider.deleteTask(taskToDelete.id, taskBackup: taskToDelete);
-                  
-                  if (context.mounted) {
-                    AppSnackBar.showUndo(
-                      context: context,
-                      message: 'Task deleted',
-                      onUndo: () => taskProvider.undoDelete(),
-                      duration: const Duration(seconds: 5),
-                    );
-                  }
-                },
-              );
-            },
-          ),
-        ),
-      ],
-    );
-  }
-
   Widget _buildSupabaseTaskStream(String communityId, TaskProvider taskProvider, bool isDesktop) {
     return StreamBuilder<List<UnifiedTask>>(
       stream: taskProvider.communityTasksStream(communityId),
@@ -569,22 +577,6 @@ class _MyHomePageState extends State<MyHomePage> {
           },
         );
       },
-    );
-  }
-
-  Widget _buildVelocityDashboard() {
-    final taskProvider = context.watch<TaskProvider>();
-    final tasks = taskProvider.personalTasks;
-    final now = DateTime.now();
-    final todayTasks = tasks.where((t) {
-      return t.dateTime.year == now.year &&
-             t.dateTime.month == now.month &&
-             t.dateTime.day == now.day;
-    }).toList();
-
-    return VelocityDashboardCard(
-      totalTasksToday: todayTasks.length,
-      completedTasksToday: todayTasks.where((t) => t.isCompleted).length,
     );
   }
 }

@@ -768,6 +768,56 @@ class TaskProvider with ChangeNotifier {
     return tasks;
   }
 
+  // --- WAYPOINT VIEWS GETTERS ---
+
+  List<UnifiedTask> get tasksForToday {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final active = _personalTasks.where((t) => !t.isCompleted && t.status != Status.done).toList();
+    if (active.isEmpty) return [];
+
+    final dueTodayOrOverdue = active.where((t) {
+      final due = t.dueDate ?? t.dateTime;
+      final dueDateOnly = DateTime(due.year, due.month, due.day);
+      return dueDateOnly.isAtSameMomentAs(today) || dueDateOnly.isBefore(today);
+    }).toList();
+
+    // If specific tasks are due today/overdue, return them, else return open active tasks
+    return dueTodayOrOverdue.isNotEmpty ? dueTodayOrOverdue : active;
+  }
+
+  List<UnifiedTask> get allActiveTasks {
+    return _personalTasks.where((t) => !t.isCompleted && t.status != Status.done).toList();
+  }
+
+  List<UnifiedTask> get tasksAssignedByOthers {
+    final currentUserId = _supabase.auth.currentUser?.id;
+    final List<UnifiedTask> all = _taskBox.values.map((t) => UnifiedTask.fromHive(t)).toList();
+    return all.where((t) {
+      if (t.isCompleted || t.status == Status.done) return false;
+      final isFromOther = currentUserId != null && t.userId != null && t.userId != currentUserId;
+      final isAssignedToMe = currentUserId != null && t.assignees.contains(currentUserId);
+      return (isFromOther && (isAssignedToMe || t.communityId != null));
+    }).toList();
+  }
+
+  List<UnifiedTask> get recurringTasks {
+    final List<UnifiedTask> all = _taskBox.values.map((t) => UnifiedTask.fromHive(t)).toList();
+    return all.where((t) {
+      return t.isRecurring == true || t.recurrenceRule != null;
+    }).toList();
+  }
+
+  List<UnifiedTask> get completedTasksToday {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    return _personalTasks.where((t) {
+      if (!t.isCompleted && t.status != Status.done) return false;
+      final updated = DateTime(t.updatedAt.year, t.updatedAt.month, t.updatedAt.day);
+      return updated.isAtSameMomentAs(today);
+    }).toList();
+  }
+
   Future<void> updateTaskStatus(UnifiedTask task, Status newStatus) async {
     final hiveTask = _taskBox.get(task.id);
     if (hiveTask != null) {

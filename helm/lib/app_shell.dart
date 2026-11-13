@@ -7,12 +7,11 @@ import 'widgets/task_search_delegate.dart';
 import 'widgets/app_intents.dart';
 import 'widgets/task_form_utils.dart';
 import 'widgets/notification_feed.dart';
-import 'widgets/notification_bell.dart';
 import 'widgets/user_avatar.dart';
-import 'services/supabase_service.dart';
+import 'widgets/waypoint_logo.dart';
 import 'services/navigation_provider.dart';
-import 'features/sync/presentation/widgets/sync_badge.dart';
-import 'core/ui/responsive_clamp.dart';
+import 'providers/task_provider.dart';
+import 'theme/app_theme.dart';
 
 class AppShell extends StatefulWidget {
   final Widget child;
@@ -37,7 +36,6 @@ class AppShell extends StatefulWidget {
 class _AppShellState extends State<AppShell> {
   bool _showDesktopNotifications = false;
   final LayerLink _notificationLayerLink = LayerLink();
-  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   void _showAIVoiceOverlay(BuildContext context, bool isDesktop) {
     if (!isDesktop) {
@@ -50,12 +48,13 @@ class _AppShellState extends State<AppShell> {
     } else {
       showDialog(
         context: context,
-        barrierColor: Colors.black26,
+        barrierColor: Colors.black45,
         builder: (ctx) => Center(
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 400),
+            constraints: const BoxConstraints(maxWidth: 420),
             child: const Dialog(
               backgroundColor: Colors.transparent,
+              elevation: 0,
               child: AIVoiceOverlay(),
             ),
           ),
@@ -66,773 +65,886 @@ class _AppShellState extends State<AppShell> {
 
   @override
   Widget build(BuildContext context) {
-    final supabaseService = SupabaseService();
     final navProvider = context.watch<NavigationProvider>();
+    final taskProvider = context.watch<TaskProvider>();
+    final width = MediaQuery.of(context).size.width;
+    final isDesktop = width >= 768; // Desktop threshold matching mockup md: breakpoint
 
-    final double width = MediaQuery.of(context).size.width;
-    final bool isDesktop = width >= 800;
-    final ColorScheme colorScheme = Theme.of(context).colorScheme;
-
-    Widget navItem({
-      required IconData icon,
-      required String label,
-      required String route,
-      String? communityId,
-      bool isSubItem = false,
-    }) {
-      final bool isCurrentRoute =
-          ModalRoute.of(context)?.settings.name == route;
-
-      bool isActive;
-      if (communityId != null) {
-        isActive = navProvider.selectedCommunityId == communityId;
-      } else if (route == '/') {
-        isActive =
-            navProvider.currentRoute == '/' && navProvider.selectedIndex == 0;
-      } else {
-        isActive = navProvider.currentRoute == route;
-      }
-
-      return Padding(
-        padding: EdgeInsets.symmetric(
-          horizontal: isSubItem ? 8 : 12,
-          vertical: 4,
-        ),
-        child: InkWell(
-          onTap: () {
-            if (communityId != null) {
-              navProvider.selectCommunity(communityId, name: label);
-            } else {
-              navProvider.setRoute(route);
-            }
-
-            if (!isDesktop) Navigator.pop(context);
-
-            if (!isCurrentRoute) {
-              final String targetRoute = communityId != null ? '/' : route;
-              Navigator.pushReplacementNamed(context, targetRoute);
-            }
-          },
-          borderRadius: BorderRadius.circular(12),
-          child: Container(
-            padding: EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: isSubItem ? 8 : 12,
-            ),
-            decoration: BoxDecoration(
-              color: isActive
-                  ? colorScheme.primary.withValues(alpha: 0.15)
-                  : Colors.transparent,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  icon,
-                  color: isActive
-                      ? colorScheme.primary
-                      : colorScheme.onSurface.withValues(alpha: 0.6),
-                  size: isSubItem ? 18 : 22,
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Text(
-                    label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: isActive
-                          ? colorScheme.primary
-                          : colorScheme.onSurface.withValues(alpha: 0.6),
-                      fontWeight: isActive
-                          ? FontWeight.bold
-                          : FontWeight.normal,
-                      fontSize: isSubItem ? 14 : 15,
-                    ),
-                  ),
-                ),
-              ],
-            ),
+    return Shortcuts(
+      shortcuts: <LogicalKeySet, Intent>{
+        LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyF): const SearchIntent(),
+        LogicalKeySet(LogicalKeyboardKey.meta, LogicalKeyboardKey.keyF): const SearchIntent(),
+        LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyN): const NewTaskIntent(),
+        LogicalKeySet(LogicalKeyboardKey.meta, LogicalKeyboardKey.keyN): const NewTaskIntent(),
+        LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.space): const AIVoiceIntent(),
+        LogicalKeySet(LogicalKeyboardKey.meta, LogicalKeyboardKey.space): const AIVoiceIntent(),
+        LogicalKeySet(LogicalKeyboardKey.escape): const EscapeIntent(),
+      },
+      child: Actions(
+        actions: <Type, Action<Intent>>{
+          SearchIntent: CallbackAction<SearchIntent>(
+            onInvoke: (_) => showSearch(context: context, delegate: CustomTaskSearchDelegate()),
           ),
-        ),
-      );
-    }
-
-    void showFeedbackModal(BuildContext context) {
-      final textController = TextEditingController();
-      String feedbackType = 'General Feedback';
-      showDialog(
-        context: context,
-        builder: (ctx) => StatefulBuilder(
-          builder: (ctx, setDialogState) => AlertDialog(
-            backgroundColor: const Color(0xFF222528),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
-              side: const BorderSide(color: Color(0xFF3A3D40), width: 1),
-            ),
-            title: const Row(
-              children: [
-                Icon(Icons.feedback_outlined, color: Color(0xFF88C0A4)),
-                SizedBox(width: 10),
-                Text('Support & Feedback', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-              ],
-            ),
-            content: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('Category', style: TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w600)),
-                  const SizedBox(height: 6),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF2D2F31),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: const Color(0xFF3A3D40)),
-                    ),
-                    child: DropdownButtonHideUnderline(
-                      child: DropdownButton<String>(
-                        value: feedbackType,
-                        isExpanded: true,
-                        dropdownColor: const Color(0xFF2D2F31),
-                        items: const [
-                          DropdownMenuItem(value: 'General Feedback', child: Text('General Feedback', style: TextStyle(color: Colors.white))),
-                          DropdownMenuItem(value: 'Bug Report', child: Text('Bug Report', style: TextStyle(color: Colors.white))),
-                          DropdownMenuItem(value: 'Feature Request', child: Text('Feature Request', style: TextStyle(color: Colors.white))),
-                        ],
-                        onChanged: (val) {
-                          if (val != null) setDialogState(() => feedbackType = val);
-                        },
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  const Text('Your Message', style: TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w600)),
-                  const SizedBox(height: 6),
-                  TextField(
-                    controller: textController,
-                    maxLines: 4,
-                    style: const TextStyle(color: Colors.white, fontSize: 14),
-                    decoration: InputDecoration(
-                      hintText: 'Describe your feedback or issue...',
-                      hintStyle: const TextStyle(color: Colors.white38),
-                      filled: true,
-                      fillColor: const Color(0xFF2D2F31),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: Color(0xFF3A3D40))),
-                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: Color(0xFF88C0A4))),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: const Text('Cancel', style: TextStyle(color: Colors.white54)),
-              ),
-              FilledButton(
-                style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFF88C0A4),
-                  foregroundColor: Colors.black,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                ),
-                onPressed: () {
-                  final text = textController.text.trim();
-                  if (text.isNotEmpty) {
-                    Navigator.pop(ctx);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Feedback submitted! Thank you.'),
-                        behavior: SnackBarBehavior.floating,
-                        backgroundColor: Color(0xFF222528),
-                      ),
-                    );
-                  }
-                },
-                child: const Text('Submit', style: TextStyle(fontWeight: FontWeight.bold)),
-              ),
-            ],
+          NewTaskIntent: CallbackAction<NewTaskIntent>(
+            onInvoke: (_) => showAddTaskForm(context),
           ),
-        ),
-      );
-    }
-
-    Widget urlNavItem({
-      required IconData icon,
-      required String label,
-      required String url,
-    }) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-        child: InkWell(
-          onTap: () {
-            if (!isDesktop) Navigator.pop(context);
-            showFeedbackModal(context);
-          },
-          borderRadius: BorderRadius.circular(12),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(borderRadius: BorderRadius.circular(12)),
-            child: Row(
-              children: [
-                Icon(
-                  icon,
-                  color: colorScheme.onSurface.withValues(alpha: 0.6),
-                  size: 22,
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Text(
-                    label,
-                    style: TextStyle(
-                      color: colorScheme.onSurface.withValues(alpha: 0.6),
-                      fontSize: 15,
-                    ),
-                  ),
-                ),
-                Icon(
-                  Icons.feedback_outlined,
-                  size: 16,
-                  color: colorScheme.onSurface.withValues(alpha: 0.5),
-                ),
-              ],
-            ),
+          AIVoiceIntent: CallbackAction<AIVoiceIntent>(
+            onInvoke: (_) => _showAIVoiceOverlay(context, isDesktop),
           ),
-        ),
-      );
-    }
-
-    Widget sidebarContent = Column(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(24.0),
-          alignment: Alignment.centerLeft,
-          child: Row(
-            children: [
-              Image.asset(
-                'assets/icon/icon.png',
-                height: 32,
-                errorBuilder: (context, error, stackTrace) =>
-                    Icon(Icons.shield, color: colorScheme.primary),
-              ),
-              const SizedBox(width: 12),
-              const Flexible(
-                child: Text(
-                  'Waypoint',
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 1,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
+          EscapeIntent: CallbackAction<EscapeIntent>(
+            onInvoke: (_) {
+              if (navProvider.currentView != WaypointNavView.today) {
+                navProvider.setView(WaypointNavView.today);
+              }
+              return null;
+            },
           ),
-        ),
-        Expanded(
-          child: SingleChildScrollView(
-            child: Column(
-              children: [
-                const SizedBox(height: 8),
-                navItem(
-                  icon: Icons.dashboard_rounded,
-                  label: 'Dashboard',
-                  route: '/',
-                ),
-                navItem(
-                  icon: Icons.calendar_today_rounded,
-                  label: 'Calendar',
-                  route: '/calendar',
-                ),
-
-                FutureBuilder<List<Map<String, dynamic>>>(
-                  future: supabaseService.fetchUserCommunities(),
-                  builder: (context, snapshot) {
-                    final communities = snapshot.data ?? [];
-                    final bool isCommunitiesHubActive =
-                        navProvider.selectedIndex == 1 &&
-                        navProvider.currentRoute == '/';
-                    final Color headerColor = isCommunitiesHubActive
-                        ? colorScheme.primary
-                        : colorScheme.onSurface.withValues(alpha: 0.6);
-
-                    return Theme(
-                      data: Theme.of(
-                        context,
-                      ).copyWith(dividerColor: Colors.transparent),
-                      child: ExpansionTile(
-                        initiallyExpanded: true,
-                        shape: const Border(),
-                        collapsedShape: const Border(),
-                        iconColor: headerColor,
-                        collapsedIconColor: headerColor,
-                        leading: Icon(
-                          Icons.groups_rounded,
-                          color: headerColor,
-                          size: 22,
-                        ),
-                        title: InkWell(
-                          onTap: () {
-                            navProvider.setTab(1);
-                            if (!isDesktop) Navigator.pop(context);
-                            if (ModalRoute.of(context)?.settings.name != '/') {
-                              Navigator.pushReplacementNamed(context, '/');
-                            }
-                          },
-                          child: Text(
-                            'Communities',
-                            style: TextStyle(
-                              color: headerColor,
-                              fontSize: 15,
-                              fontWeight: isCommunitiesHubActive
-                                  ? FontWeight.bold
-                                  : FontWeight.normal,
-                            ),
-                          ),
-                        ),
-                        childrenPadding: const EdgeInsets.only(left: 24),
-                        children: communities.map((comm) {
-                          final members = comm['community_members'] as List?;
-                          final isMemberAdmin =
-                              members != null &&
-                              members.isNotEmpty &&
-                              members[0]['role'] == 'admin';
-
-                          return navItem(
-                            icon: isMemberAdmin
-                                ? Icons.admin_panel_settings_rounded
-                                : Icons.group_work_outlined,
-                            label: comm['name'],
-                            route: '/communities/${comm['id']}',
-                            communityId: comm['id'],
-                            isSubItem: true,
-                          );
-                        }).toList(),
-                      ),
-                    );
-                  },
-                ),
-
-                navItem(
-                  icon: Icons.layers_rounded,
-                  label: 'Manage All',
-                  route: '/categories',
-                ),
-                urlNavItem(
-                  icon: Icons.contact_support_rounded,
-                  label: 'Support & Feedback',
-                  url: 'https://helm-omega-blue.vercel.app/feedback.html',
-                ),
-                navItem(
-                  icon: Icons.settings_rounded,
-                  label: 'Settings',
-                  route: '/settings',
-                ),
-                const SizedBox(height: 24),
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 24.0),
-                  child: Divider(color: Colors.white10),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-
-    return FocusScope(
-      child: Shortcuts(
-        shortcuts: <ShortcutActivator, Intent>{
-          // Global shortcuts (active when not editing text)
-          const SingleActivator(LogicalKeyboardKey.slash):
-              const SearchIntent(),
-          // Secondary modifier bindings
-          const SingleActivator(LogicalKeyboardKey.keyN, control: true):
-              const NewTaskIntent(),
-          const SingleActivator(LogicalKeyboardKey.keyF, control: true):
-              const SearchIntent(),
-          const SingleActivator(LogicalKeyboardKey.space, control: true):
-              const AIVoiceIntent(),
-          const SingleActivator(LogicalKeyboardKey.tab, control: true):
-              const CycleTabIntent(),
-          const SingleActivator(LogicalKeyboardKey.keyC, control: true):
-              const CycleTabIntent(),
-          const SingleActivator(LogicalKeyboardKey.escape):
-              const EscapeIntent(),
-          const SingleActivator(LogicalKeyboardKey.enter, alt: true):
-              const EnterIntent(),
         },
-        child: Actions(
-          actions: <Type, Action<Intent>>{
-            AIVoiceIntent: CallbackAction<AIVoiceIntent>(
-              onInvoke: (intent) {
-                _showAIVoiceOverlay(context, isDesktop);
-                return null;
-              },
-            ),
-            NewTaskIntent: CallbackAction<NewTaskIntent>(
-              onInvoke: (intent) {
-                if (FocusManager.instance.primaryFocus?.context?.widget
-                    is EditableText) {
-                  return null;
-                }
-                showAddTaskForm(
-                  context,
-                  initialCommunityId: Provider.of<NavigationProvider>(
-                    context,
-                    listen: false,
-                  ).selectedCommunityId,
-                );
-                return null;
-              },
-            ),
-            SearchIntent: CallbackAction<SearchIntent>(
-              onInvoke: (intent) {
-                if (FocusManager.instance.primaryFocus?.context?.widget
-                    is EditableText) {
-                  return null;
-                }
-                if (FocusManager.instance.primaryFocus?.context?.widget
-                    is EditableText) {
-                  return null;
-                }
-                showSearch(
-                  context: context,
-                  delegate: CustomTaskSearchDelegate(),
-                );
-                return null;
-              },
-            ),
-            CycleTabIntent: CallbackAction<CycleTabIntent>(
-              onInvoke: (intent) {
-                if (FocusManager.instance.primaryFocus?.context?.widget
-                    is EditableText) {
-                  return null;
-                }
-                if (FocusManager.instance.primaryFocus?.context?.widget
-                    is EditableText) {
-                  return null;
-                }
-                final nav = Provider.of<NavigationProvider>(
-                  context,
-                  listen: false,
-                );
-                nav.setTab((nav.selectedIndex + 1) % 2);
-                return null;
-              },
-            ),
-            EscapeIntent: CallbackAction<EscapeIntent>(
-              onInvoke: (intent) {
-                if (_showDesktopNotifications) {
-                  setState(() => _showDesktopNotifications = false);
-                } else if (_scaffoldKey.currentState?.isDrawerOpen ?? false) {
-                  Navigator.pop(context);
-                } else if (_scaffoldKey.currentState?.isEndDrawerOpen ??
-                    false) {
-                  Navigator.pop(context);
-                } else if (navProvider.selectedCommunityId != null) {
-                  navProvider.selectCommunity(null);
-                }
-                return null;
-              },
-            ),
-            EnterIntent: CallbackAction<EnterIntent>(
-              onInvoke: (intent) {
-                showAddTaskForm(
-                  context,
-                  initialCommunityId: Provider.of<NavigationProvider>(
-                    context,
-                    listen: false,
-                  ).selectedCommunityId,
-                );
-                return null;
-              },
-            ),
-          },
-          child: Focus(
-            autofocus: true,
-            child: SafeArea(
-              top: true,
-              child: GestureDetector(
-                onTap: () {
-                  if (_showDesktopNotifications) {
-                    setState(() => _showDesktopNotifications = false);
-                  }
-                },
-                child: Scaffold(
-                  key: _scaffoldKey,
-                  backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-                  drawer: isDesktop
-                      ? null
-                      : Drawer(
-                          backgroundColor: colorScheme.surface,
-                          child: sidebarContent,
+        child: Scaffold(
+          backgroundColor: AppTheme.bgDark,
+          body: Row(
+            children: [
+              // 1. DESKTOP SIDEBAR (VISIBLE ON DESKTOP ONLY, HIDDEN ON MOBILE)
+              if (isDesktop)
+                _buildDesktopSidebar(context, navProvider, taskProvider),
+
+              // 2. MAIN APPLICATION WORKSPACE
+              Expanded(
+                child: Stack(
+                  children: [
+                    Column(
+                      children: [
+                        // Top Header Bar
+                        _buildHeader(context, navProvider, isDesktop),
+
+                        // Main Content View
+                        Expanded(
+                          child: widget.child,
                         ),
-                  bottomNavigationBar: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (widget.bottomWidget != null) widget.bottomWidget!,
-                      BottomNavigationBar(
-                        currentIndex: navProvider.selectedIndex,
-                        onTap: (index) {
-                          navProvider.setTab(index);
-                          if (ModalRoute.of(context)?.settings.name != '/') {
-                            Navigator.pushReplacementNamed(context, '/');
-                          }
-                        },
-                        selectedItemColor: colorScheme.primary,
-                        unselectedItemColor: colorScheme.onSurface.withValues(alpha: 
-                          0.5,
+                      ],
+                    ),
+
+                    // Floating Command Bar
+                    if (widget.bottomWidget != null)
+                      Positioned(
+                        left: 0,
+                        right: 0,
+                        bottom: isDesktop ? 20 : 70, // Dock above mobile bottom bar
+                        child: Center(
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 672),
+                            child: widget.bottomWidget!,
+                          ),
                         ),
-                        items: const [
-                          BottomNavigationBarItem(
-                            icon: Icon(Icons.person_outline_rounded),
-                            activeIcon: Icon(Icons.person_rounded),
-                            label: 'Personal',
-                          ),
-                          BottomNavigationBarItem(
-                            icon: Icon(Icons.hub_outlined),
-                            activeIcon: Icon(Icons.hub_rounded),
-                            label: 'Communities',
-                          ),
-                        ],
                       ),
-                    ],
-                  ),
-                  body: Stack(
-                    children: [
-                      Row(
-                        children: [
-                          if (isDesktop)
-                            Container(
-                              width: 280,
-                              decoration: BoxDecoration(
-                                color: colorScheme.surface,
-                                border: Border(
-                                  right: BorderSide(
-                                    color: colorScheme.outlineVariant,
-                                    width: 1,
+
+                    // Desktop Notifications Overlay
+                    if (_showDesktopNotifications && isDesktop)
+                      Positioned.fill(
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.translucent,
+                          onTap: () => setState(() => _showDesktopNotifications = false),
+                          child: Stack(
+                            children: [
+                              Positioned(
+                                top: 56,
+                                right: 24,
+                                child: CompositedTransformFollower(
+                                  link: _notificationLayerLink,
+                                  showWhenUnlinked: false,
+                                  offset: const Offset(-320, 48),
+                                  child: Material(
+                                    color: Colors.transparent,
+                                    child: Container(
+                                      width: 360,
+                                      height: 480,
+                                      decoration: BoxDecoration(
+                                        color: AppTheme.surfaceContainerHigh,
+                                        borderRadius: BorderRadius.circular(4),
+                                        border: Border.all(color: AppTheme.surfaceVariant),
+                                        boxShadow: const [
+                                          BoxShadow(
+                                            color: Colors.black54,
+                                            blurRadius: 16,
+                                            offset: Offset(0, 4),
+                                          ),
+                                        ],
+                                      ),
+                                      child: const NotificationFeedUI(),
+                                    ),
                                   ),
                                 ),
                               ),
-                              child: sidebarContent,
+                            ],
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+
+          // 3. MOBILE BOTTOM NAVIGATION DOCK (VISIBLE ON MOBILE ONLY, HIDDEN ON DESKTOP)
+          bottomNavigationBar: isDesktop ? null : _buildMobileBottomDock(context, navProvider),
+          floatingActionButton: widget.floatingActionButton,
+        ),
+      ),
+    );
+  }
+
+  // --- 1. DESKTOP SIDEBAR ---
+  Widget _buildDesktopSidebar(
+    BuildContext context,
+    NavigationProvider navProvider,
+    TaskProvider taskProvider,
+  ) {
+    final activeCount = taskProvider.allActiveTasks.length;
+    final inboxCount = taskProvider.tasksAssignedByOthers.length;
+    final recurringCount = taskProvider.recurringTasks.length;
+
+    return Container(
+      width: 256,
+      height: double.infinity,
+      decoration: const BoxDecoration(
+        color: AppTheme.surfaceContainerLow,
+        border: Border(right: BorderSide(color: AppTheme.surfaceVariant, width: 1)),
+      ),
+      child: Column(
+        children: [
+          // Header / Brand Anchor
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              children: [
+                InkWell(
+                  onTap: () => navProvider.setView(WaypointNavView.today),
+                  borderRadius: BorderRadius.circular(4),
+                  child: Row(
+                    children: [
+                      const WaypointLogo(size: 32),
+                      const SizedBox(width: 10),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Waypoint',
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                              color: AppTheme.onSurface,
+                              letterSpacing: -0.3,
                             ),
-                          Expanded(
-                            child: Column(
-                              children: [
-                                Container(
-                                  padding: EdgeInsets.symmetric(
-                                    horizontal: context.clampDimension(
-                                      min: 12,
-                                      preferred: 18,
-                                      max: 24,
-                                    ),
-                                    vertical: context.clampHeight(
-                                      min: 8,
-                                      preferred: 14,
-                                      max: 16,
-                                    ),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      if (!isDesktop)
-                                        IconButton(
-                                          icon: Icon(
-                                            Icons.menu,
-                                            color: colorScheme.onSurface,
-                                          ),
-                                          onPressed: () => _scaffoldKey
-                                              .currentState
-                                              ?.openDrawer(),
-                                        ),
-                                      if (!isDesktop) const SizedBox(width: 8),
-                                      Expanded(
-                                        child: Text(
-                                          widget.title,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: Theme.of(context)
-                                              .textTheme
-                                              .headlineSmall
-                                              ?.copyWith(
-                                                fontWeight: FontWeight.bold,
-                                                color: colorScheme.onSurface,
-                                                fontSize: context.clampDimension(
-                                                  min: 18,
-                                                  preferred: 22,
-                                                  max: 24,
-                                                ),
-                                              ),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 4),
-                                      // Action group wrapped in FittedBox to eliminate compact screen overflows
-                                      Flexible(
-                                        flex: 0,
-                                        child: FittedBox(
-                                          fit: BoxFit.scaleDown,
-                                          alignment: Alignment.centerRight,
-                                          child: Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                            if (widget.actions != null)
-                                              ...widget.actions!,
-                                            const SyncBadge(),
-                                            IconButton(
-                                              visualDensity:
-                                                  VisualDensity.compact,
-                                              tooltip: 'AI Voice Assistant',
-                                              icon: const Icon(
-                                                Icons.mic_rounded,
-                                                color: Color(0xFF88C0A4),
-                                              ),
-                                              onPressed: () =>
-                                                  _showAIVoiceOverlay(
-                                                context,
-                                                isDesktop,
-                                              ),
-                                            ),
-                                            IconButton(
-                                              visualDensity:
-                                                  VisualDensity.compact,
-                                              icon: Icon(
-                                                Icons.search,
-                                                color: colorScheme.onSurface
-                                                    .withValues(alpha: 0.7),
-                                              ),
-                                              onPressed: () => showSearch(
-                                                context: context,
-                                                delegate:
-                                                    CustomTaskSearchDelegate(),
-                                              ),
-                                            ),
-                                            CompositedTransformTarget(
-                                              link: _notificationLayerLink,
-                                              child: NotificationBellWidget(
-                                                isDesktop: isDesktop,
-                                                layerLink:
-                                                    _notificationLayerLink,
-                                                onToggle: () => setState(
-                                                  () => _showDesktopNotifications =
-                                                      !_showDesktopNotifications,
-                                                ),
-                                              ),
-                                            ),
-                                            PopupMenuButton<String>(
-                                              padding: EdgeInsets.zero,
-                                              icon: UserAvatar(
-                                                fullName:
-                                                    Supabase
-                                                        .instance
-                                                        .client
-                                                        .auth
-                                                        .currentUser
-                                                        ?.userMetadata?['full_name'] ??
-                                                    'User',
-                                                avatarUrl: Supabase
-                                                    .instance
-                                                    .client
-                                                    .auth
-                                                    .currentUser
-                                                    ?.userMetadata?['avatar_url'],
-                                                radius: 16,
-                                              ),
-                                              offset: const Offset(0, 45),
-                                              shape: RoundedRectangleBorder(
-                                                borderRadius:
-                                                    BorderRadius.circular(16),
-                                              ),
-                                              onSelected: (value) {
-                                                if (value == 'settings') {
-                                                  Navigator.pushNamed(
-                                                    context,
-                                                    '/account-settings',
-                                                  );
-                                                } else if (value ==
-                                                    'communities') {
-                                                  navProvider.setTab(1);
-                                                } else if (value == 'logout') {
-                                                  Supabase.instance.client.auth
-                                                      .signOut();
-                                                }
-                                              },
-                                              itemBuilder: (context) => [
-                                                const PopupMenuItem(
-                                                  value: 'settings',
-                                                  child: ListTile(
-                                                    dense: true,
-                                                    leading: Icon(
-                                                      Icons.manage_accounts,
-                                                    ),
-                                                    title: Text(
-                                                      'Account Settings',
-                                                    ),
-                                                  ),
-                                                ),
-                                                const PopupMenuItem(
-                                                  value: 'communities',
-                                                  child: ListTile(
-                                                    dense: true,
-                                                    leading: Icon(Icons.hub),
-                                                    title: Text(
-                                                      'Manage Communities',
-                                                    ),
-                                                  ),
-                                                ),
-                                                const PopupMenuDivider(),
-                                                const PopupMenuItem(
-                                                  value: 'logout',
-                                                  child: ListTile(
-                                                    dense: true,
-                                                    leading: Icon(
-                                                      Icons.logout,
-                                                      color: Colors.red,
-                                                    ),
-                                                    title: Text(
-                                                      'Log Out',
-                                                      style: TextStyle(
-                                                        color: Colors.red,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                    ],
-                                  ),
-                                ),
-                                Expanded(child: widget.child),
-                              ],
+                          ),
+                          Text(
+                            'Personal Workspace',
+                            style: AppTheme.monoStyle(
+                              fontSize: 10,
+                              color: AppTheme.onSurfaceVariant,
                             ),
                           ),
                         ],
                       ),
-
-                      if (isDesktop && _showDesktopNotifications)
-                        Positioned(
-                          top: 60,
-                          right: 20,
-                          child: CompositedTransformFollower(
-                            link: _notificationLayerLink,
-                            showWhenUnlinked: false,
-                            offset: const Offset(-310, 45),
-                            child: NotificationFeedUI(),
-                          ),
-                        ),
                     ],
                   ),
-                  floatingActionButton: widget.floatingActionButton,
                 ),
-              ),
+                const SizedBox(height: 14),
+
+                // Quick Add Button
+                InkWell(
+                  onTap: () => showAddTaskForm(context),
+                  borderRadius: BorderRadius.circular(4),
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: AppTheme.mint,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: const [
+                            Icon(Icons.add, size: 16, color: AppTheme.onMint),
+                            SizedBox(width: 8),
+                            Text(
+                              'New Task',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: AppTheme.onMint,
+                              ),
+                            ),
+                          ],
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: AppTheme.onMint.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                          child: const Text(
+                            '⌘N',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              color: AppTheme.onMint,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Navigation Links
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  child: Text(
+                    'VIEWS',
+                    style: AppTheme.monoStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      color: AppTheme.onSurfaceVariant.withValues(alpha: 0.7),
+                      letterSpacing: 1.0,
+                    ),
+                  ),
+                ),
+
+                _buildSidebarNavItem(
+                  icon: Icons.calendar_today_rounded,
+                  label: 'Today',
+                  count: '$activeCount',
+                  isActive: navProvider.currentView == WaypointNavView.today,
+                  onTap: () => navProvider.setView(WaypointNavView.today),
+                ),
+
+                _buildSidebarNavItem(
+                  icon: Icons.inbox_rounded,
+                  label: 'Inbox',
+                  count: '$inboxCount',
+                  isActive: navProvider.currentView == WaypointNavView.inbox,
+                  onTap: () => navProvider.setView(WaypointNavView.inbox),
+                ),
+
+                _buildSidebarNavItem(
+                  icon: Icons.repeat_rounded,
+                  label: 'Recurring',
+                  count: '$recurringCount',
+                  isActive: navProvider.currentView == WaypointNavView.recurring,
+                  onTap: () => navProvider.setView(WaypointNavView.recurring),
+                ),
+
+                _buildSidebarNavItem(
+                  icon: Icons.event_rounded,
+                  label: 'Schedule',
+                  count: 'Today',
+                  isActive: navProvider.currentView == WaypointNavView.schedule,
+                  onTap: () => navProvider.setView(WaypointNavView.schedule),
+                ),
+
+                const SizedBox(height: 16),
+
+                // Groups & Workspaces Section Header (Clickable to open Communities Overview!)
+                InkWell(
+                  onTap: () => navProvider.setView(WaypointNavView.communities),
+                  borderRadius: BorderRadius.circular(4),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'GROUPS & WORKSPACES',
+                          style: AppTheme.monoStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            color: AppTheme.mint,
+                            letterSpacing: 0.8,
+                          ),
+                        ),
+                        const Icon(Icons.arrow_forward_ios_rounded, size: 10, color: AppTheme.mint),
+                      ],
+                    ),
+                  ),
+                ),
+
+                _buildWorkspaceNavItem(
+                  name: 'WES Foundation',
+                  dotColor: AppTheme.mint,
+                  count: '5',
+                  onTap: () {
+                    navProvider.selectCommunity(null, name: 'WES Foundation');
+                    navProvider.setView(WaypointNavView.today);
+                  },
+                ),
+
+                _buildWorkspaceNavItem(
+                  name: 'Engineering & Code',
+                  dotColor: AppTheme.priorityHigh,
+                  count: '8',
+                  onTap: () {
+                    navProvider.selectCommunity(null, name: 'Engineering & Code');
+                    navProvider.setView(WaypointNavView.today);
+                  },
+                ),
+
+                _buildWorkspaceNavItem(
+                  name: 'Personal & Study',
+                  dotColor: AppTheme.priorityLow,
+                  count: '6',
+                  onTap: () {
+                    navProvider.selectCommunity(null, name: 'Personal & Study');
+                    navProvider.setView(WaypointNavView.today);
+                  },
+                ),
+
+                _buildWorkspaceNavItem(
+                  name: 'Eureka! Showcase',
+                  dotColor: AppTheme.priorityUrgent,
+                  count: '3',
+                  onTap: () {
+                    navProvider.selectCommunity(null, name: 'Eureka! Showcase');
+                    navProvider.setView(WaypointNavView.today);
+                  },
+                ),
+              ],
+            ),
+          ),
+
+          // Sidebar Footer Status
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: const BoxDecoration(
+              color: AppTheme.surfaceContainerLowest,
+              border: Border(top: BorderSide(color: AppTheme.surfaceVariant)),
+            ),
+            child: Column(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: AppTheme.surfaceContainer,
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(color: AppTheme.surfaceVariant),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            width: 6,
+                            height: 6,
+                            decoration: const BoxDecoration(
+                              color: AppTheme.mint,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            'ALL CHANGES SAVED',
+                            style: AppTheme.monoStyle(
+                              fontSize: 9.5,
+                              fontWeight: FontWeight.w600,
+                              color: AppTheme.mint,
+                            ),
+                          ),
+                        ],
+                      ),
+                      Text(
+                        'Cloud Active',
+                        style: AppTheme.monoStyle(
+                          fontSize: 9,
+                          color: AppTheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    InkWell(
+                      onTap: () => navProvider.setView(WaypointNavView.settings),
+                      borderRadius: BorderRadius.circular(4),
+                      child: Row(
+                        children: const [
+                          Icon(Icons.tune_rounded, size: 15, color: AppTheme.onSurfaceVariant),
+                          SizedBox(width: 6),
+                          Text(
+                            'Settings',
+                            style: TextStyle(fontSize: 12, color: AppTheme.onSurfaceVariant),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Text(
+                      'Offline Ready',
+                      style: AppTheme.monoStyle(
+                        fontSize: 9.5,
+                        color: AppTheme.onSurfaceVariant.withValues(alpha: 0.6),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSidebarNavItem({
+    required IconData icon,
+    required String label,
+    required String count,
+    required bool isActive,
+    required VoidCallback onTap,
+  }) {
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 1.5),
+      decoration: BoxDecoration(
+        color: isActive ? AppTheme.surfaceContainer : Colors.transparent,
+        borderRadius: const BorderRadius.horizontal(right: Radius.circular(4)),
+        border: isActive
+            ? const Border(left: BorderSide(color: AppTheme.mint, width: 2))
+            : null,
+      ),
+      child: ListTile(
+        dense: true,
+        visualDensity: const VisualDensity(horizontal: -2, vertical: -2),
+        onTap: onTap,
+        leading: Icon(
+          icon,
+          size: 17,
+          color: isActive ? AppTheme.mint : AppTheme.onSurfaceVariant,
+        ),
+        title: Text(
+          label,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
+            color: isActive ? AppTheme.mint : AppTheme.onSurfaceVariant,
+          ),
+        ),
+        trailing: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+          decoration: BoxDecoration(
+            color: isActive ? AppTheme.mint.withValues(alpha: 0.2) : AppTheme.surfaceContainer,
+            borderRadius: BorderRadius.circular(2),
+            border: Border.all(
+              color: isActive ? AppTheme.mint.withValues(alpha: 0.3) : AppTheme.surfaceVariant,
+            ),
+          ),
+          child: Text(
+            count,
+            style: AppTheme.monoStyle(
+              fontSize: 9.5,
+              fontWeight: FontWeight.w600,
+              color: isActive ? AppTheme.mint : AppTheme.onSurfaceVariant,
             ),
           ),
         ),
       ),
     );
+  }
+
+  Widget _buildWorkspaceNavItem({
+    required String name,
+    required Color dotColor,
+    required String count,
+    required VoidCallback onTap,
+  }) {
+    return ListTile(
+      dense: true,
+      visualDensity: const VisualDensity(horizontal: -2, vertical: -3),
+      onTap: onTap,
+      leading: Container(
+        width: 6,
+        height: 6,
+        decoration: BoxDecoration(color: dotColor, shape: BoxShape.circle),
+      ),
+      title: Text(
+        name,
+        style: const TextStyle(fontSize: 12, color: AppTheme.onSurfaceVariant),
+        overflow: TextOverflow.ellipsis,
+      ),
+      trailing: Text(
+        count,
+        style: AppTheme.monoStyle(
+          fontSize: 10,
+          color: AppTheme.onSurfaceVariant.withValues(alpha: 0.6),
+        ),
+      ),
+    );
+  }
+
+  // --- 2. TOP HEADER ---
+  Widget _buildHeader(BuildContext context, NavigationProvider navProvider, bool isDesktop) {
+    return Container(
+      height: 56,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: const BoxDecoration(
+        color: AppTheme.surfaceDark,
+        border: Border(bottom: BorderSide(color: AppTheme.surfaceVariant)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          // Left: Brand (Mobile) / Search (Desktop)
+          if (!isDesktop) ...[
+            InkWell(
+              onTap: () => navProvider.setView(WaypointNavView.today),
+              child: Row(
+                children: [
+                  const WaypointLogo(size: 28),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'Waypoint',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: AppTheme.onSurface,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    width: 1,
+                    height: 14,
+                    color: AppTheme.surfaceVariant,
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    width: 6,
+                    height: 6,
+                    decoration: const BoxDecoration(
+                      color: AppTheme.mint,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    _getViewTitle(navProvider.currentView),
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: AppTheme.onSurface,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ] else ...[
+            // Desktop Omni Search Bar
+            InkWell(
+              onTap: () => showSearch(context: context, delegate: CustomTaskSearchDelegate()),
+              borderRadius: BorderRadius.circular(4),
+              child: Container(
+                width: 280,
+                height: 34,
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                decoration: BoxDecoration(
+                  color: AppTheme.surfaceContainerHigh,
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(color: AppTheme.surfaceVariant),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.search, size: 16, color: AppTheme.onSurfaceVariant),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Search tasks, notes...',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppTheme.onSurfaceVariant.withValues(alpha: 0.6),
+                        ),
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                      decoration: BoxDecoration(
+                        color: AppTheme.surfaceVariant,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                      child: Text(
+                        '⌘K',
+                        style: AppTheme.monoStyle(
+                          fontSize: 9.5,
+                          color: AppTheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+
+          // Right Controls Cluster
+          Row(
+            children: [
+              // Add Task Button
+              ElevatedButton.icon(
+                onPressed: () => showAddTaskForm(context),
+                icon: const Icon(Icons.add, size: 16, color: AppTheme.onMint),
+                label: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      isDesktop ? 'Add Task' : 'Add',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: AppTheme.onMint,
+                      ),
+                    ),
+                    if (isDesktop) ...[
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                        decoration: BoxDecoration(
+                          color: AppTheme.onMint.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                        child: const Text(
+                          '⌘N',
+                          style: TextStyle(
+                            fontSize: 9,
+                            fontWeight: FontWeight.bold,
+                            color: AppTheme.onMint,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.mint,
+                  foregroundColor: AppTheme.onMint,
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                ),
+              ),
+
+              const SizedBox(width: 8),
+
+              // AI Voice Assistant Button
+              OutlinedButton.icon(
+                onPressed: () => _showAIVoiceOverlay(context, isDesktop),
+                icon: const Icon(Icons.mic, size: 16, color: AppTheme.mint),
+                label: isDesktop
+                    ? Text('Voice', style: AppTheme.monoStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppTheme.mint))
+                    : const SizedBox.shrink(),
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: AppTheme.surfaceVariant),
+                  backgroundColor: AppTheme.surfaceContainer,
+                  padding: EdgeInsets.symmetric(horizontal: isDesktop ? 10 : 8, vertical: 8),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                ),
+              ),
+
+              const SizedBox(width: 8),
+
+              // Notifications Bell with LayerLink Target
+              CompositedTransformTarget(
+                link: _notificationLayerLink,
+                child: IconButton(
+                  icon: const Icon(Icons.notifications_outlined, size: 18),
+                  color: AppTheme.onSurfaceVariant,
+                  hoverColor: AppTheme.surfaceContainer,
+                  tooltip: 'Notifications',
+                  onPressed: () {
+                    if (isDesktop) {
+                      setState(() => _showDesktopNotifications = !_showDesktopNotifications);
+                    } else {
+                      showModalBottomSheet(
+                        context: context,
+                        backgroundColor: Colors.transparent,
+                        builder: (_) => Container(
+                          decoration: const BoxDecoration(
+                            color: AppTheme.surfaceContainerHigh,
+                            borderRadius: BorderRadius.vertical(top: Radius.circular(8)),
+                          ),
+                          child: const NotificationFeedUI(),
+                        ),
+                      );
+                    }
+                  },
+                ),
+              ),
+
+              const SizedBox(width: 4),
+
+              // User Avatar with menu
+              PopupMenuButton<String>(
+                offset: const Offset(0, 40),
+                color: AppTheme.surfaceContainerHigh,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(4),
+                  side: const BorderSide(color: AppTheme.surfaceVariant),
+                ),
+                child: const UserAvatar(fullName: 'Lakshya Jadhav', radius: 14),
+                onSelected: (val) {
+                  if (val == 'settings') {
+                    navProvider.setView(WaypointNavView.settings);
+                  } else if (val == 'communities') {
+                    navProvider.setView(WaypointNavView.communities);
+                  } else if (val == 'logout') {
+                    Supabase.instance.client.auth.signOut();
+                  }
+                },
+                itemBuilder: (ctx) => [
+                  PopupMenuItem(
+                    value: 'settings',
+                    child: Text('Settings & Preferences', style: AppTheme.monoStyle(fontSize: 12, color: AppTheme.onSurface)),
+                  ),
+                  PopupMenuItem(
+                    value: 'communities',
+                    child: Text('Manage Workspaces', style: AppTheme.monoStyle(fontSize: 12, color: AppTheme.onSurface)),
+                  ),
+                  const PopupMenuDivider(),
+                  PopupMenuItem(
+                    value: 'logout',
+                    child: Text('Log Out', style: AppTheme.monoStyle(fontSize: 12, color: AppTheme.priorityUrgent)),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // --- 3. MOBILE BOTTOM NAVIGATION DOCK ---
+  Widget _buildMobileBottomDock(BuildContext context, NavigationProvider navProvider) {
+    return Container(
+      height: 56,
+      decoration: const BoxDecoration(
+        color: AppTheme.surfaceDark,
+        border: Border(top: BorderSide(color: AppTheme.surfaceVariant)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          _buildMobileDockItem(
+            icon: Icons.calendar_today_rounded,
+            label: 'Today',
+            isActive: navProvider.currentView == WaypointNavView.today,
+            onTap: () => navProvider.setView(WaypointNavView.today),
+          ),
+          _buildMobileDockItem(
+            icon: Icons.inbox_rounded,
+            label: 'Inbox',
+            isActive: navProvider.currentView == WaypointNavView.inbox,
+            onTap: () => navProvider.setView(WaypointNavView.inbox),
+          ),
+
+          // Central FAB Add button
+          GestureDetector(
+            onTap: () => showAddTaskForm(context),
+            child: Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: AppTheme.mint,
+                borderRadius: BorderRadius.circular(19),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppTheme.mint.withValues(alpha: 0.3),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: const Icon(Icons.add, color: AppTheme.onMint, size: 22),
+            ),
+          ),
+
+          _buildMobileDockItem(
+            icon: Icons.repeat_rounded,
+            label: 'Repeat',
+            isActive: navProvider.currentView == WaypointNavView.recurring,
+            onTap: () => navProvider.setView(WaypointNavView.recurring),
+          ),
+          _buildMobileDockItem(
+            icon: Icons.event_rounded,
+            label: 'Schedule',
+            isActive: navProvider.currentView == WaypointNavView.schedule,
+            onTap: () => navProvider.setView(WaypointNavView.schedule),
+          ),
+          _buildMobileDockItem(
+            icon: Icons.tune_rounded,
+            label: 'Settings',
+            isActive: navProvider.currentView == WaypointNavView.settings,
+            onTap: () => navProvider.setView(WaypointNavView.settings),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMobileDockItem({
+    required IconData icon,
+    required String label,
+    required bool isActive,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(4),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 20,
+              color: isActive ? AppTheme.mint : AppTheme.onSurfaceVariant,
+            ),
+            const SizedBox(height: 2),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
+                color: isActive ? AppTheme.mint : AppTheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _getViewTitle(WaypointNavView view) {
+    switch (view) {
+      case WaypointNavView.today:
+        return 'Today';
+      case WaypointNavView.inbox:
+        return 'Inbox';
+      case WaypointNavView.recurring:
+        return 'Recurring';
+      case WaypointNavView.schedule:
+        return 'Schedule';
+      case WaypointNavView.settings:
+        return 'Settings';
+      case WaypointNavView.communities:
+        return 'Workspaces';
+    }
   }
 }
