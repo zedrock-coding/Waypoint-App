@@ -355,7 +355,7 @@ class _MyHomePageState extends State<MyHomePage> {
     String title = 'Waypoint';
     List<Widget> appBarActions = [];
 
-    if (navProvider.selectedCommunityId != null) {
+    if (navProvider.selectedCommunityId != null && navProvider.currentView == WaypointNavView.today) {
       title = navProvider.selectedCommunityName ?? 'Community Workspace';
       appBarActions = [
         IconButton(
@@ -374,7 +374,7 @@ class _MyHomePageState extends State<MyHomePage> {
         ),
         IconButton(
           icon: const Icon(Icons.close),
-          onPressed: () => navProvider.selectCommunity(null),
+          onPressed: () => navProvider.exitCommunity(),
         ),
       ];
       body = _buildSupabaseTaskStream(navProvider.selectedCommunityId!, taskProvider, isDesktop);

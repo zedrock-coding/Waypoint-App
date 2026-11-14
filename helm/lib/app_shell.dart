@@ -333,7 +333,7 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
                             ),
                           ),
                           Text(
-                            navProvider.selectedCommunityId != null ? 'Team Workspace' : 'Personal Workspace',
+                            (navProvider.selectedCommunityId != null && navProvider.currentView == WaypointNavView.today) ? 'Team Workspace' : 'Personal Workspace',
                             style: AppTheme.monoStyle(
                               fontSize: 10,
                               color: AppTheme.textMuted(context),
@@ -833,7 +833,7 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
     TaskProvider taskProvider,
     bool isDesktop,
   ) {
-    final inCommunity = navProvider.selectedCommunityId != null;
+    final inCommunity = navProvider.selectedCommunityId != null && navProvider.currentView == WaypointNavView.today;
     final commName = navProvider.selectedCommunityName ?? 'Workspace';
 
     return Container(

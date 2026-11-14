@@ -17,17 +17,22 @@ class NavigationProvider with ChangeNotifier {
 
   void setView(WaypointNavView view) {
     _currentView = view;
+    _selectedCommunityId = null;
+    _selectedCommunityName = null;
+    _selectedIndex = view == WaypointNavView.communities ? 1 : 0;
+
     if (view == WaypointNavView.today) {
       _currentRoute = '/';
+    } else if (view == WaypointNavView.inbox) {
+      _currentRoute = '/inbox';
+    } else if (view == WaypointNavView.recurring) {
+      _currentRoute = '/recurring';
     } else if (view == WaypointNavView.schedule) {
       _currentRoute = '/calendar';
     } else if (view == WaypointNavView.settings) {
       _currentRoute = '/settings';
     } else if (view == WaypointNavView.communities) {
       _currentRoute = '/communities';
-      _selectedIndex = 1;
-      _selectedCommunityId = null;
-      _selectedCommunityName = null;
     } else if (view == WaypointNavView.account) {
       _currentRoute = '/account';
     }
