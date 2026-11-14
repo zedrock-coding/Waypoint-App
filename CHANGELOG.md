@@ -4,6 +4,34 @@ All notable changes to the **Helm** / **Waypoint** project will be documented in
 
 ---
 
+## [0.6.2] - 2026-11-14
+
+### 🎨 UI & Aesthetics
+- **Branded Obsidian Header**:
+  - Restored high-resolution Waypoint app logo (`assets/icon/icon.png`) with crisp 4px rounded borders and fallback vector rendering.
+  - Applied **Geist** typography to app branding and view titles.
+  - Eliminated mobile header button collision by removing redundant text buttons and wrapping titles in flexible containers.
+- **Backdrop-Blurred Frosted Command Center**:
+  - Replaced opaque floating command bar with an elegant 12px blur `BackdropFilter` and translucent dark slate styling.
+  - Scoped bottom command bar to display exclusively on `Today` and `Inbox` views, preventing obscuration on `Settings`, `Schedule`, `Recurring`, and `Communities`.
+  - Removed duplicate floating action button from navigation shell.
+- **Obsidian Precision About Screen**:
+  - Modernized `About Waypoint` settings screen to Obsidian Precision styling with surface cards, 4px corner radii, and JetBrains Mono badges.
+  - Refined project attribution to solo creator **Lakshya Jadhav**.
+
+### 🐛 Sync & Task Lifecycle Fixes
+- **Startup Cloud Synchronization**:
+  - Automatically invokes `loadRemoteTasks()` on app launch and upon authentication state transitions (`signedIn`, `tokenRefreshed`, `initialSession`), pulling remote tasks without requiring manual sync triggering.
+  - Removed aggressive filtering that discarded community tasks on clean device installations.
+  - Re-triggers in-memory task aggregation immediately upon receiving Supabase realtime stream events.
+- **Recurring Routines Reconciliation**:
+  - Preserved recurring tasks across both local Hive storage and remote Supabase tables when `isRecurring` or `recurrenceFrequency` is present.
+  - Defaulted fallback frequency to `daily` so tasks such as "Daily Workout Routine" reliably populate `Recurring Routines`.
+- **Calibrated Priority Levels**:
+  - Aligned priority selectors in `TaskCreationDrawer` (High, Med, Low) with `TaskItemCard` display indicators and color accents, eliminating priority tier shifts.
+
+---
+
 ## [0.6.1] - 2026-11-14
 
 ### 🚀 Added

@@ -34,18 +34,18 @@ class _TaskItemCardState extends State<TaskItemCard> {
       case Priority.medium:
         return AppTheme.priorityHigh;
       case Priority.low:
-        return AppTheme.priorityMedium;
+        return AppTheme.priorityLow;
     }
   }
 
   String _getPriorityLabel(Priority p) {
     switch (p) {
       case Priority.high:
-        return 'URGENT';
-      case Priority.medium:
         return 'HIGH';
+      case Priority.medium:
+        return 'MED';
       case Priority.low:
-        return 'NORMAL';
+        return 'LOW';
     }
   }
 
@@ -194,7 +194,7 @@ class _TaskItemCardState extends State<TaskItemCard> {
                                             style: TextStyle(fontSize: 10, color: AppTheme.mint),
                                           ),
                                           Text(
-                                            task.recurrenceRule?.frequency.toUpperCase() ?? 'RECUR',
+                                            task.recurrenceRule?.frequency.toUpperCase() ?? 'DAILY',
                                             style: AppTheme.monoStyle(
                                               fontSize: 9.5,
                                               fontWeight: FontWeight.w500,

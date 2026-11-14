@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:typed_data';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:provider/provider.dart';
@@ -16,6 +17,7 @@ import '../services/debouncer.dart';
 import '../services/needle_reconciliation_engine.dart';
 import '../providers/task_provider.dart';
 import '../models/unified_task.dart';
+import '../theme/app_theme.dart';
 import 'app_snackbar.dart';
 import 'audio_waveform_visualizer.dart';
 
@@ -544,36 +546,42 @@ class _CommandBarWidgetState extends State<CommandBarWidget>
       builder: (context, child) {
         final double glow = _isLoading ? _glowController.value : 0;
 
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          decoration: BoxDecoration(
-            color: colorScheme.surface,
-            borderRadius: BorderRadius.circular(32),
-            boxShadow: [
-              BoxShadow(
-                color: _isListening
-                    ? const Color(0xFF88C0A4).withValues(alpha: 0.25)
-                    : colorScheme.primary.withValues(alpha: 0.15 * glow),
-                blurRadius: _isListening ? 16 : 10 * glow,
-                spreadRadius: _isListening ? 2 : 2 * glow,
-              )
-            ],
-            border: Border.all(
-              color: _isListening
-                  ? const Color(0xFF88C0A4)
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(32),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: AppTheme.surfaceContainer.withValues(alpha: 0.82),
+                borderRadius: BorderRadius.circular(32),
+                boxShadow: [
+                  BoxShadow(
+                    color: _isListening
+                        ? const Color(0xFF88C0A4).withValues(alpha: 0.25)
+                        : colorScheme.primary.withValues(alpha: 0.15 * glow),
+                    blurRadius: _isListening ? 16 : 10 * glow,
+                    spreadRadius: _isListening ? 2 : 2 * glow,
+                  )
+                ],
+                border: Border.all(
+                  color: _isListening
+                      ? const Color(0xFF88C0A4)
+                      : (_isLoading
+                          ? colorScheme.primary
+                          : AppTheme.surfaceVariant),
+                  width: (_isListening || _isLoading) ? 2 : 1,
+                ),
+              ),
+              child: _isAiSpeaking
+                  ? _buildAiSpeakingPill(colorScheme)
                   : (_isLoading
-                      ? colorScheme.primary
-                      : colorScheme.outlineVariant.withValues(alpha: 0.5)),
-              width: (_isListening || _isLoading) ? 2 : 1,
+                      ? _buildLoadingPill(colorScheme)
+                      : (_isListening
+                          ? _buildListeningPill(colorScheme)
+                          : _buildNormalInput(colorScheme))),
             ),
           ),
-          child: _isAiSpeaking
-              ? _buildAiSpeakingPill(colorScheme)
-              : (_isLoading
-                  ? _buildLoadingPill(colorScheme)
-                  : (_isListening
-                      ? _buildListeningPill(colorScheme)
-                      : _buildNormalInput(colorScheme))),
         );
       },
     );

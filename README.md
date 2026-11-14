@@ -1,10 +1,10 @@
-# Waypoint 0.6.1 - Production Release 🚀
+# Waypoint 0.6.2 - Production Release 🚀
 
-**Waypoint 0.6.1** is an AI-orchestrated task management workspace. Evolved from Helm into a comprehensive, AI-powered team orchestration system. Optimized for **Android**, **Windows**, and **Web**, Waypoint provides a professional, reactive experience for real-time team collaboration and personal productivity.
+**Waypoint 0.6.2** is an AI-orchestrated task management workspace. Evolved from Helm into a comprehensive, AI-powered team orchestration system. Optimized for **Android**, **Windows**, and **Web**, Waypoint provides a professional, reactive experience for real-time team collaboration and personal productivity.
 
 ![Aesthetic](https://img.shields.io/badge/Aesthetic-Obsidian%20%26%20Mint-88C0A4)
 ![Platform](https://img.shields.io/badge/Platform-Android%20%7C%20Windows%20%7C%20Web-blue)
-![Version](https://img.shields.io/badge/Version-0.6.1-green)
+![Version](https://img.shields.io/badge/Version-0.6.2-green)
 ![License](https://img.shields.io/badge/License-Source--Available-orange)
 
 ---
@@ -15,24 +15,26 @@ Get the latest build for your platform directly from the [Waypoint Releases](htt
 
 | Platform | Type | Direct Download Link |
 | :--- | :--- | :--- |
-| **Android** | APK (`v0.6.1`) | [📲 Download Android APK](https://github.com/zedrock-coding/Waypoint-App/releases/latest/download/waypoint-v0.6.1.apk) |
-| **Windows** | Executable (`v0.6.1`) | [💻 Download Windows App](https://github.com/zedrock-coding/Waypoint-App/releases/latest/download/Waypoint-v0.6.1-Setup.exe) |
+| **Android** | APK (`v0.6.2`) | [📲 Download Android APK](https://github.com/zedrock-coding/Waypoint-App/releases/latest/download/waypoint-v0.6.2.apk) |
+| **Windows** | Executable (`v0.6.2`) | [💻 Download Windows App](https://github.com/zedrock-coding/Waypoint-App/releases/latest/download/Waypoint-v0.6.2-Setup.exe) |
 | **Web** | Live Production PWA | [🌐 Launch Web App](https://helm-omega-blue.vercel.app) |
 
 *Alternative release mirrors: [Helm GitHub Releases](https://github.com/zedrock-coding/Helm/releases/latest)*
 
 ---
 
-## 🌟 What's New in 0.6.1
+## 🌟 What's New in 0.6.2
 
-### 💬 In-App Feedback & Bug Reporting System
-*   **Direct Cloud Feedback**: Built-in modal dialog connected to Supabase `feedback` table for instant bug reporting and feature requests.
-*   **Context-Aware Metadata**: Automatically pre-fills current authenticated user identity and context.
-*   **Omni Access**: Accessible from the top header, sidebar footer, settings screen, and account view.
+### 🎨 Precision Obsidian UI Overhaul & Header Polishing
+*   **Branded Header**: Restored official Waypoint diamond logo with rounded clipping, Geist typography, and adaptive flexible title wrapping.
+*   **Zero Mobile Button Collisions**: Optimized mobile action bar eliminating overlapping text and buttons.
+*   **Frosted Glass Command Center**: 12px blur BackdropFilter with translucent styling, displayed strictly on Today and Inbox views to prevent covering content.
+*   **Obsidian About Screen**: Modernized About Waypoint page with Obsidian design tokens and updated attribution to creator Lakshya Jadhav.
 
-### 🐛 Task Lifecycle & Synchronization Stabilization
-*   **PostgreSQL Partial Update Fix**: Switched `TaskProvider._mutate` updates to PostgREST `.update(patch).eq('id', id)` to avoid constraint errors on partial payloads.
-*   **Timezone-Normalized Dates**: Accurate `.toLocal()` date evaluations ensuring tasks completed today remain visible in Today's focus and Schedule calendar views.
+### 🔄 Multi-Platform Task Sync & Recurrence Fixes
+*   **Automatic Startup Sync**: Remote tasks fetched on launch and auth events without requiring manual sync triggers.
+*   **Recurring Routines Engine**: Reliable population of recurring tasks (e.g., Daily Workout Routine) across both local Hive and remote Supabase tables.
+*   **Calibrated Priorities**: Exact alignment of High, Med, and Low priority tiers across drawers and cards.
 *   **Sync Safeguards**: Guarded local storage against empty remote snapshot deletions during network switches.
 *   **Instant Local Updates**: Synchronized task providers immediately following task mutations.
 

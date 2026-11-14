@@ -23,7 +23,6 @@ import 'widgets/task_item_card.dart';
 import 'widgets/task_card_skeleton.dart';
 import 'widgets/app_snackbar.dart';
 import 'widgets/empty_states.dart';
-import 'widgets/task_form_utils.dart';
 import 'widgets/legal_dialog.dart';
 import 'widgets/command_bar.dart';
 import 'calendar_page.dart';
@@ -460,28 +459,25 @@ class _MyHomePageState extends State<MyHomePage> {
       }
     }
 
+    final showCommandBar = _selectedTaskId == null &&
+        (navProvider.currentView == WaypointNavView.today ||
+            navProvider.currentView == WaypointNavView.inbox);
+
     return AppShell(
       title: title,
       actions: appBarActions,
-      floatingActionButton: _selectedTaskId == null ? FloatingActionButton(
-        onPressed: () {
-          HapticFeedback.mediumImpact();
-          showAddTaskForm(
-            context, 
-            initialCommunityId: navProvider.selectedCommunityId,
-          );
-        },
-        child: const Icon(Icons.add),
-      ) : null,
-      bottomWidget: Padding(
-        padding: EdgeInsets.fromLTRB(
-          context.clampDimension(min: 8, preferred: 16, max: 24),
-          0,
-          context.clampDimension(min: 8, preferred: 16, max: 24),
-          8,
-        ),
-        child: const CommandBarWidget(),
-      ),
+      floatingActionButton: null,
+      bottomWidget: showCommandBar
+          ? Padding(
+              padding: EdgeInsets.fromLTRB(
+                context.clampDimension(min: 8, preferred: 16, max: 24),
+                0,
+                context.clampDimension(min: 8, preferred: 16, max: 24),
+                8,
+              ),
+              child: const CommandBarWidget(),
+            )
+          : null,
       child: Row(
         children: [
           Expanded(

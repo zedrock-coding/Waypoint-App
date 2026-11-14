@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'ai_voice_overlay.dart';
@@ -320,9 +321,9 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
+                          Text(
                             'Waypoint',
-                            style: TextStyle(
+                            style: GoogleFonts.geist(
                               fontSize: 15,
                               fontWeight: FontWeight.w600,
                               color: AppTheme.onSurface,
@@ -823,45 +824,51 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
         children: [
           // Left: Brand (Mobile) / Search (Desktop)
           if (!isDesktop) ...[
-            InkWell(
-              onTap: () => navProvider.setView(WaypointNavView.today),
-              child: Row(
-                children: [
-                  const WaypointLogo(size: 28),
-                  const SizedBox(width: 8),
-                  const Text(
-                    'Waypoint',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: AppTheme.onSurface,
+            Flexible(
+              child: InkWell(
+                onTap: () => navProvider.setView(WaypointNavView.today),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const WaypointLogo(size: 28),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Waypoint',
+                      style: GoogleFonts.geist(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: AppTheme.onSurface,
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  Container(
-                    width: 1,
-                    height: 14,
-                    color: AppTheme.surfaceVariant,
-                  ),
-                  const SizedBox(width: 8),
-                  Container(
-                    width: 6,
-                    height: 6,
-                    decoration: const BoxDecoration(
-                      color: AppTheme.mint,
-                      shape: BoxShape.circle,
+                    const SizedBox(width: 8),
+                    Container(
+                      width: 1,
+                      height: 14,
+                      color: AppTheme.surfaceVariant,
                     ),
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    _getViewTitle(navProvider.currentView),
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                      color: AppTheme.onSurface,
+                    const SizedBox(width: 8),
+                    Container(
+                      width: 6,
+                      height: 6,
+                      decoration: const BoxDecoration(
+                        color: AppTheme.mint,
+                        shape: BoxShape.circle,
+                      ),
                     ),
-                  ),
-                ],
+                    const SizedBox(width: 4),
+                    Flexible(
+                      child: Text(
+                        _getViewTitle(navProvider.currentView),
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.geist(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          color: AppTheme.onSurface,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ] else ...[
@@ -913,23 +920,24 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
 
           // Right Controls Cluster
           Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              // Add Task Button
-              ElevatedButton.icon(
-                onPressed: () => showAddTaskForm(context),
-                icon: const Icon(Icons.add, size: 16, color: AppTheme.onMint),
-                label: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      isDesktop ? 'Add Task' : 'Add',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: AppTheme.onMint,
+              // Add Task Button (Desktop only; Mobile uses bottom bar central + CTA)
+              if (isDesktop) ...[
+                ElevatedButton.icon(
+                  onPressed: () => showAddTaskForm(context),
+                  icon: const Icon(Icons.add, size: 16, color: AppTheme.onMint),
+                  label: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text(
+                        'Add Task',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: AppTheme.onMint,
+                        ),
                       ),
-                    ),
-                    if (isDesktop) ...[
                       const SizedBox(width: 6),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
@@ -947,35 +955,38 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
                         ),
                       ),
                     ],
-                  ],
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.mint,
+                    foregroundColor: AppTheme.onMint,
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                  ),
                 ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.mint,
-                  foregroundColor: AppTheme.onMint,
-                  elevation: 0,
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                const SizedBox(width: 8),
+                // AI Voice Assistant Button (Desktop)
+                OutlinedButton.icon(
+                  onPressed: () => _showAIVoiceOverlay(context, isDesktop),
+                  icon: const Icon(Icons.mic, size: 16, color: AppTheme.mint),
+                  label: Text('Voice', style: AppTheme.monoStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppTheme.mint)),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: AppTheme.surfaceVariant),
+                    backgroundColor: AppTheme.surfaceContainer,
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                  ),
                 ),
-              ),
-
-              const SizedBox(width: 8),
-
-              // AI Voice Assistant Button
-              OutlinedButton.icon(
-                onPressed: () => _showAIVoiceOverlay(context, isDesktop),
-                icon: const Icon(Icons.mic, size: 16, color: AppTheme.mint),
-                label: isDesktop
-                    ? Text('Voice', style: AppTheme.monoStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppTheme.mint))
-                    : const SizedBox.shrink(),
-                style: OutlinedButton.styleFrom(
-                  side: const BorderSide(color: AppTheme.surfaceVariant),
-                  backgroundColor: AppTheme.surfaceContainer,
-                  padding: EdgeInsets.symmetric(horizontal: isDesktop ? 10 : 8, vertical: 8),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                const SizedBox(width: 8),
+              ] else ...[
+                // AI Voice Assistant Button (Mobile Icon)
+                IconButton(
+                  icon: const Icon(Icons.mic, size: 20, color: AppTheme.mint),
+                  tooltip: 'AI Voice Assistant',
+                  hoverColor: AppTheme.surfaceContainer,
+                  onPressed: () => _showAIVoiceOverlay(context, isDesktop),
                 ),
-              ),
-
-              const SizedBox(width: 8),
+              ],
 
               // Interactive Sync Button (Desktop and Mobile)
               ValueListenableBuilder<int>(

@@ -46,7 +46,7 @@ class _TodayViewState extends State<TodayView> {
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 896), // max-w-4xl
         child: ListView(
-          padding: const EdgeInsets.only(top: 16, bottom: 90),
+          padding: const EdgeInsets.only(top: 16, bottom: 120),
           children: [
             // 1. Header Information Bar
             Padding(

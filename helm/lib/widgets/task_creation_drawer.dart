@@ -435,11 +435,11 @@ class _TaskCreationDrawerState extends State<TaskCreationDrawer> {
                   const SizedBox(height: 6),
                   Row(
                     children: [
-                      _buildPriorityButton('Urgent', Priority.high, AppTheme.priorityUrgent),
+                      _buildPriorityButton('High', Priority.high, AppTheme.priorityUrgent),
                       const SizedBox(width: 8),
-                      _buildPriorityButton('High', Priority.medium, AppTheme.priorityHigh),
+                      _buildPriorityButton('Med', Priority.medium, AppTheme.priorityHigh),
                       const SizedBox(width: 8),
-                      _buildPriorityButton('Med', Priority.low, AppTheme.priorityMedium),
+                      _buildPriorityButton('Low', Priority.low, AppTheme.priorityLow),
                     ],
                   ),
 

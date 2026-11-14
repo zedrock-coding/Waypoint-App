@@ -50,18 +50,21 @@ class TaskProvider with ChangeNotifier {
     _refreshPersonalTasks();
     _hiveSub = _taskBox.watch().listen((_) => _refreshPersonalTasks());
 
+    loadRemoteTasks();
     _setupSupabaseSync();
     _setupCategorySync();
 
     _supabase.auth.onAuthStateChange.listen((data) {
       if (data.event == AuthChangeEvent.signedIn ||
-          data.event == AuthChangeEvent.tokenRefreshed) {
+          data.event == AuthChangeEvent.tokenRefreshed ||
+          data.event == AuthChangeEvent.initialSession) {
         // A new session means the old realtime subscriptions are dead; cached
         // streams would never emit again.
         _communityTaskStreams.clear();
         _commentStreams.clear();
         _setupSupabaseSync();
         _setupCategorySync();
+        loadRemoteTasks();
       } else if (data.event == AuthChangeEvent.signedOut) {
         _supabaseSub?.cancel();
         _categorySub?.cancel();
@@ -116,7 +119,6 @@ class TaskProvider with ChangeNotifier {
         for (var d in remoteRows) {
           final id = d['id'].toString();
           final existing = _taskBox.get(id);
-          if (d['community_id'] != null && existing == null) continue;
           final remote = _taskFromRow(d);
           if (!shouldApplyRemoteUpdate(
             localUpdatedAt: existing?.updatedAt,
@@ -151,13 +153,6 @@ class TaskProvider with ChangeNotifier {
 
         final existing = _taskBox.get(id);
 
-        // The stream returns every task this user can read, including other
-        // people's community tasks. Those are served live by
-        // streamCommunityTasks(); mirroring them into the personal box mixed
-        // scopes for no benefit. Rows already mirrored (created here) keep
-        // updating so the calendar and offline reads stay correct.
-        if (d['community_id'] != null && existing == null) continue;
-
         final remote = _taskFromRow(d);
         if (!shouldApplyRemoteUpdate(
           localUpdatedAt: existing?.updatedAt,
@@ -187,6 +182,8 @@ class TaskProvider with ChangeNotifier {
           await _taskBox.deleteAll(stale);
         }
       }
+
+      await _refreshPersonalTasks();
     });
   }
 
@@ -222,7 +219,7 @@ class TaskProvider with ChangeNotifier {
 
     final title = d['title']?.toString().trim() ?? '';
 
-    final bool isRecurring = d['is_recurring'] == true;
+    final bool isRecurring = d['is_recurring'] == true || d['recurrence_frequency'] != null;
     final recurrenceFrequency = d['recurrence_frequency']?.toString();
     final recurrenceInterval = (d['recurrence_interval'] as num?)?.toInt() ?? 1;
     final rawDays = d['recurrence_days_of_week'];

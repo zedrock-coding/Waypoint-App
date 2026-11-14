@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 
-/// Waypoint Vector Diamond Monogram Logo
+/// Waypoint Logo rendering official brand asset with vector fallback
 class WaypointLogo extends StatelessWidget {
   final double size;
   final Color? color;
@@ -18,9 +18,17 @@ class WaypointLogo extends StatelessWidget {
   Widget build(BuildContext context) {
     final iconColor = color ?? AppTheme.mint;
 
-    final logoGraphic = CustomPaint(
-      size: Size(size * 0.5, size * 0.5),
-      painter: _WaypointDiamondPainter(color: iconColor),
+    final logoGraphic = Image.asset(
+      'assets/icon/icon.png',
+      width: size * (showBackground ? 0.75 : 1.0),
+      height: size * (showBackground ? 0.75 : 1.0),
+      fit: BoxFit.contain,
+      errorBuilder: (context, error, stackTrace) {
+        return CustomPaint(
+          size: Size(size * 0.5, size * 0.5),
+          painter: _WaypointDiamondPainter(color: iconColor),
+        );
+      },
     );
 
     if (!showBackground) {
@@ -39,7 +47,12 @@ class WaypointLogo extends StatelessWidget {
         borderRadius: BorderRadius.circular(4),
         border: Border.all(color: AppTheme.surfaceVariant, width: 1),
       ),
-      child: Center(child: logoGraphic),
+      child: Center(
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(3),
+          child: logoGraphic,
+        ),
+      ),
     );
   }
 }
@@ -58,28 +71,25 @@ class _WaypointDiamondPainter extends CustomPainter {
     final scaleX = size.width / 24.0;
     final scaleY = size.height / 24.0;
 
-    // SVG: M12 2L2 12l10 10 10-10L12 2zm0 4.5l5.5 5.5-5.5 5.5-5.5-5.5L12 6.5z
-    final path = Path();
-    // Outer diamond
-    path.moveTo(12 * scaleX, 2 * scaleY);
-    path.lineTo(2 * scaleX, 12 * scaleY);
-    path.lineTo(12 * scaleX, 22 * scaleY);
-    path.lineTo(22 * scaleX, 12 * scaleY);
-    path.close();
+    final outerPath = Path()
+      ..moveTo(12 * scaleX, 2 * scaleY)
+      ..lineTo(2 * scaleX, 12 * scaleY)
+      ..lineTo(12 * scaleX, 22 * scaleY)
+      ..lineTo(22 * scaleX, 12 * scaleY)
+      ..close();
 
-    // Inner cutout diamond
-    path.moveTo(12 * scaleX, 6.5 * scaleY);
-    path.lineTo(17.5 * scaleX, 12 * scaleY);
-    path.lineTo(12 * scaleX, 17.5 * scaleY);
-    path.lineTo(6.5 * scaleX, 12 * scaleY);
-    path.close();
+    final innerPath = Path()
+      ..moveTo(12 * scaleX, 6.5 * scaleY)
+      ..lineTo(17.5 * scaleX, 12 * scaleY)
+      ..lineTo(12 * scaleX, 17.5 * scaleY)
+      ..lineTo(6.5 * scaleX, 12 * scaleY)
+      ..close();
 
-    path.fillType = PathFillType.evenOdd;
-    canvas.drawPath(path, paint);
+    final combined = Path.combine(PathOperation.difference, outerPath, innerPath);
+    canvas.drawPath(combined, paint);
   }
 
   @override
-  bool shouldRepaint(covariant _WaypointDiamondPainter oldDelegate) {
-    return oldDelegate.color != color;
-  }
+  bool shouldRepaint(covariant _WaypointDiamondPainter oldDelegate) =>
+      oldDelegate.color != color;
 }

@@ -19,7 +19,7 @@ class InboxView extends StatelessWidget {
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 896),
         child: ListView(
-          padding: const EdgeInsets.only(top: 16, bottom: 90),
+          padding: const EdgeInsets.only(top: 16, bottom: 120),
           children: [
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
