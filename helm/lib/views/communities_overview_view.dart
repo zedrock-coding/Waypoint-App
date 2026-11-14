@@ -279,36 +279,47 @@ class _CommunitiesOverviewViewState extends State<CommunitiesOverviewView> {
                         return Container(
                           margin: const EdgeInsets.only(bottom: 8),
                           decoration: BoxDecoration(
-                            color: AppTheme.surfaceContainerHigh,
+                            color: AppTheme.surfaceContainerHighColor(context),
                             borderRadius: BorderRadius.circular(4),
-                            border: Border.all(color: AppTheme.surfaceVariant),
+                            border: Border.all(color: AppTheme.borderColor(context)),
                           ),
                           child: ListTile(
                             onTap: () {
                               context.read<NavigationProvider>().selectCommunity(id, name: name);
-                              widget.onBackToToday();
                             },
                             leading: Container(
                               width: 32,
                               height: 32,
                               decoration: BoxDecoration(
-                                color: AppTheme.surfaceContainer,
+                                color: AppTheme.surfaceContainerColor(context),
                                 borderRadius: BorderRadius.circular(4),
-                                border: Border.all(color: AppTheme.surfaceVariant),
+                                border: Border.all(color: AppTheme.borderColor(context)),
                               ),
                               child: const Icon(Icons.hub_outlined, size: 16, color: AppTheme.mint),
                             ),
                             title: Text(
                               name,
-                              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppTheme.onSurface),
+                              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppTheme.text(context)),
                             ),
                             subtitle: Text(
                               'Role: $role',
-                              style: AppTheme.monoStyle(fontSize: 10.5, color: AppTheme.onSurfaceVariant),
+                              style: AppTheme.monoStyle(fontSize: 10.5, color: AppTheme.textMuted(context)),
                             ),
                             trailing: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
+                                IconButton(
+                                  icon: const Icon(Icons.group_outlined, size: 18, color: AppTheme.mint),
+                                  tooltip: 'View Members & Roles',
+                                  onPressed: () {
+                                    Navigator.pushNamed(
+                                      context,
+                                      '/manage-community',
+                                      arguments: {'id': id, 'name': name},
+                                    );
+                                  },
+                                ),
+                                const SizedBox(width: 4),
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                   decoration: BoxDecoration(
@@ -320,7 +331,7 @@ class _CommunitiesOverviewViewState extends State<CommunitiesOverviewView> {
                                     style: AppTheme.monoStyle(fontSize: 9.5, fontWeight: FontWeight.bold, color: AppTheme.mint),
                                   ),
                                 ),
-                                const SizedBox(width: 8),
+                                const SizedBox(width: 4),
                                 const Icon(Icons.chevron_right, size: 18, color: AppTheme.onSurfaceVariant),
                               ],
                             ),

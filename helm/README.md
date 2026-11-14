@@ -1,10 +1,10 @@
-# Waypoint 0.6.2 - Production Release 🚀
+# Waypoint 0.6.3 - Production Release 🚀
 
-**Waypoint 0.6.2** is an AI-orchestrated task management workspace. Evolved from Helm into a comprehensive, AI-powered team orchestration system. Optimized for **Android**, **Windows**, and **Web**, Waypoint provides a professional, reactive experience for real-time team collaboration and personal productivity.
+**Waypoint 0.6.3** is an AI-orchestrated task management workspace. Evolved from Helm into a comprehensive, AI-powered team orchestration system. Optimized for **Android**, **Windows**, and **Web**, Waypoint provides a professional, reactive experience for real-time team collaboration and personal productivity.
 
 ![Aesthetic](https://img.shields.io/badge/Aesthetic-Obsidian%20%26%20Mint-88C0A4)
 ![Platform](https://img.shields.io/badge/Platform-Android%20%7C%20Windows%20%7C%20Web-blue)
-![Version](https://img.shields.io/badge/Version-0.6.2-green)
+![Version](https://img.shields.io/badge/Version-0.6.3-green)
 ![License](https://img.shields.io/badge/License-Source--Available-orange)
 
 ---
@@ -15,15 +15,26 @@ Get the latest build for your platform directly from the [Waypoint Releases](htt
 
 | Platform | Type | Direct Download Link |
 | :--- | :--- | :--- |
-| **Android** | APK (`v0.6.2`) | [📲 Download Android APK](https://github.com/zedrock-coding/Waypoint-App/releases/latest/download/waypoint-v0.6.2.apk) |
-| **Windows** | Executable (`v0.6.2`) | [💻 Download Windows App](https://github.com/zedrock-coding/Waypoint-App/releases/latest/download/Waypoint-v0.6.2-Setup.exe) |
+| **Android** | APK (`v0.6.3`) | [📲 Download Android APK](https://github.com/zedrock-coding/Waypoint-App/releases/latest/download/waypoint-v0.6.3.apk) |
+| **Windows** | Executable (`v0.6.3`) | [💻 Download Windows App](https://github.com/zedrock-coding/Waypoint-App/releases/latest/download/Waypoint-v0.6.3-Setup.exe) |
 | **Web** | Live Production PWA | [🌐 Launch Web App](https://helm-omega-blue.vercel.app) |
 
 *Alternative release mirrors: [Helm GitHub Releases](https://github.com/zedrock-coding/Helm/releases/latest)*
 
 ---
 
-## 🌟 What's New in 0.6.2
+## 🌟 What's New in 0.6.3
+
+### 🏢 Workspaces & Groups Management
+*   **Workspace Header Context**: Displays selected workspace name prominently on top header across mobile and desktop with exit and member actions.
+*   **Team Directory & Role Management**: Obsidian Precision member directory with explicit role badges (`OWNER`, `ADMIN`, `MEMBER`), interactive role changes, and member removal.
+
+### 🔄 Recurring Tasks & Routines Visibility
+*   **Cadence Engine Matching**: Automatic recognition of recurring routines via metadata and natural language cadence keywords (`daily`, `weekly`, `routine`).
+*   **Persistent Worklist Visibility**: Recurring routines remain clearly visible regardless of completion status or future rollover date.
+
+### ☀️ Dynamic Light Theme
+*   **Theme-Adaptive Color System**: Instant, crisp transition between Obsidian Dark and Clean Light modes with adaptive surface, background, and typography tokens.
 
 ### 🎨 Precision Obsidian UI Overhaul & Header Polishing
 *   **Branded Header**: Restored official Waypoint diamond logo with rounded clipping, Geist typography, and adaptive flexible title wrapping.

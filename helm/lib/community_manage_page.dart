@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'widgets/user_avatar.dart';
 import 'services/supabase_service.dart';
+import 'theme/app_theme.dart';
 
 class CommunityManagePage extends StatefulWidget {
   final String communityId;
@@ -131,158 +133,393 @@ class _CommunityManagePageState extends State<CommunityManagePage> {
     }
   }
 
+  void _showRoleDialog(String userId, String memberName, String currentRole) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppTheme.surfaceContainerHighColor(context),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(4),
+          side: BorderSide(color: AppTheme.borderColor(context)),
+        ),
+        title: Text(
+          'Change Role: $memberName',
+          style: GoogleFonts.geist(fontSize: 16, fontWeight: FontWeight.w600, color: AppTheme.text(context)),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Select new permission tier for this team member:',
+              style: TextStyle(fontSize: 12, color: AppTheme.textMuted(context)),
+            ),
+            const SizedBox(height: 16),
+            if (currentRole != 'admin')
+              ListTile(
+                dense: true,
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.shield_outlined, color: AppTheme.priorityHigh, size: 20),
+                title: Text('Admin', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppTheme.text(context))),
+                subtitle: Text('Can manage workspace tasks, invite members, and configure team roles', style: TextStyle(fontSize: 11, color: AppTheme.textMuted(context))),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _changeRole(userId, 'admin');
+                },
+              ),
+            if (currentRole != 'member' && _isOwner)
+              ListTile(
+                dense: true,
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.person_outline_rounded, color: AppTheme.priorityLow, size: 20),
+                title: Text('Member', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppTheme.text(context))),
+                subtitle: Text('Can collaborate, view shared boards, and comment on tasks', style: TextStyle(fontSize: 11, color: AppTheme.textMuted(context))),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _changeRole(userId, 'member');
+                },
+              ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('Cancel', style: TextStyle(color: AppTheme.textMuted(context))),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _confirmRemoveMember(String userId, String memberName) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppTheme.surfaceContainerHighColor(context),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(4),
+          side: BorderSide(color: AppTheme.borderColor(context)),
+        ),
+        title: Text(
+          'Remove $memberName?',
+          style: GoogleFonts.geist(fontSize: 16, fontWeight: FontWeight.w600, color: AppTheme.text(context)),
+        ),
+        content: Text(
+          'This user will lose access to all tasks, notes, and discussion in ${widget.communityName}.',
+          style: TextStyle(fontSize: 12, color: AppTheme.textMuted(context)),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('Cancel', style: TextStyle(color: AppTheme.textMuted(context))),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              _removeMember(userId);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.priorityUrgent,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+            ),
+            child: const Text('Remove Member', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
     final String inviteLink = 'waypoint://invite?communityId=${widget.communityId}';
 
-    // A plain page, not a second AppShell: nesting the shell inside the tab
-    // shell duplicated the sidebar/header and created two navigation states.
     return Scaffold(
+      backgroundColor: AppTheme.bg(context),
       appBar: AppBar(
-        title: Text('Manage ${widget.communityName}'),
+        backgroundColor: AppTheme.surface(context),
+        elevation: 0,
+        iconTheme: IconThemeData(color: AppTheme.text(context)),
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.hub_outlined, size: 18, color: AppTheme.mint),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                'Manage ${widget.communityName}',
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.geist(fontSize: 15, fontWeight: FontWeight.w600, color: AppTheme.text(context)),
+              ),
+            ),
+          ],
+        ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.close),
+            icon: const Icon(Icons.close_rounded),
             onPressed: () => Navigator.pop(context),
             tooltip: 'Back to Tasks',
           ),
         ],
       ),
-      body: Column(
-        children: [
-          Container(
-            width: double.infinity,
-            margin: const EdgeInsets.all(24),
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: colorScheme.primaryContainer.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: colorScheme.primary.withValues(alpha: 0.1)),
-            ),
-            child: Column(
-              children: [
-                const Icon(Icons.group_add_rounded, size: 48, color: Colors.teal),
-                const SizedBox(height: 16),
-                Text('Invite Members', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
-                const SizedBox(height: 8),
-                const Text('Share this unique link with your team to let them join this workspace.', textAlign: TextAlign.center),
-                const SizedBox(height: 16),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: colorScheme.surface,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: colorScheme.outlineVariant),
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          inviteLink,
-                          style: const TextStyle(fontSize: 12, fontFamily: 'monospace'),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 896),
+          child: ListView(
+            padding: const EdgeInsets.only(top: 16, bottom: 40),
+            children: [
+              // 1. Invite Box
+              Container(
+                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppTheme.surfaceContainerHighColor(context),
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(color: AppTheme.borderColor(context)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.group_add_rounded, size: 18, color: AppTheme.mint),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Invite Team Members',
+                          style: GoogleFonts.geist(fontSize: 14, fontWeight: FontWeight.w600, color: AppTheme.text(context)),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Share this link or code with teammates to grant instant access to this workspace.',
+                      style: TextStyle(fontSize: 12, color: AppTheme.textMuted(context)),
+                    ),
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: AppTheme.surfaceContainerColor(context),
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(color: AppTheme.borderColor(context)),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              inviteLink,
+                              style: AppTheme.monoStyle(fontSize: 11, color: AppTheme.mint),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          InkWell(
+                            onTap: _copyInviteLink,
+                            borderRadius: BorderRadius.circular(4),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.copy_rounded, size: 13, color: AppTheme.mint),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    'Copy',
+                                    style: AppTheme.monoStyle(fontSize: 10.5, fontWeight: FontWeight.w600, color: AppTheme.mint),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 12),
+
+              // 2. Member Directory Header
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'WORKSPACE TEAM & ROLES',
+                          style: AppTheme.monoStyle(fontSize: 10.5, fontWeight: FontWeight.w600, color: AppTheme.mint, letterSpacing: 0.8),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          _isOwner
+                              ? 'Owner privileges: full control over members and roles'
+                              : (_isAdmin
+                                  ? 'Admin privileges: can invite and promote members'
+                                  : 'Member directory'),
+                          style: TextStyle(fontSize: 11.5, color: AppTheme.textMuted(context)),
+                        ),
+                      ],
+                    ),
+                    if (!_isOwner)
+                      OutlinedButton.icon(
+                        onPressed: _leaveCommunity,
+                        icon: const Icon(Icons.exit_to_app_rounded, size: 13, color: AppTheme.priorityUrgent),
+                        label: const Text('Leave', style: TextStyle(color: AppTheme.priorityUrgent, fontSize: 11)),
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: AppTheme.priorityUrgent),
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
                         ),
                       ),
-                      IconButton(
-                        icon: const Icon(Icons.copy, size: 18),
-                        onPressed: _copyInviteLink,
-                        tooltip: 'Copy Link',
-                      ),
-                    ],
-                  ),
+                  ],
                 ),
-                const SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity,
-                  height: 50,
-                  child: ElevatedButton.icon(
-                    onPressed: _copyInviteLink,
-                    icon: const Icon(Icons.share_rounded),
-                    label: const Text('SHARE INVITE LINK'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: colorScheme.primary,
-                      foregroundColor: colorScheme.onPrimary,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Row(
-              children: [
-                Text('Member Directory', style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold, letterSpacing: 1.1)),
-                const Spacer(),
-                if (!_isOwner) 
-                  TextButton.icon(
-                    onPressed: _leaveCommunity, 
-                    icon: const Icon(Icons.exit_to_app_rounded, size: 16, color: Colors.red),
-                    label: const Text('LEAVE', style: TextStyle(color: Colors.red, fontSize: 12, fontWeight: FontWeight.bold)),
-                  ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-          Expanded(
-            child: FutureBuilder<List<Map<String, dynamic>>>(
-              future: _membersFuture,
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
-                final members = snapshot.data ?? [];
-                if (members.isEmpty) return const Center(child: Text('No members found.'));
+              ),
 
-                return ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  itemCount: members.length,
-                  itemBuilder: (context, index) {
-                    final member = members[index];
-                    final String userId = member['user_id'].toString();
-                    final String role = member['role'] ?? 'member';
-                    final bool isSelf = userId == SupabaseService.client.auth.currentUser?.id;
-                    
-                    final bool memberIsOwner = role == 'owner';
+              const SizedBox(height: 10),
 
-                    return ListTile(
-                      leading: UserAvatar(
-                        fullName: member['full_name'] ?? 'User',
-                        avatarUrl: member['avatar_url'],
-                        radius: 20,
+              // 3. Member List
+              FutureBuilder<List<Map<String, dynamic>>>(
+                future: _membersFuture,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: Padding(padding: EdgeInsets.all(32), child: CircularProgressIndicator(color: AppTheme.mint)));
+                  }
+                  final members = snapshot.data ?? [];
+                  if (members.isEmpty) {
+                    return Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(32),
+                        child: Text('No members found.', style: TextStyle(color: AppTheme.textMuted(context))),
                       ),
-                      title: Text('${member['full_name'] ?? userId.substring(0, 8)} ${isSelf ? "(You)" : ""}'),
-                      subtitle: Text(role.toUpperCase()),
-                      trailing: (_isAdmin && !isSelf && !memberIsOwner) 
-                        ? PopupMenuButton<String>(
-                            onSelected: (val) {
-                              if (val == 'remove') _removeMember(userId);
-                              if (val == 'admin') _changeRole(userId, 'admin');
-                              if (val == 'member') _changeRole(userId, 'member');
-                            },
-                            itemBuilder: (ctx) => [
-                              // Admins can see "Make Admin" for members
-                              if (role == 'member') 
-                                const PopupMenuItem(value: 'admin', child: Text('Make Admin')),
-                              
-                              // ONLY Owners can see "Make Member" for Admins
-                              if (role == 'admin' && _isOwner) 
-                                const PopupMenuItem(value: 'member', child: Text('Make Member')),
-                              
-                              // Admins can remove members. Owners can remove both.
-                              if (role == 'member' || (role == 'admin' && _isOwner))
-                                const PopupMenuItem(value: 'remove', child: Text('Remove Member', style: TextStyle(color: Colors.red))),
-                            ],
-                          )
-                        : null,
                     );
-                  },
-                );
-              },
-            ),
+                  }
+
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Column(
+                      children: members.map((member) {
+                        final String userId = member['user_id'].toString();
+                        final String role = member['role'] ?? 'member';
+                        final String fullName = member['full_name'] ?? userId.substring(0, 8);
+                        final bool isSelf = userId == SupabaseService.client.auth.currentUser?.id;
+                        final bool memberIsOwner = role == 'owner';
+
+                        Color roleBadgeColor = AppTheme.priorityLow;
+                        if (role == 'owner') {
+                          roleBadgeColor = AppTheme.mint;
+                        } else if (role == 'admin') {
+                          roleBadgeColor = AppTheme.priorityHigh;
+                        }
+
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 8),
+                          decoration: BoxDecoration(
+                            color: AppTheme.surfaceContainerHighColor(context),
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(color: AppTheme.borderColor(context)),
+                          ),
+                          child: ListTile(
+                            leading: UserAvatar(
+                              fullName: fullName,
+                              avatarUrl: member['avatar_url'],
+                              radius: 18,
+                            ),
+                            title: Row(
+                              children: [
+                                Flexible(
+                                  child: Text(
+                                    fullName,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontSize: 13.5,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppTheme.text(context),
+                                    ),
+                                  ),
+                                ),
+                                if (isSelf) ...[
+                                  const SizedBox(width: 6),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                                    decoration: BoxDecoration(
+                                      color: AppTheme.mint.withValues(alpha: 0.15),
+                                      borderRadius: BorderRadius.circular(2),
+                                    ),
+                                    child: Text(
+                                      'YOU',
+                                      style: AppTheme.monoStyle(fontSize: 8.5, fontWeight: FontWeight.bold, color: AppTheme.mint),
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                            subtitle: Text(
+                              'ID: ${userId.substring(0, 8)}...',
+                              style: AppTheme.monoStyle(fontSize: 10, color: AppTheme.textMuted(context)),
+                            ),
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                // Role Badge
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
+                                  decoration: BoxDecoration(
+                                    color: roleBadgeColor.withValues(alpha: 0.15),
+                                    borderRadius: BorderRadius.circular(2),
+                                    border: Border.all(color: roleBadgeColor.withValues(alpha: 0.4)),
+                                  ),
+                                  child: Text(
+                                    role.toUpperCase(),
+                                    style: AppTheme.monoStyle(
+                                      fontSize: 9.5,
+                                      fontWeight: FontWeight.bold,
+                                      color: roleBadgeColor,
+                                    ),
+                                  ),
+                                ),
+
+                                // Role Management Actions for Admins / Owners
+                                if (_isAdmin && !isSelf && !memberIsOwner) ...[
+                                  const SizedBox(width: 8),
+                                  // Change Role Action Button
+                                  OutlinedButton.icon(
+                                    onPressed: () => _showRoleDialog(userId, fullName, role),
+                                    icon: const Icon(Icons.manage_accounts_outlined, size: 13, color: AppTheme.mint),
+                                    label: const Text('Role', style: TextStyle(fontSize: 10.5, color: AppTheme.mint)),
+                                    style: OutlinedButton.styleFrom(
+                                      side: const BorderSide(color: AppTheme.mint),
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                                      visualDensity: VisualDensity.compact,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  // Remove Member Action Button
+                                  if (role == 'member' || (role == 'admin' && _isOwner))
+                                    IconButton(
+                                      icon: const Icon(Icons.person_remove_outlined, size: 16, color: AppTheme.priorityUrgent),
+                                      tooltip: 'Remove Member',
+                                      padding: EdgeInsets.zero,
+                                      constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                                      onPressed: () => _confirmRemoveMember(userId, fullName),
+                                    ),
+                                ],
+                              ],
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  );
+                },
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

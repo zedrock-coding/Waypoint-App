@@ -4,6 +4,33 @@ All notable changes to the **Helm** / **Waypoint** project will be documented in
 
 ---
 
+## [0.6.3] - 2026-11-14
+
+### 🏢 Workspaces & Groups Management
+- **Workspace Header Context**:
+  - Displays selected workspace name prominently on top header across mobile and desktop.
+  - Added one-click "Exit Workspace" navigation returning to Personal focus.
+  - Added immediate "Members & Roles" action button in top header and workspace listings.
+- **Team Directory & Role Management**:
+  - Overhauled `CommunityManagePage` with Obsidian Precision design tokens.
+  - Added evident role badges: `OWNER` (Mint), `ADMIN` (Amber), `MEMBER` (Blue-grey).
+  - Implemented interactive "Change Role" dialog enabling Admins/Owners to promote or demote members according to RBAC.
+  - Added member removal flow with confirmation dialog.
+
+### 🔄 Recurring Tasks & Routines Visibility
+- **Cadence Engine Matching**:
+  - Automatically recognizes recurring routines via recurrence flags, frequency metadata, and natural language cadence keywords (`daily`, `every day`, `weekly`, `routine`).
+  - Ensures recurring routines appear in worklist regardless of whether they have already been completed today or the specific date they roll over to.
+  - Synchronized "Recurring" filter chip count on Today's focus worklist with all configured routines.
+
+### ☀️ Theme System & Light Mode
+- **Dual-Engine Adaptive Color Palette**:
+  - Replaced hardcoded dark background and surface constants with reactive theme-adaptive color tokens (`AppTheme.bg`, `AppTheme.surface`, `AppTheme.borderColor`, `AppTheme.text`, `AppTheme.textMuted`).
+  - Rebuilt `lightTheme` with Obsidian Light tokens: pure white cards, soft slate containers, crisp borders, and dark charcoal typography.
+  - Seamless instant toggle between Obsidian Dark and Clean Light modes.
+
+---
+
 ## [0.6.2] - 2026-11-14
 
 ### 🎨 UI & Aesthetics

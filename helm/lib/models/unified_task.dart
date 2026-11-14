@@ -53,7 +53,14 @@ class UnifiedTask {
 
   factory UnifiedTask.fromHive(hive_model.Task task) {
     RecurrenceRule? rule;
-    final bool isRec = task.isRecurring == true || task.recurrenceFrequency != null;
+    final String rawTitle = (task.title ?? '').toLowerCase();
+    final bool isRec = task.isRecurring == true ||
+        task.recurrenceFrequency != null ||
+        task.parentRecurringTaskId != null ||
+        rawTitle.contains('daily') ||
+        rawTitle.contains('every day') ||
+        rawTitle.contains('weekly') ||
+        rawTitle.contains('routine');
     if (isRec) {
       rule = RecurrenceRule(
         frequency: task.recurrenceFrequency ?? 'daily',
@@ -88,7 +95,14 @@ class UnifiedTask {
   }
 
   factory UnifiedTask.fromSupabase(Map<String, dynamic> data) {
-    final bool isRec = data['is_recurring'] == true || data['recurrence_frequency'] != null;
+    final String rawTitle = (data['title']?.toString() ?? '').toLowerCase();
+    final bool isRec = data['is_recurring'] == true ||
+        data['recurrence_frequency'] != null ||
+        data['parent_recurring_task_id'] != null ||
+        rawTitle.contains('daily') ||
+        rawTitle.contains('every day') ||
+        rawTitle.contains('weekly') ||
+        rawTitle.contains('routine');
     RecurrenceRule? rule;
     if (isRec) {
       rule = RecurrenceRule.fromMap({

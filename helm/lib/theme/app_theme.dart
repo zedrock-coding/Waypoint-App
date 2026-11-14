@@ -99,34 +99,55 @@ class AppTheme {
   }
 
   static ThemeData get lightTheme {
-    // Keep lightTheme as an alternative, styled cleanly
-    final ColorScheme lightScheme = ColorScheme.fromSeed(
-      seedColor: mint,
+    final colorScheme = ColorScheme(
       brightness: Brightness.light,
+      primary: const Color(0xFF2E7D5A),
+      onPrimary: Colors.white,
+      primaryContainer: const Color(0xFFE8F5E9),
+      onPrimaryContainer: const Color(0xFF1B5E20),
+      secondary: const Color(0xFF4A6572),
+      onSecondary: Colors.white,
+      surface: Colors.white,
+      onSurface: const Color(0xFF1F2328),
+      surfaceContainerLowest: Colors.white,
+      surfaceContainerLow: const Color(0xFFF6F8FA),
+      surfaceContainer: const Color(0xFFEFF2F5),
+      surfaceContainerHigh: const Color(0xFFE4E7EA),
+      surfaceContainerHighest: const Color(0xFFD0D7DE),
+      error: priorityUrgent,
+      onError: Colors.white,
+      outline: const Color(0xFF6E7781),
+      outlineVariant: const Color(0xFFD0D7DE),
     );
 
     return ThemeData(
       useMaterial3: true,
-      colorScheme: lightScheme,
-      scaffoldBackgroundColor: const Color(0xFFF5F6F8),
-      textTheme: GoogleFonts.geistTextTheme(ThemeData.light().textTheme),
+      brightness: Brightness.light,
+      colorScheme: colorScheme,
+      scaffoldBackgroundColor: const Color(0xFFF6F8FA),
+      canvasColor: Colors.white,
+      cardColor: Colors.white,
+      textTheme: GoogleFonts.geistTextTheme(ThemeData.light().textTheme).apply(
+        bodyColor: const Color(0xFF1F2328),
+        displayColor: const Color(0xFF1F2328),
+      ),
       cardTheme: CardThemeData(
-        elevation: 1,
+        elevation: 0,
         color: Colors.white,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(4),
-          side: BorderSide(color: Colors.grey.withValues(alpha: 0.1), width: 1),
+          side: const BorderSide(color: Color(0xFFD0D7DE), width: 1),
         ),
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       ),
       listTileTheme: ListTileThemeData(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
       ),
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
         width: 310,
-        backgroundColor: const Color(0xFF222528),
+        backgroundColor: const Color(0xFF24292F),
         contentTextStyle: GoogleFonts.geist(
           color: Colors.white,
           fontSize: 13.5,
@@ -135,12 +156,48 @@ class AppTheme {
         actionTextColor: mint,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(100),
-          side: const BorderSide(color: Color(0xFF3A3D40), width: 1),
+          side: const BorderSide(color: Color(0xFFD0D7DE), width: 1),
         ),
         elevation: 6,
       ),
+      dividerTheme: const DividerThemeData(
+        color: Color(0xFFD0D7DE),
+        thickness: 1,
+        space: 1,
+      ),
     );
   }
+
+  // Theme-Adaptive Color Helpers
+  static bool isLight(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.light;
+
+  static Color bg(BuildContext context) =>
+      isLight(context) ? const Color(0xFFF6F8FA) : bgDark;
+
+  static Color surface(BuildContext context) =>
+      isLight(context) ? Colors.white : surfaceDark;
+
+  static Color surfaceContainerColor(BuildContext context) =>
+      isLight(context) ? const Color(0xFFEFF2F5) : surfaceContainer;
+
+  static Color surfaceContainerLowColor(BuildContext context) =>
+      isLight(context) ? const Color(0xFFF6F8FA) : surfaceContainerLow;
+
+  static Color surfaceContainerHighColor(BuildContext context) =>
+      isLight(context) ? const Color(0xFFE4E7EA) : surfaceContainerHigh;
+
+  static Color surfaceContainerLowestColor(BuildContext context) =>
+      isLight(context) ? Colors.white : surfaceContainerLowest;
+
+  static Color borderColor(BuildContext context) =>
+      isLight(context) ? const Color(0xFFD0D7DE) : surfaceVariant;
+
+  static Color text(BuildContext context) =>
+      isLight(context) ? const Color(0xFF1F2328) : onSurface;
+
+  static Color textMuted(BuildContext context) =>
+      isLight(context) ? const Color(0xFF656D76) : onSurfaceVariant;
 
   // Monospace helper for labels, tags, and IDs
   static TextStyle monoStyle({

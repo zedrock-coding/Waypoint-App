@@ -72,10 +72,12 @@ class _TaskItemCardState extends State<TaskItemCard> {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
         decoration: BoxDecoration(
-          color: AppTheme.surfaceContainerHigh,
+          color: _isHovered
+              ? AppTheme.surfaceContainerHighColor(context)
+              : AppTheme.surface(context),
           borderRadius: BorderRadius.circular(4),
           border: Border.all(
-            color: _isHovered ? AppTheme.mint : AppTheme.surfaceVariant,
+            color: _isHovered ? AppTheme.mint : AppTheme.borderColor(context),
             width: 1,
           ),
         ),
@@ -112,10 +114,10 @@ class _TaskItemCardState extends State<TaskItemCard> {
                             width: 18,
                             height: 18,
                             decoration: BoxDecoration(
-                              color: isDone ? AppTheme.mint : AppTheme.surfaceContainer,
+                              color: isDone ? AppTheme.mint : AppTheme.surfaceContainerColor(context),
                               borderRadius: BorderRadius.circular(3),
                               border: Border.all(
-                                color: isDone ? AppTheme.mint : AppTheme.surfaceVariant,
+                                color: isDone ? AppTheme.mint : AppTheme.borderColor(context),
                                 width: 1.5,
                               ),
                             ),
@@ -147,8 +149,8 @@ class _TaskItemCardState extends State<TaskItemCard> {
                                       fontSize: 13.5,
                                       fontWeight: FontWeight.w500,
                                       color: isDone
-                                          ? AppTheme.onSurfaceVariant.withValues(alpha: 0.6)
-                                          : AppTheme.onSurface,
+                                          ? AppTheme.textMuted(context).withValues(alpha: 0.6)
+                                          : AppTheme.text(context),
                                       decoration: isDone ? TextDecoration.lineThrough : null,
                                     ),
                                   ),
@@ -179,10 +181,10 @@ class _TaskItemCardState extends State<TaskItemCard> {
                                     Container(
                                       padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
                                       decoration: BoxDecoration(
-                                        color: AppTheme.surfaceContainer,
+                                        color: AppTheme.surfaceContainerColor(context),
                                         borderRadius: BorderRadius.circular(2),
                                         border: Border.all(
-                                          color: AppTheme.surfaceVariant,
+                                          color: AppTheme.borderColor(context),
                                           width: 1,
                                         ),
                                       ),

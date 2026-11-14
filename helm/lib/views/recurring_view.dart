@@ -45,28 +45,28 @@ class RecurringView extends StatelessWidget {
                         'Periodicity Engine',
                         style: AppTheme.monoStyle(
                           fontSize: 11,
-                          color: AppTheme.onSurfaceVariant,
+                          color: AppTheme.textMuted(context),
                         ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 4),
-                  const Text(
+                  Text(
                     'Recurring Routines',
                     style: TextStyle(
                       fontSize: 22,
                       fontWeight: FontWeight.w600,
-                      color: AppTheme.onSurface,
+                      color: AppTheme.text(context),
                       letterSpacing: -0.5,
                     ),
                   ),
                   const SizedBox(height: 2),
                   Text(
                     '${recurringTasks.length} recurring schedules configured to roll over on completion',
-                    style: const TextStyle(fontSize: 12, color: AppTheme.onSurfaceVariant),
+                    style: TextStyle(fontSize: 12, color: AppTheme.textMuted(context)),
                   ),
                   const SizedBox(height: 14),
-                  const Divider(color: AppTheme.surfaceVariant, height: 1),
+                  Divider(color: AppTheme.borderColor(context), height: 1),
                 ],
               ),
             ),
@@ -79,14 +79,14 @@ class RecurringView extends StatelessWidget {
                     children: [
                       const Icon(Icons.repeat_rounded, size: 40, color: AppTheme.mint),
                       const SizedBox(height: 12),
-                      const Text(
+                      Text(
                         'No recurring routines yet',
-                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: AppTheme.onSurface),
+                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: AppTheme.text(context)),
                       ),
                       const SizedBox(height: 4),
                       Text(
                         'Set recurrence cadence when creating a task to automatically roll it over.',
-                        style: AppTheme.monoStyle(fontSize: 12, color: AppTheme.onSurfaceVariant),
+                        style: AppTheme.monoStyle(fontSize: 12, color: AppTheme.textMuted(context)),
                         textAlign: TextAlign.center,
                       ),
                     ],

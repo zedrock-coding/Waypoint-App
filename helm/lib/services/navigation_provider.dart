@@ -19,8 +19,6 @@ class NavigationProvider with ChangeNotifier {
     _currentView = view;
     if (view == WaypointNavView.today) {
       _currentRoute = '/';
-      _selectedIndex = 0;
-      _selectedCommunityId = null;
     } else if (view == WaypointNavView.schedule) {
       _currentRoute = '/calendar';
     } else if (view == WaypointNavView.settings) {
@@ -28,6 +26,8 @@ class NavigationProvider with ChangeNotifier {
     } else if (view == WaypointNavView.communities) {
       _currentRoute = '/communities';
       _selectedIndex = 1;
+      _selectedCommunityId = null;
+      _selectedCommunityName = null;
     } else if (view == WaypointNavView.account) {
       _currentRoute = '/account';
     }
@@ -38,8 +38,17 @@ class NavigationProvider with ChangeNotifier {
     _selectedCommunityId = id;
     _selectedCommunityName = name;
     _currentRoute = '/';
-    _selectedIndex = 1;
-    _currentView = WaypointNavView.today; // Show community tasks on today worklist
+    _selectedIndex = id != null ? 1 : 0;
+    _currentView = WaypointNavView.today;
+    notifyListeners();
+  }
+
+  void exitCommunity() {
+    _selectedCommunityId = null;
+    _selectedCommunityName = null;
+    _selectedIndex = 0;
+    _currentView = WaypointNavView.today;
+    _currentRoute = '/';
     notifyListeners();
   }
 

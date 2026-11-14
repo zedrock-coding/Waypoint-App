@@ -218,9 +218,16 @@ class TaskProvider with ChangeNotifier {
         : <Map<dynamic, dynamic>>[];
 
     final title = d['title']?.toString().trim() ?? '';
+    final String lowerTitle = title.toLowerCase();
 
-    final bool isRecurring = d['is_recurring'] == true || d['recurrence_frequency'] != null;
-    final recurrenceFrequency = d['recurrence_frequency']?.toString();
+    final bool isRecurring = d['is_recurring'] == true ||
+        d['recurrence_frequency'] != null ||
+        d['parent_recurring_task_id'] != null ||
+        lowerTitle.contains('daily') ||
+        lowerTitle.contains('every day') ||
+        lowerTitle.contains('weekly') ||
+        lowerTitle.contains('routine');
+    final recurrenceFrequency = d['recurrence_frequency']?.toString() ?? (isRecurring ? 'daily' : null);
     final recurrenceInterval = (d['recurrence_interval'] as num?)?.toInt() ?? 1;
     final rawDays = d['recurrence_days_of_week'];
     final recurrenceDaysOfWeek = rawDays is List
@@ -806,7 +813,13 @@ class TaskProvider with ChangeNotifier {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final active = _personalTasks.where((t) => !t.isCompleted && t.status != Status.done).toList();
-    if (active.isEmpty) return [];
+    if (active.isEmpty) {
+      // If no open personal tasks, include open recurring tasks
+      return _taskBox.values
+          .map((t) => UnifiedTask.fromHive(t))
+          .where((t) => (t.isRecurring || t.recurrenceRule != null) && !t.isCompleted && t.status != Status.done)
+          .toList();
+    }
 
     final dueTodayOrOverdue = active.where((t) {
       final due = (t.dueDate ?? t.dateTime).toLocal();
@@ -814,8 +827,11 @@ class TaskProvider with ChangeNotifier {
       return dueDateOnly.isAtSameMomentAs(today) || dueDateOnly.isBefore(today);
     }).toList();
 
-    // If specific tasks are due today/overdue, return them, else return open active tasks
-    return dueTodayOrOverdue.isNotEmpty ? dueTodayOrOverdue : active;
+    // Include recurring tasks as part of the daily focus routine
+    final recurringActive = active.where((t) => t.isRecurring || t.recurrenceRule != null).toList();
+
+    final result = <UnifiedTask>{...dueTodayOrOverdue, ...recurringActive}.toList();
+    return result.isNotEmpty ? result : active;
   }
 
   List<UnifiedTask> get allActiveTasks {

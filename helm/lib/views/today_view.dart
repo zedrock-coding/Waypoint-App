@@ -28,12 +28,12 @@ class _TodayViewState extends State<TodayView> {
     final completedTasks = taskProvider.completedTasksToday;
 
     final urgentCount = activeTasks.where((t) => t.priority == Priority.high).length;
-    final recurringCount = activeTasks.where((t) => t.isRecurring || t.recurrenceRule != null).length;
+    final recurringCount = taskProvider.recurringTasks.length;
 
     // Filter tasks based on selected chip
     List<UnifiedTask> filteredTasks = activeTasks;
     if (_currentFilter == TodayFilter.recurring) {
-      filteredTasks = activeTasks.where((t) => t.isRecurring || t.recurrenceRule != null).toList();
+      filteredTasks = taskProvider.recurringTasks;
     } else if (_currentFilter == TodayFilter.highPriority) {
       filteredTasks = activeTasks.where((t) => t.priority == Priority.high).toList();
     } else if (_currentFilter == TodayFilter.completed) {
@@ -65,26 +65,26 @@ class _TodayViewState extends State<TodayView> {
                           letterSpacing: 1.0,
                         ),
                       ),
-                      const Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 6),
-                        child: Text('•', style: TextStyle(color: AppTheme.surfaceVariant)),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 6),
+                        child: Text('•', style: TextStyle(color: AppTheme.borderColor(context))),
                       ),
                       Text(
                         todayFormatted,
                         style: AppTheme.monoStyle(
                           fontSize: 11,
-                          color: AppTheme.onSurfaceVariant,
+                          color: AppTheme.textMuted(context),
                         ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 4),
-                  const Text(
+                  Text(
                     'Active Worklist',
                     style: TextStyle(
                       fontSize: 22,
                       fontWeight: FontWeight.w600,
-                      color: AppTheme.onSurface,
+                      color: AppTheme.text(context),
                       letterSpacing: -0.5,
                     ),
                   ),
@@ -93,12 +93,12 @@ class _TodayViewState extends State<TodayView> {
                     children: [
                       Text(
                         '${activeTasks.length} active tasks',
-                        style: const TextStyle(fontSize: 12, color: AppTheme.onSurfaceVariant),
+                        style: TextStyle(fontSize: 12, color: AppTheme.textMuted(context)),
                       ),
                       if (urgentCount > 0) ...[
-                        const Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 6),
-                          child: Text('•', style: TextStyle(color: AppTheme.surfaceVariant)),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 6),
+                          child: Text('•', style: TextStyle(color: AppTheme.borderColor(context))),
                         ),
                         Text(
                           '$urgentCount urgent',
@@ -131,7 +131,7 @@ class _TodayViewState extends State<TodayView> {
                   ),
 
                   const SizedBox(height: 14),
-                  const Divider(color: AppTheme.surfaceVariant, height: 1),
+                  Divider(color: AppTheme.borderColor(context), height: 1),
                 ],
               ),
             ),
@@ -151,7 +151,7 @@ class _TodayViewState extends State<TodayView> {
                         _currentFilter == TodayFilter.all
                             ? 'All caught up for today!'
                             : 'No tasks matching this filter.',
-                        style: const TextStyle(color: AppTheme.onSurfaceVariant, fontSize: 13),
+                        style: TextStyle(color: AppTheme.textMuted(context), fontSize: 13),
                       ),
                     ],
                   ),
@@ -179,7 +179,7 @@ class _TodayViewState extends State<TodayView> {
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Column(
                   children: [
-                    const Divider(color: AppTheme.surfaceVariant, height: 1),
+                    Divider(color: AppTheme.borderColor(context), height: 1),
                     const SizedBox(height: 12),
                     InkWell(
                       onTap: () => setState(() => _completedCollapsed = !_completedCollapsed),
@@ -195,7 +195,7 @@ class _TodayViewState extends State<TodayView> {
                                 style: AppTheme.monoStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.w500,
-                                  color: AppTheme.onSurfaceVariant,
+                                  color: AppTheme.textMuted(context),
                                 ),
                               ),
                             ],
@@ -205,7 +205,7 @@ class _TodayViewState extends State<TodayView> {
                                 ? Icons.keyboard_arrow_down_rounded
                                 : Icons.keyboard_arrow_up_rounded,
                             size: 18,
-                            color: AppTheme.onSurfaceVariant,
+                            color: AppTheme.textMuted(context),
                           ),
                         ],
                       ),
@@ -242,10 +242,12 @@ class _TodayViewState extends State<TodayView> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
         decoration: BoxDecoration(
-          color: isSelected ? AppTheme.surfaceContainerHigh : AppTheme.surfaceContainer,
+          color: isSelected
+              ? AppTheme.surfaceContainerHighColor(context)
+              : AppTheme.surfaceContainerColor(context),
           borderRadius: BorderRadius.circular(4),
           border: Border.all(
-            color: isSelected ? AppTheme.mint.withValues(alpha: 0.5) : AppTheme.surfaceVariant,
+            color: isSelected ? AppTheme.mint.withValues(alpha: 0.5) : AppTheme.borderColor(context),
           ),
         ),
         child: Row(
@@ -256,14 +258,14 @@ class _TodayViewState extends State<TodayView> {
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: isSelected ? FontWeight.w500 : FontWeight.w400,
-                color: isSelected ? AppTheme.mint : AppTheme.onSurfaceVariant,
+                color: isSelected ? AppTheme.mint : AppTheme.textMuted(context),
               ),
             ),
             const SizedBox(width: 6),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
               decoration: BoxDecoration(
-                color: isSelected ? AppTheme.mint.withValues(alpha: 0.2) : AppTheme.surfaceVariant,
+                color: isSelected ? AppTheme.mint.withValues(alpha: 0.2) : AppTheme.borderColor(context),
                 borderRadius: BorderRadius.circular(2),
               ),
               child: Text(
@@ -271,7 +273,7 @@ class _TodayViewState extends State<TodayView> {
                 style: AppTheme.monoStyle(
                   fontSize: 10,
                   fontWeight: FontWeight.w600,
-                  color: isSelected ? AppTheme.mint : AppTheme.onSurfaceVariant,
+                  color: isSelected ? AppTheme.mint : AppTheme.textMuted(context),
                 ),
               ),
             ),
