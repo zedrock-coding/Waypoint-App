@@ -277,8 +277,26 @@ class TaskProvider with ChangeNotifier {
           .stream(primaryKey: ['id'])
           .eq('community_id', communityId)
           .map((data) {
-            return data.map((d) => UnifiedTask.fromHive(_taskFromRow(d))).toList()
-              ..sort((a, b) => a.order.compareTo(b.order));
+            final sync = SyncService();
+            final List<UnifiedTask> list = [];
+            for (final d in data) {
+              final id = d['id'].toString();
+              final remote = _taskFromRow(d);
+              final existing = _taskBox.get(id);
+
+              if (existing != null &&
+                  !shouldApplyRemoteUpdate(
+                    localUpdatedAt: existing.updatedAt,
+                    remoteUpdatedAt: remote.updatedAt,
+                    hasPendingWrite: sync.hasPending(id),
+                  )) {
+                list.add(UnifiedTask.fromHive(existing));
+              } else {
+                _taskBox.put(id, remote);
+                list.add(UnifiedTask.fromHive(remote));
+              }
+            }
+            return list..sort((a, b) => a.order.compareTo(b.order));
           });
     });
   }
@@ -876,8 +894,34 @@ class TaskProvider with ChangeNotifier {
   }
 
   Future<void> updateTaskStatus(UnifiedTask task, Status newStatus) async {
-    final hiveTask = _taskBox.get(task.id);
-    if (hiveTask != null) {
+    hive_model.Task? hiveTask = _taskBox.get(task.id);
+    if (hiveTask == null && task.communityId != null) {
+      hiveTask = hive_model.Task(
+        id: task.id,
+        title: task.title,
+        description: task.description,
+        isCompleted: newStatus == Status.done,
+        userId: task.userId,
+        communityId: task.communityId,
+        categoryIds: task.categoryIds,
+        createdAt: task.dateTime,
+        dueAt: task.dueDate,
+        priority: task.priority.name,
+        status: _statusToString(newStatus),
+        order: task.order,
+        assignees: task.assignees,
+        subtasks: task.subtasks.map((e) => Map<dynamic, dynamic>.from(e)).toList(),
+        updatedAt: DateTime.now(),
+        isRecurring: task.isRecurring,
+        recurrenceFrequency: task.recurrenceRule?.frequency,
+        recurrenceInterval: task.recurrenceRule?.interval ?? 1,
+        recurrenceDaysOfWeek: task.recurrenceRule?.daysOfWeek,
+        recurrenceEndDate: task.recurrenceRule?.endDate,
+        parentRecurringTaskId: task.parentRecurringTaskId,
+        originalDueDate: task.originalDueDate,
+      );
+      await _taskBox.put(task.id, hiveTask);
+    } else if (hiveTask != null) {
       hiveTask.status = _statusToString(newStatus);
       hiveTask.isCompleted = newStatus == Status.done;
       hiveTask.updatedAt = DateTime.now();

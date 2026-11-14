@@ -4,6 +4,21 @@ All notable changes to the **Helm** / **Waypoint** project will be documented in
 
 ---
 
+## [0.6.4] - 2026-11-14
+
+### 🐛 Community Task Completion & Optimistic Toggling
+- **Local-First State Mirroring**:
+  - Cached community task stream items directly into Hive `_taskBox`, establishing an instant local mirror for remote community tasks.
+  - Updated `updateTaskStatus` to write optimistic state directly to Hive before network dispatch.
+  - Applied `shouldApplyRemoteUpdate` reconciliation against active pending mutations, eliminating UI re-render flicker and checkmark revert issues.
+  - Supported instant tick toggle and swipe completion with zero lag.
+- **Database RLS Update Policy Alignment**:
+  - Authored migration `20261114143000_community_task_completion_rls.sql` updating `tasks_update` policy.
+  - Enabled direct assignees (`auth.uid()::text = ANY(assignees)`) and community members (`internal.is_member`) to mark tasks completed and update status.
+  - Preserved strict Admin/Owner/Creator authorization boundaries on task deletions (`tasks_delete`).
+
+---
+
 ## [0.6.3] - 2026-11-14
 
 ### 🏢 Workspaces & Groups Management
